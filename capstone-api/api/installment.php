@@ -59,11 +59,30 @@ class User
 
         $json = json_decode($json, true);
         $sql = "SELECT `ips_id`, `installment_id`, `due_date`, `payment_number`, 
-                `amount_due`, `status` FROM `installment_payment_sched` WHERE installment_id = :ID
+                `amount_due`, `status` FROM `installment_payment_sched` WHERE installment_id = :ID AND status = 'UNPAID'
                 ORDER BY payment_number ASC";
 
         $stmt = $conn->prepare($sql);
         $stmt->bindParam('ID', $json['installmentID']);
+        $stmt->execute();
+        $returnValue = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        unset($conn);
+        unset($stmt);
+        return json_encode($returnValue);
+    }
+
+    function GetInstallmentD1($json)
+    {
+        include 'conn.php';
+        //$json = '{"username":"pitok","password":"12345"}'
+
+        $json = json_decode($json, true);
+        $sql = "SELECT `ips_id`, `installment_id`, `due_date`, `payment_number`, 
+                `amount_due`, `status` FROM `installment_payment_sched` 
+                ORDER BY payment_number ASC";
+
+        $stmt = $conn->prepare($sql);
+        // $stmt->bindParam('ID', $json['installmentID']);
         $stmt->execute();
         $returnValue = $stmt->fetchAll(PDO::FETCH_ASSOC);
         unset($conn);
@@ -87,7 +106,8 @@ class User
                     b.`cust_id`
                 FROM `installment_payment_sched` a
                 INNER JOIN `installment_sales` b 
-                    ON a.`installment_id` = b.`installment_sales_id`;
+                    ON a.`installment_id` = b.`installment_sales_id`
+                ;
                 ";
 
         $stmt = $conn->prepare($sql);
@@ -126,7 +146,7 @@ class User
             }
 
             // Get current date and time
-          
+
 
             // Insert invoice record for the payment
             $sql = "INSERT INTO `invoice`(`sales_from`, `amount`, `date`, `time`, `location_id`, `account_id`) 
@@ -169,8 +189,48 @@ class User
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             $remainingBalance = $result['remaining_balance'] ?? 0;
 
-            // Update installment_sales balance
-            $sql = "UPDATE installment_sales SET balance = :balance WHERE installment_sales_id = :installmentId";
+
+            // Insert payment records
+            $sql = "INSERT INTO `installment_payment_record`(`invoice_id`, `ips_id`, `date`, `time`)
+                 VALUES (:invoiceId, :ipsID, :date, :time)";
+            $stmt = $conn->prepare($sql);
+
+            foreach ($paymentsArray as $payment) {
+                $stmt->bindParam(':invoiceId', $invoiceId);
+                $stmt->bindParam(':ipsID', $payment['ips_id']);
+                $stmt->bindParam(':date', $date);
+                $stmt->bindParam(':time', $time);
+
+                if (!$stmt->execute()) {
+                    throw new Exception('Failed to create payment record for payment ID: ' . $payment['ips_id']);
+                }
+            }
+
+
+            // Calculate remaining balance
+            $sql = "SELECT SUM(amount_due) as remaining_balance FROM installment_payment_sched 
+                WHERE installment_id = :installmentId AND status != 'Paid'";
+            $stmt = $conn->prepare($sql);
+            $stmt->bindParam(':installmentId', $json['installmentID']);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $remainingBalance = $result['remaining_balance'] ?? 0;
+
+
+            // If remaining balance is zero or less, update installment status to Complete
+            if ($remainingBalance <= 0) {
+                $sql = "UPDATE `installment_sales` SET `status` = 'Complete' WHERE `installment_sales_id` = :installmentId";
+                $stmt = $conn->prepare($sql);
+                // $stmt->bindParam(':stats', 'Complete');
+                $stmt->bindParam(':installmentId', $json['installmentID']);
+
+                if (!$stmt->execute()) {
+                    throw new Exception('Failed to update installment status');
+                }
+            }
+
+            // Update installment_sales with new balance
+            $sql = "UPDATE `installment_sales` SET `balance` = :balance WHERE `installment_sales_id` = :installmentId";
             $stmt = $conn->prepare($sql);
             $stmt->bindParam(':balance', $remainingBalance);
             $stmt->bindParam(':installmentId', $json['installmentID']);
@@ -179,12 +239,13 @@ class User
                 throw new Exception('Failed to update installment balance');
             }
 
+
             // Commit transaction
             $conn->commit();
             $returnValue = $invoiceId;
 
 
-          
+
         } catch (Exception $e) {
             // Rollback transaction on error
             if ($conn->inTransaction()) {
@@ -193,12 +254,31 @@ class User
 
             $conn->rollBack();
             $returnValue = "Error: " . $e->getMessage();
+            // $returnValue = "Errordsad: " . $e->getMessage();
+
         }
 
         unset($conn);
         unset($stmt);
         return json_encode($returnValue);
 
+    }
+
+    function PaymentRecord($json)
+    {
+        include 'conn.php';
+        //$json = '{"username":"pitok","password":"12345"}'
+
+        $json = json_decode($json, true);
+        $sql = "SELECT `ipr_id`, `invoice_id`, `ips_id`, `date`, `time` 
+                FROM `installment_payment_record`;";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->execute();
+        $returnValue = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        unset($conn);
+        unset($stmt);
+        return json_encode($returnValue);
     }
 
 
@@ -228,11 +308,17 @@ switch ($operation) {
     case 'GetInstallmentD':
         echo $user->GetInstallmentD($json);
         break;
+    case 'GetInstallmentD1':
+        echo $user->GetInstallmentD1($json);
+        break;
     case 'GetAllInstallmentD':
         echo $user->GetAllInstallmentD($json);
         break;
     case 'PayInstallment':
         echo $user->PayInstallment($json, $paymentToRecord);
+        break;
+    case 'PaymentRecords':
+        echo $user->PaymentRecord($json);
         break;
 
 }

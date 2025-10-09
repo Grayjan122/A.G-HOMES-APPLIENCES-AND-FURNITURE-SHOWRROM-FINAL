@@ -366,7 +366,7 @@ class User
                         `location_id`, `type`, `product_id`, `past_balance`, 
                         `qty`, `current_balance`, `date`, `time`, `account_id`
                     ) VALUES (
-                        :storeID, 'Installment Plan Sales', :productID, :pastBal, 
+                        :storeID, 'Sales', :productID, :pastBal, 
                         :qty, :currentBal, :date, :time, :accID
                     )";
                 $stmt = $conn->prepare($sql);
@@ -394,7 +394,7 @@ class User
                     VALUES (:invoiceID, :downPayment,
                         :dpPercentage, :origPrice , :interestPercentage , :interestAmount,
                         :remainingBalance , :totalPayment , :installmentPlan , :totalSales , :balance,
-                        :monthlyPayement , :custID , 'ON GOING INSTALLMENT')";
+                        :monthlyPayement , :custID , 'ON GOING')";
             $stmt = $conn->prepare($sql);
             $stmt->bindValue(':invoiceID', $lastID, PDO::PARAM_INT);
             

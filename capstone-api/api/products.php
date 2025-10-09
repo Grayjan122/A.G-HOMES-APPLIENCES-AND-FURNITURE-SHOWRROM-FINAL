@@ -10,7 +10,7 @@ class User
         include 'conn.php';
 
         $json = json_decode($json, true);
-        $sql = "SELECT a.product_id, a.product_name, a.description, a.dimensions, a.material, a.color, a.price, a.product_preview_image, a.date_created, b.category_name from products a
+        $sql = "SELECT a.product_id, a.product_name, a.description, a.dimensions, a.material, a.color, a.price, a.product_preview_image,a.category_id, a.date_created, b.category_name from products a
             INNER JOIN category b ON a.category_id = b. category_id ORDER BY a.description ASC";
 
         $stmt = $conn->prepare($sql);

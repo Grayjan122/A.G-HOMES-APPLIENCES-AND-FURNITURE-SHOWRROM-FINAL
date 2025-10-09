@@ -78,7 +78,7 @@ class User
         $alias = $json['tName'];
         $table = $json['tFrom'];
 
-       
+
         // ⚠️ Directly insert identifiers (safe after validation)
         $sql = "SELECT COUNT($column) AS $alias FROM $table";
 
@@ -90,6 +90,24 @@ class User
         unset($conn);
         unset($stmt);
 
+        return json_encode($returnValue);
+    }
+
+    function ProductCountFromCategory($json)
+    {
+        include 'conn.php';
+        //$json = '{"username":"pitok","password":"12345"}'
+        $json = json_decode($json, true);
+        $sql = "SELECT COUNT(product_id) AS product_count FROM products WHERE category_id = :categoryID;";
+        $stmt->bindParam(':categoryID', $json['categoryID']);
+
+
+        $stmt = $conn->prepare($sql);
+
+        $stmt->execute();
+        $returnValue = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        unset($conn);
+        unset($stmt);
         return json_encode($returnValue);
     }
 
@@ -121,5 +139,7 @@ switch ($operation) {
     case 'Count':
         echo $user->Count($json);
         break;
+    case 'ProductCountFromCategory':
+        echo $user->ProductCountFromCategory($json);
 }
 ?>

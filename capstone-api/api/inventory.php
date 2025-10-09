@@ -16,7 +16,7 @@ class User
         $search = isset($json['search']) ? '%' . strtolower($json['search']) . '%' : '%';
 
         // Base SQL
-        $sql = "SELECT a.store_inventory_id, a.product_id, b.product_name, b.description, b.price, a.qty, a.location_id, c.location_name, d.category_name
+        $sql = "SELECT a.store_inventory_id, a.product_id, b.product_name, b.description, b.price,b.product_preview_image ,b.color, a.qty, a.location_id, c.location_name, d.category_name
         FROM store_inventory a 
         JOIN products b ON a.product_id = b.product_id
         JOIN location c ON a.location_id = c.location_id 

@@ -8,7 +8,7 @@ class User {
         include 'conn.php';
         //$json = '{"username":"pitok","password":"12345"}'
         $json = json_decode($json, true);
-        $sql = "SELECT a.account_id, a.status,a.location_id,a.fname, b.role_name, c.location_name, a.active_status FROM account a
+        $sql = "SELECT a.account_id, a.status,a.location_id,a.fname,a.mname, a.lname, b.role_name, c.location_name, a.active_status FROM account a
                     INNER JOIN role b ON a.role_id = b.role_id
                     INNER JOIN location c ON a.location_id = c.location_id 
                     WHERE a.username = :username AND a.user_password = :password";
