@@ -1,15 +1,13 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import "../../css/inventory-css/inventory.css";
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import Alert from 'react-bootstrap/Alert';
-import { Dropdown } from 'react-bootstrap';
 import CustomPagination from '@/app/Components/Pagination/pagination';
 
-const ITEMS_PER_PAGE_TRACK_REQ = 8;
+const ITEMS_PER_PAGE_TRACK_REQ = 9;
 const ITEMS_PER_PAGE_DETAILS = 5;
 const ITEMS_PER_PAGE_ARCHIVE = 6;
 
@@ -32,7 +30,7 @@ const TrackRequestIM = () => {
     const [archiveRequestList, setArchiveRequestList] = useState([]);
     const [archiveCurrentPage, setArchiveCurrentPage] = useState(1);
 
-    // Archive filter states (no status filter since all are complete)
+    // Archive filter states
     const [archiveRequestFromFilter, setArchiveRequestFromFilter] = useState('');
     const [archiveRequestToFilter, setArchiveRequestToFilter] = useState('');
     const [archiveUserFilter, setArchiveUserFilter] = useState('');
@@ -84,26 +82,22 @@ const TrackRequestIM = () => {
     const filteredData = useMemo(() => {
         let filtered = [...nonCompleteRequests];
 
-        // Filter by request from
         if (requestFromFilter) {
             filtered = filtered.filter(item =>
                 item.reqFrom?.toLowerCase().includes(requestFromFilter.toLowerCase())
             );
         }
 
-        // Filter by request to
         if (requestToFilter) {
             filtered = filtered.filter(item =>
                 item.reqTo?.toLowerCase().includes(requestToFilter.toLowerCase())
             );
         }
 
-        // Filter by status
         if (statusFilter) {
             filtered = filtered.filter(item => item.request_status === statusFilter);
         }
 
-        // Filter by user
         if (userFilter) {
             filtered = filtered.filter(item => {
                 const fullName = `${item.fname || ''} ${item.mname || ''} ${item.lname || ''}`.toLowerCase();
@@ -111,7 +105,6 @@ const TrackRequestIM = () => {
             });
         }
 
-        // Filter by search term
         if (searchFilter.trim()) {
             const searchTerm = searchFilter.toLowerCase();
             filtered = filtered.filter(item =>
@@ -129,21 +122,18 @@ const TrackRequestIM = () => {
     const filteredArchiveData = useMemo(() => {
         let filtered = [...archiveRequestList];
 
-        // Filter by request from
         if (archiveRequestFromFilter) {
             filtered = filtered.filter(item =>
                 item.reqFrom?.toLowerCase().includes(archiveRequestFromFilter.toLowerCase())
             );
         }
 
-        // Filter by request to
         if (archiveRequestToFilter) {
             filtered = filtered.filter(item =>
                 item.reqTo?.toLowerCase().includes(archiveRequestToFilter.toLowerCase())
             );
         }
 
-        // Filter by user
         if (archiveUserFilter) {
             filtered = filtered.filter(item => {
                 const fullName = `${item.fname || ''} ${item.mname || ''} ${item.lname || ''}`.toLowerCase();
@@ -151,7 +141,6 @@ const TrackRequestIM = () => {
             });
         }
 
-        // Filter by search term
         if (archiveSearchFilter.trim()) {
             const searchTerm = archiveSearchFilter.toLowerCase();
             filtered = filtered.filter(item =>
@@ -165,12 +154,11 @@ const TrackRequestIM = () => {
         return filtered;
     }, [archiveRequestList, archiveRequestFromFilter, archiveRequestToFilter, archiveUserFilter, archiveSearchFilter]);
 
-    // Archive pagination using filtered data
+    // Pagination
     const archiveTotalPages = Math.ceil(filteredArchiveData.length / ITEMS_PER_PAGE_ARCHIVE);
     const archiveStartIndex = (archiveCurrentPage - 1) * ITEMS_PER_PAGE_ARCHIVE;
     const archiveCurrentItems = filteredArchiveData.slice(archiveStartIndex, archiveStartIndex + ITEMS_PER_PAGE_ARCHIVE);
 
-    // Calculate pagination values using filtered data
     const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE_TRACK_REQ);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE_TRACK_REQ;
     const currentItems = filteredData.slice(startIndex, startIndex + ITEMS_PER_PAGE_TRACK_REQ);
@@ -184,7 +172,6 @@ const TrackRequestIM = () => {
         setCurrentPage(1);
     }, [requestFromFilter, requestToFilter, statusFilter, userFilter, searchFilter]);
 
-    // Reset archive page when archive filters change
     useEffect(() => {
         setArchiveCurrentPage(1);
     }, [archiveRequestFromFilter, archiveRequestToFilter, archiveUserFilter, archiveSearchFilter]);
@@ -201,19 +188,16 @@ const TrackRequestIM = () => {
         setTimeout(() => setAlert1(false), 3000);
     };
 
-    // Get unique request from locations
     const getUniqueRequestFrom = (data = nonCompleteRequests) => {
         const locations = [...new Set(data.map(item => item.reqFrom).filter(Boolean))];
         return locations.sort();
     };
 
-    // Get unique request to locations
     const getUniqueRequestTo = (data = nonCompleteRequests) => {
         const locations = [...new Set(data.map(item => item.reqTo).filter(Boolean))];
         return locations.sort();
     };
 
-    // Get unique users from request data
     const getUniqueUsers = (data = nonCompleteRequests) => {
         const uniqueUsers = [...new Set(data.map(item =>
             `${item.fname || ''} ${item.mname || ''} ${item.lname || ''}`.trim()
@@ -221,7 +205,6 @@ const TrackRequestIM = () => {
         return uniqueUsers.sort();
     };
 
-    // Clear all filters function
     const clearAllFilters = () => {
         setRequestFromFilter('');
         setRequestToFilter('');
@@ -231,13 +214,24 @@ const TrackRequestIM = () => {
         setCurrentPage(1);
     };
 
-    // Clear all archive filters function
     const clearAllArchiveFilters = () => {
         setArchiveRequestFromFilter('');
         setArchiveRequestToFilter('');
         setArchiveUserFilter('');
         setArchiveSearchFilter('');
         setArchiveCurrentPage(1);
+    };
+
+    // Get progress step based on status
+    const getProgressStep = (status) => {
+        const statusMap = {
+            'Pending': 0,
+            'On Going': 1,
+            'On Delivery': 2,
+            'Delivered': 3,
+            'Complete': 4
+        };
+        return statusMap[status] || 0;
     };
 
     // API Functions
@@ -453,12 +447,6 @@ const TrackRequestIM = () => {
         }
     };
 
-    const handlePageChange1 = (page) => {
-        if (page >= 1 && page <= totalPages1) {
-            setCurrentPage1(page);
-        }
-    };
-
     const handleArchivePageChange = (page) => {
         if (page >= 1 && page <= archiveTotalPages) {
             setArchiveCurrentPage(page);
@@ -471,16 +459,11 @@ const TrackRequestIM = () => {
     };
 
     const triggerModal = (operation, id) => {
-        switch (operation) {
-            case 'trackRequestDetails':
-                if (id) {
-                    setTrackRequestDetailsVisible(false);
-                    GetTrackRequestDetails(id);
-                    GetTrackRequestD(id);
-                }
-                break;
-            default:
-                break;
+        if (operation === 'trackRequestDetails' && id) {
+            setTrackRequestDetailsVisible(false);
+            GetTrackRequestDetails(id);
+            GetTrackRequestD(id);
+            MyGetProgressCount(id);
         }
     };
 
@@ -490,6 +473,7 @@ const TrackRequestIM = () => {
             setTrackRequestDetailsVisible(false);
             GetTrackRequestDetails(id);
             GetTrackRequestD(id);
+            MyGetProgressCount(id);
         }
     };
 
@@ -500,11 +484,12 @@ const TrackRequestIM = () => {
     }, []);
 
     useEffect(() => {
-        GetLocation();
-        MyGetRequest();
-    }, []);
+        if (location_id) {
+            GetLocation();
+            MyGetRequest();
+        }
+    }, [location_id]);
 
-    // Prepare merged data for progress tracker
     const merged = steps.map((step, index) => ({
         stepName: step,
         data: reqReports[index] || null
@@ -514,466 +499,318 @@ const TrackRequestIM = () => {
         <>
             <Alert
                 variant={alertVariant}
-                className='alert-inventory'
                 show={alert1}
-                style={{ backgroundColor: alertBG }}
+                style={{ backgroundColor: alertBG, position: 'fixed', top: 20, right: 20, zIndex: 9999 }}
             >
                 {message}
             </Alert>
 
-            <Modal show={show} onHide={handleClose} size='sm'>
+            {/* Archive Modal */}
+            <Modal show={showArchive} onHide={handleArchiveClose} size='xl'>
                 <Modal.Header closeButton>
-                    <Modal.Title>{modalTitle}</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>{message}</Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={handleClose}>
-                        Close
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
-            {/* Archive Requests Modal */}
-            <Modal
-                show={showArchive}
-                onHide={handleArchiveClose}
-                size='xl'
-                className='request-modal'
-            >
-                <Modal.Header closeButton className='searched-product-header'>
                     <Modal.Title>Completed Requests</Modal.Title>
                 </Modal.Header>
-                <Modal.Body className='request-modal-body'>
-                    {/* Archive Filter Controls */}
-                    <div style={{
-                        padding: '15px',
-                        backgroundColor: '#f8f9fa',
-                        borderRadius: '8px',
-                        margin: '0 0 15px 0',
-                        border: '1px solid #e9ecef'
-                    }}>
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                            gap: '15px',
-                            alignItems: 'end'
-                        }}>
-                            {/* Request From Filter */}
+                <Modal.Body>
+                    {/* Archive Filters */}
+                    <div style={{ padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', marginBottom: '15px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '5px',
-                                    fontWeight: '500',
-                                    fontSize: '14px'
-                                }}>
-                                    Request From
-                                </label>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Request From</label>
                                 <select
                                     value={archiveRequestFromFilter}
                                     onChange={(e) => setArchiveRequestFromFilter(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px 12px',
-                                        border: '1px solid #ced4da',
-                                        borderRadius: '4px',
-                                        fontSize: '14px'
-                                    }}
+                                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ced4da' }}
                                 >
                                     <option value="">All Locations</option>
                                     {getUniqueRequestFrom(archiveRequestList).map((location, index) => (
-                                        <option key={index} value={location}>
-                                            {location}
-                                        </option>
+                                        <option key={index} value={location}>{location}</option>
                                     ))}
                                 </select>
                             </div>
 
-                            {/* Request To Filter */}
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '5px',
-                                    fontWeight: '500',
-                                    fontSize: '14px'
-                                }}>
-                                    Request To
-                                </label>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Request To</label>
                                 <select
                                     value={archiveRequestToFilter}
                                     onChange={(e) => setArchiveRequestToFilter(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px 12px',
-                                        border: '1px solid #ced4da',
-                                        borderRadius: '4px',
-                                        fontSize: '14px'
-                                    }}
+                                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ced4da' }}
                                 >
                                     <option value="">All Locations</option>
                                     {getUniqueRequestTo(archiveRequestList).map((location, index) => (
-                                        <option key={index} value={location}>
-                                            {location}
-                                        </option>
+                                        <option key={index} value={location}>{location}</option>
                                     ))}
                                 </select>
                             </div>
 
-                            {/* User Filter */}
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '5px',
-                                    fontWeight: '500',
-                                    fontSize: '14px'
-                                }}>
-                                    Request By
-                                </label>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Request By</label>
                                 <select
                                     value={archiveUserFilter}
                                     onChange={(e) => setArchiveUserFilter(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px 12px',
-                                        border: '1px solid #ced4da',
-                                        borderRadius: '4px',
-                                        fontSize: '14px'
-                                    }}
+                                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ced4da' }}
                                 >
                                     <option value="">All Users</option>
                                     {getUniqueUsers(archiveRequestList).map((user, index) => (
-                                        <option key={index} value={user}>
-                                            {user}
-                                        </option>
+                                        <option key={index} value={user}>{user}</option>
                                     ))}
                                 </select>
                             </div>
 
-                            {/* Search Filter */}
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '5px',
-                                    fontWeight: '500',
-                                    fontSize: '14px'
-                                }}>
-                                    Search
-                                </label>
-                                <div style={{ position: 'relative' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="Search completed requests..."
-                                        value={archiveSearchFilter}
-                                        onChange={(e) => setArchiveSearchFilter(e.target.value)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '8px 35px 8px 12px',
-                                            border: '1px solid #ced4da',
-                                            borderRadius: '4px',
-                                            fontSize: '14px'
-                                        }}
-                                    />
-                                    {archiveSearchFilter && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setArchiveSearchFilter('')}
-                                            style={{
-                                                position: 'absolute',
-                                                right: '8px',
-                                                top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                background: 'none',
-                                                border: 'none',
-                                                color: '#6c757d',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            ×
-                                        </button>
-                                    )}
-                                </div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Search</label>
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={archiveSearchFilter}
+                                    onChange={(e) => setArchiveSearchFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ced4da' }}
+                                />
                             </div>
                         </div>
-
-                        {/* Clear filters and results count */}
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginTop: '15px',
-                            paddingTop: '15px',
-                            borderTop: '1px solid #dee2e6'
-                        }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #dee2e6' }}>
                             <div style={{ fontSize: '14px', color: '#6c757d' }}>
                                 Showing {filteredArchiveData.length} of {archiveRequestList.length} completed requests
                             </div>
-                            <button
-                                type="button"
-                                onClick={clearAllArchiveFilters}
-                                style={{
-                                    padding: "6px 12px",
-                                    backgroundColor: "#6c757d",
-                                    color: "white",
-                                    border: "none",
-                                    borderRadius: "4px",
-                                    cursor: "pointer",
-                                    fontSize: "12px"
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.target.style.backgroundColor = '#5a6268';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.target.style.backgroundColor = '#6c757d';
-                                }}
-                            >
+                            <button onClick={clearAllArchiveFilters} style={{ padding: '6px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
                                 Clear All Filters
                             </button>
                         </div>
                     </div>
-                    
-                    <div className='tableContainer' style={{ height: '35vh', overflowY: 'auto' }}>
-                        {archiveCurrentItems.length > 0 ? (
-                            <table className='table'>
-                                <thead>
-                                    <tr>
-                                        <th className='t2'>REQUEST ID</th>
-                                        <th className='th1'>REQUEST DATE</th>
-                                        <th className='th1'>REQUEST FROM</th>
-                                        <th className='th1'>REQUEST TO</th>
-                                        <th className='th1'>REQUEST BY</th>
-                                        <th className='th1'>STATUS</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {archiveCurrentItems.map((p, i) => (
-                                        <tr
-                                            className='table-row'
-                                            key={i}
-                                            onClick={() => triggerArchiveModal(p.request_stock_id)}
-                                            style={{ cursor: 'pointer' }}
-                                        >
-                                            <td className='td-name'>{p.request_stock_id || 'N/A'}</td>
-                                            <td style={{ textAlign: 'center' }}>{p.date || 'N/A'}</td>
-                                            <td style={{ textAlign: 'center' }}>{p.reqFrom || 'N/A'}</td>
-                                            <td style={{ textAlign: 'center' }}>{p.reqTo || 'N/A'}</td>
-                                            <td style={{ textAlign: 'center' }}>
-                                                {`${p.fname || ''} ${p.mname || ''} ${p.lname || ''}`.trim() || 'N/A'}
-                                            </td>
-                                            <td style={{
-                                                fontWeight: 'bold',
-                                                color: 'blue',
-                                                textAlign: "center",
-                                            }}>
-                                                Complete
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        ) : (
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                height: '100%',
-                                textAlign: 'center',
-                                color: '#6c757d',
-                                padding: '40px 20px'
-                            }}>
-                                <div style={{
-                                    fontSize: '48px',
-                                    marginBottom: '20px',
-                                    opacity: 0.3
-                                }}>
-                                    📁
+
+                    {/* Archive Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', maxHeight: '50vh', overflowY: 'auto', padding: '10px' }}>
+                        {archiveCurrentItems.length > 0 ? archiveCurrentItems.map((request, index) => (
+                            <div
+                                key={index}
+                                onClick={() => triggerArchiveModal(request.request_stock_id)}
+                                style={{
+                                    border: '1px solid #e0e0e0',
+                                    borderRadius: '12px',
+                                    padding: '20px',
+                                    backgroundColor: 'white',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                    ':hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 8px rgba(0,0,0,0.15)' }
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
+                                    <div>
+                                        <h5 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>#{request.request_stock_id}</h5>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#666' }}>{request.date}</p>
+                                    </div>
+                                    <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#007bff', color: 'white' }}>
+                                        Complete
+                                    </span>
                                 </div>
-                                <h4 style={{
-                                    color: '#495057',
-                                    marginBottom: '10px',
-                                    fontWeight: '500'
-                                }}>
-                                    {archiveRequestList.length === 0 ? 'No completed requests found' : 'No requests match the current filters'}
-                                </h4>
-                                <p style={{
-                                    margin: '0',
-                                    fontSize: '14px',
-                                    maxWidth: '300px',
-                                    lineHeight: '1.4'
-                                }}>
-                                    {archiveRequestList.length === 0 
-                                        ? 'Completed requests will appear here once they reach the "Complete" status.'
-                                        : 'Try adjusting your filters to see more results.'
-                                    }
-                                </p>
+
+                                <div style={{ marginBottom: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                        </svg>
+                                        <span style={{ fontSize: '14px', color: '#333' }}><strong>From:</strong> {request.reqFrom}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                            <circle cx="12" cy="10" r="3"/>
+                                            <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
+                                        </svg>
+                                        <span style={{ fontSize: '14px', color: '#333' }}><strong>To:</strong> {request.reqTo}</span>
+                                    </div>
+                                </div>
+
+                                <div style={{ paddingTop: '12px', borderTop: '1px solid #eee' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="12" cy="7" r="4"/>
+                                        </svg>
+                                        <span style={{ fontSize: '13px', color: '#666' }}>
+                                            {`${request.fname || ''} ${request.mname || ''} ${request.lname || ''}`.trim()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )) : (
+                            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: '#999' }}>
+                                <div style={{ fontSize: '48px', marginBottom: '20px' }}>📁</div>
+                                <h4>No completed requests found</h4>
+                                <p>Completed requests will appear here.</p>
                             </div>
                         )}
                     </div>
 
-                    {archiveTotalPages > 1 && archiveCurrentItems.length > 0 && (
-                        <div style={{ justifySelf: 'center', marginTop: '20px' }}>
+                    {archiveTotalPages > 1 && (
+                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
                             <CustomPagination
                                 currentPage={archiveCurrentPage}
                                 totalPages={archiveTotalPages}
                                 onPageChange={handleArchivePageChange}
-                                color="blue"
+                                color="#007bff"
                             />
                         </div>
                     )}
                 </Modal.Body>
-                <Modal.Footer className='searched-product-footer'>
-                    <Button variant="secondary" onClick={handleArchiveClose}>
-                        Close
-                    </Button>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={handleArchiveClose}>Close</Button>
                 </Modal.Footer>
             </Modal>
 
             {/* Request Details Modal */}
-            <Modal
-                show={!trackRequestDetailsVisible}
-                onHide={() => {
-                    setTrackRequestDetailsVisible(true);
-                    MyGetRequest();
-                }}
-                size='lg'
-                className='request-modal'
-            >
-                <Modal.Header closeButton className='searched-product-header'>
+            <Modal show={!trackRequestDetailsVisible} onHide={() => setTrackRequestDetailsVisible(true)} size='lg'>
+                <Modal.Header closeButton>
                     <Modal.Title>Request Details</Modal.Title>
                 </Modal.Header>
-                <Modal.Body className='request-modal-body'>
-                    <div className="r-details-head">
-                        <div className='r-d-div'>
-                            <div className='r-1'><strong>REQUEST ID:</strong> {s_reqID}</div>
+                <Modal.Body>
+                    <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', marginBottom: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                            <div><strong>REQUEST ID:</strong> #{s_reqID}</div>
                             <div><strong>REQUEST DATE:</strong> {s_reqDate}</div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
                             <div><strong>REQUEST FROM:</strong> {s_reqFrom}</div>
-                            <div className='tracking'>
-                                <u className='track1' onClick={() => setTrackReqVisible(false)}>
-                                    View Tracking
-                                </u>
-                            </div>
+                            <div><strong>REQUEST TO:</strong> {s_reqTo}</div>
                         </div>
-                        <div><strong>REQUEST TO:</strong> {s_reqTo}</div>
-                        <div><strong>REQUEST BY:</strong> {s_reqBy}</div>
-                        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <div><strong>STATUS:</strong>
+                        <div style={{ marginBottom: '10px' }}><strong>REQUEST BY:</strong> {s_reqBy}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <strong>STATUS:</strong>
                                 <span style={{
                                     marginLeft: '8px',
-                                    color: s_reqStatus === "Pending" ? "red"
-                                        : s_reqStatus === "Delivered" ? "green"
-                                            : s_reqStatus === "On Going" ? "orange"
-                                                : s_reqStatus === "On Delivery" ? "goldenrod"
-                                                    : s_reqStatus === "Complete" ? "blue"
-                                                        : "black",
+                                    color: s_reqStatus === "Pending" ? "red" : s_reqStatus === "Delivered" ? "green" : s_reqStatus === "On Going" ? "orange" : s_reqStatus === "On Delivery" ? "goldenrod" : s_reqStatus === "Complete" ? "blue" : "black",
                                     fontWeight: 'bold'
                                 }}>
                                     {s_reqStatus} | {reqDateTime}
                                 </span>
                             </div>
+                            <button
+                                onClick={() => setTrackReqVisible(false)}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: '#007bff',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                View Tracking History
+                            </button>
                         </div>
                     </div>
 
-                    <div className='tableContainer1' style={{ height: '30vh', overflowY: 'auto' }}>
-                        <table className='table'>
-                            <thead>
-                                <tr>
-                                    <th className='t2'>Product Code</th>
-                                    <th className='t2'>Product Description</th>
-                                    <th className='th1'>Requested QTY</th>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Product Code</th>
+                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Product Description</th>
+                                <th style={{ padding: '12px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>Requested QTY</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {currentItems1.length > 0 ? currentItems1.map((p, i) => (
+                                <tr key={i} style={{ borderBottom: '1px solid #dee2e6' }}>
+                                    <td style={{ padding: '12px' }}>{p.product_name || 'N/A'}</td>
+                                    <td style={{ padding: '12px' }}>{p.description || 'N/A'}</td>
+                                    <td style={{ padding: '12px', textAlign: 'center' }}>{p.qty || '0'}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {currentItems1.length > 0 ? (
-                                    currentItems1.map((p, i) => (
-                                        <tr className='table-row' key={i}>
-                                            <td className='td-name'>{p.product_name || 'N/A'}</td>
-                                            <td className='td-name'>{p.description || 'N/A'}</td>
-                                            <td style={{ textAlign: 'center' }}>{p.qty || '0'}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>
-                                            No request details available
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                            )) : (
+                                <tr>
+                                    <td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>No request details available</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
 
                     {totalPages1 > 1 && (
-                        <div style={{ justifySelf: 'center', marginTop: '20px' }}>
-                            <CustomPagination
-                                currentPage={currentPage1}
-                                totalPages={totalPages1}
-                                onPageChange={handlePageChange1}
-                                color="green"
-                            />
+                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                            <CustomPagination currentPage={currentPage1} totalPages={totalPages1} onPageChange={(page) => setCurrentPage1(page)} color="#28a745" />
                         </div>
                     )}
                 </Modal.Body>
-                <Modal.Footer className='searched-product-footer'>
-                    <Button
-                        variant="secondary"
-                        onClick={() => {
-                            setTrackRequestDetailsVisible(true);
-                            MyGetRequest();
-                        }}
-                    >
-                        Close
-                    </Button>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setTrackRequestDetailsVisible(true)}>Close</Button>
                 </Modal.Footer>
             </Modal>
 
-            {/* Track Request Modal */}
-            <Modal
-                show={!trackReqVisible}
-                onHide={() => setTrackReqVisible(true)}
-                size='lg'
-                className='request-modal'
-            >
-                <Modal.Header closeButton className='searched-product-header'>
-                    <Modal.Title>Track Request #{s_reqID}</Modal.Title>
+            {/* Track Request History Modal */}
+            <Modal show={!trackReqVisible} onHide={() => setTrackReqVisible(true)} size='lg'>
+                <Modal.Header closeButton>
+                    <Modal.Title>Tracking History - Request #{s_reqID}</Modal.Title>
                 </Modal.Header>
-                <Modal.Body className='request-modal-body'>
-                    <div className="horizontalContainer1">
-                        <label style={{
-                            fontSize: '40px',
-                            fontWeight: 'bold',
-                            marginLeft: '30px',
-                            marginBottom: '-20px'
-                        }}>
-                            Request Tracker
-                        </label>
-
-                        {merged.map((label, index) => (
-                            <div key={index}>
-                                <div className="stepItem1">
-                                    <div className={`circle1 ${index <= currentStep ? "active1" : ""}`}></div>
+                <Modal.Body>
+                    <div style={{ padding: '20px' }}>
+                        <h4 style={{ marginBottom: '30px', textAlign: 'center', fontWeight: 'bold' }}>Request Progress Tracker</h4>
+                        
+                        <div style={{ position: 'relative', paddingLeft: '40px' }}>
+                            {merged.map((label, index) => (
+                                <div key={index} style={{ position: 'relative', paddingBottom: index < steps.length - 1 ? '40px' : '0' }}>
+                                    {/* Vertical Line */}
+                                    {index < steps.length - 1 && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            left: '-25px',
+                                            top: '25px',
+                                            width: '3px',
+                                            height: '100%',
+                                            backgroundColor: index < currentStep ? '#28a745' : '#e0e0e0'
+                                        }} />
+                                    )}
+                                    
+                                    {/* Step Circle */}
                                     <div style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        opacity: index <= currentStep ? 1 : 0.5
+                                        position: 'absolute',
+                                        left: '-32px',
+                                        top: '5px',
+                                        width: '18px',
+                                        height: '18px',
+                                        borderRadius: '50%',
+                                        backgroundColor: index <= currentStep ? '#28a745' : '#e0e0e0',
+                                        border: '3px solid white',
+                                        boxShadow: '0 0 0 2px ' + (index <= currentStep ? '#28a745' : '#e0e0e0')
+                                    }} />
+                                    
+                                    {/* Step Content */}
+                                    <div style={{
+                                        padding: '15px',
+                                        backgroundColor: index <= currentStep ? '#f8fff9' : '#f8f9fa',
+                                        borderRadius: '8px',
+                                        border: '1px solid ' + (index <= currentStep ? '#28a745' : '#e0e0e0'),
+                                        opacity: index <= currentStep ? 1 : 0.6
                                     }}>
-                                        <label className="label1">{label.stepName}</label>
-                                        <label>{label.data ? label.data.status : " "}</label>
-                                        <label>{label.data ? `Date: ${label.data.date}` : " "}</label>
-                                        <label>{label.data ? `Time: ${label.data.time}` : " "}</label>
+                                        <h6 style={{ margin: '0 0 8px 0', fontWeight: 'bold', color: index <= currentStep ? '#28a745' : '#666' }}>
+                                            {label.stepName}
+                                        </h6>
+                                        {label.data && label.data.status && (
+                                            <>
+                                                <p style={{ margin: '4px 0', fontSize: '14px', color: '#333' }}>
+                                                    <strong>Status:</strong> {label.data.status}
+                                                </p>
+                                                <p style={{ margin: '4px 0', fontSize: '13px', color: '#666' }}>
+                                                    <strong>Date:</strong> {label.data.date} at {label.data.time}
+                                                </p>
+                                            </>
+                                        )}
+                                        {(!label.data || !label.data.status) && index > currentStep && (
+                                            <p style={{ margin: '4px 0', fontSize: '13px', color: '#999', fontStyle: 'italic' }}>
+                                                Pending...
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
-                                {index < steps.length - 1 && (
-                                    <div className={`line1 ${index < currentStep ? "activeLine1" : ""}`}></div>
-                                )}
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </Modal.Body>
-                <Modal.Footer className='searched-product-footer'>
-                    <Button variant="secondary" onClick={() => setTrackReqVisible(true)}>
-                        Close
-                    </Button>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setTrackReqVisible(true)}>Close</Button>
                 </Modal.Footer>
             </Modal>
 
@@ -990,7 +827,7 @@ const TrackRequestIM = () => {
                     </div>
                 </div>
 
-                {/* Enhanced Filter Controls */}
+                {/* Filter Controls */}
                 <div style={{
                     padding: '15px',
                     backgroundColor: '#ffffff',
@@ -1005,86 +842,40 @@ const TrackRequestIM = () => {
                         gap: '15px',
                         alignItems: 'end'
                     }}>
-                        {/* Request From Filter */}
                         <div>
-                            <label style={{
-                                display: 'block',
-                                marginBottom: '5px',
-                                fontWeight: '500',
-                                fontSize: '14px'
-                            }}>
-                                Request From
-                            </label>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>Request From</label>
                             <select
                                 value={requestFromFilter}
                                 onChange={(e) => setRequestFromFilter(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px 12px',
-                                    border: '1px solid #ced4da',
-                                    borderRadius: '4px',
-                                    fontSize: '14px'
-                                }}
+                                style={{ width: '100%', padding: '8px 12px', border: '1px solid #ced4da', borderRadius: '4px', fontSize: '14px' }}
                             >
                                 <option value="">All Locations</option>
                                 {getUniqueRequestFrom().map((location, index) => (
-                                    <option key={index} value={location}>
-                                        {location}
-                                    </option>
+                                    <option key={index} value={location}>{location}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* Request To Filter */}
                         <div>
-                            <label style={{
-                                display: 'block',
-                                marginBottom: '5px',
-                                fontWeight: '500',
-                                fontSize: '14px'
-                            }}>
-                                Request To
-                            </label>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>Request To</label>
                             <select
                                 value={requestToFilter}
                                 onChange={(e) => setRequestToFilter(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px 12px',
-                                    border: '1px solid #ced4da',
-                                    borderRadius: '4px',
-                                    fontSize: '14px'
-                                }}
+                                style={{ width: '100%', padding: '8px 12px', border: '1px solid #ced4da', borderRadius: '4px', fontSize: '14px' }}
                             >
                                 <option value="">All Locations</option>
                                 {getUniqueRequestTo().map((location, index) => (
-                                    <option key={index} value={location}>
-                                        {location}
-                                    </option>
+                                    <option key={index} value={location}>{location}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* Status Filter - Updated to exclude Complete */}
                         <div>
-                            <label style={{
-                                display: 'block',
-                                marginBottom: '5px',
-                                fontWeight: '500',
-                                fontSize: '14px'
-                            }}>
-                                Filter by Status
-                            </label>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>Filter by Status</label>
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px 12px',
-                                    border: '1px solid #ced4da',
-                                    borderRadius: '4px',
-                                    fontSize: '14px'
-                                }}
+                                style={{ width: '100%', padding: '8px 12px', border: '1px solid #ced4da', borderRadius: '4px', fontSize: '14px' }}
                             >
                                 <option value="">All Status</option>
                                 <option value="Pending">Pending</option>
@@ -1094,84 +885,30 @@ const TrackRequestIM = () => {
                             </select>
                         </div>
 
-                        {/* User Filter */}
                         <div>
-                            <label style={{
-                                display: 'block',
-                                marginBottom: '5px',
-                                fontWeight: '500',
-                                fontSize: '14px'
-                            }}>
-                                Filter by User
-                            </label>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>Filter by User</label>
                             <select
                                 value={userFilter}
                                 onChange={(e) => setUserFilter(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px 12px',
-                                    border: '1px solid #ced4da',
-                                    borderRadius: '4px',
-                                    fontSize: '14px'
-                                }}
+                                style={{ width: '100%', padding: '8px 12px', border: '1px solid #ced4da', borderRadius: '4px', fontSize: '14px' }}
                             >
                                 <option value="">All Users</option>
                                 {getUniqueUsers().map((user, index) => (
-                                    <option key={index} value={user}>
-                                        {user}
-                                    </option>
+                                    <option key={index} value={user}>{user}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* Search Filter */}
                         <div>
-                            <label style={{
-                                display: 'block',
-                                marginBottom: '5px',
-                                fontWeight: '500',
-                                fontSize: '14px'
-                            }}>
-                                Search Requests
-                            </label>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>Search Requests</label>
                             <div style={{ position: 'relative' }}>
-                                <div style={{
-                                    position: 'absolute',
-                                    left: '12px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    zIndex: 1,
-                                    color: '#6c757d'
-                                }}>
-                                    <svg
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    >
-                                        <circle cx="11" cy="11" r="8" />
-                                        <path d="m21 21-4.35-4.35" />
-                                    </svg>
-                                </div>
-
                                 <input
                                     type="text"
                                     placeholder="Search by ID, location, or user..."
                                     value={searchFilter}
                                     onChange={(e) => setSearchFilter(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px 12px 8px 35px',
-                                        border: '1px solid #ced4da',
-                                        borderRadius: '4px',
-                                        fontSize: '14px'
-                                    }}
+                                    style={{ width: '100%', padding: '8px 35px 8px 12px', border: '1px solid #ced4da', borderRadius: '4px', fontSize: '14px' }}
                                 />
-
                                 {searchFilter && (
                                     <button
                                         type="button"
@@ -1184,323 +921,20 @@ const TrackRequestIM = () => {
                                             background: 'none',
                                             border: 'none',
                                             color: '#6c757d',
-                                            cursor: 'pointer',
-                                            padding: '4px',
-                                            borderRadius: '50%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
+                                            cursor: 'pointer'
                                         }}
-                                        title="Clear search"
                                     >
-                                        <svg
-                                            width="14"
-                                            height="14"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                        >
-                                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                                        </svg>
+                                        ×
                                     </button>
                                 )}
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Active filters section */}
-                <div style={{
-                    padding: '10px',
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '6px',
-                    margin: '10px 0',
-                    fontSize: '14px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                        <strong>Active Filters:</strong>
-
-                        {requestFromFilter && (
-                            <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 8px',
-                                backgroundColor: '#e9ecef',
-                                borderRadius: '16px',
-                                fontSize: '13px',
-                                border: '1px solid #dee2e6'
-                            }}>
-                                From: {requestFromFilter}
-                                <button
-                                    type="button"
-                                    onClick={() => setRequestFromFilter('')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#6c757d',
-                                        cursor: 'pointer',
-                                        padding: '2px',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '18px',
-                                        height: '18px',
-                                        marginLeft: '4px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = '#dc3545';
-                                        e.target.style.color = 'white';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = 'transparent';
-                                        e.target.style.color = '#6c757d';
-                                    }}
-                                    title="Remove request from filter"
-                                >
-                                    <svg
-                                        width="12"
-                                        height="12"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </span>
-                        )}
-
-                        {requestToFilter && (
-                            <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 8px',
-                                backgroundColor: '#e9ecef',
-                                borderRadius: '16px',
-                                fontSize: '13px',
-                                border: '1px solid #dee2e6'
-                            }}>
-                                To: {requestToFilter}
-                                <button
-                                    type="button"
-                                    onClick={() => setRequestToFilter('')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#6c757d',
-                                        cursor: 'pointer',
-                                        padding: '2px',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '18px',
-                                        height: '18px',
-                                        marginLeft: '4px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = '#dc3545';
-                                        e.target.style.color = 'white';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = 'transparent';
-                                        e.target.style.color = '#6c757d';
-                                    }}
-                                    title="Remove request to filter"
-                                >
-                                    <svg
-                                        width="12"
-                                        height="12"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </span>
-                        )}
-
-                        {statusFilter && (
-                            <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 8px',
-                                backgroundColor: '#e9ecef',
-                                borderRadius: '16px',
-                                fontSize: '13px',
-                                border: '1px solid #dee2e6'
-                            }}>
-                                Status: {statusFilter}
-                                <button
-                                    type="button"
-                                    onClick={() => setStatusFilter('')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#6c757d',
-                                        cursor: 'pointer',
-                                        padding: '2px',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '18px',
-                                        height: '18px',
-                                        marginLeft: '4px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = '#dc3545';
-                                        e.target.style.color = 'white';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = 'transparent';
-                                        e.target.style.color = '#6c757d';
-                                    }}
-                                    title="Remove status filter"
-                                >
-                                    <svg
-                                        width="12"
-                                        height="12"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </span>
-                        )}
-
-                        {userFilter && (
-                            <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 8px',
-                                backgroundColor: '#e9ecef',
-                                borderRadius: '16px',
-                                fontSize: '13px',
-                                border: '1px solid #dee2e6'
-                            }}>
-                                User: {userFilter}
-                                <button
-                                    type="button"
-                                    onClick={() => setUserFilter('')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#6c757d',
-                                        cursor: 'pointer',
-                                        padding: '2px',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '18px',
-                                        height: '18px',
-                                        marginLeft: '4px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = '#dc3545';
-                                        e.target.style.color = 'white';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = 'transparent';
-                                        e.target.style.color = '#6c757d';
-                                    }}
-                                    title="Remove user filter"
-                                >
-                                    <svg
-                                        width="12"
-                                        height="12"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </span>
-                        )}
-
-                        {searchFilter && (
-                            <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 8px',
-                                backgroundColor: '#e9ecef',
-                                borderRadius: '16px',
-                                fontSize: '13px',
-                                border: '1px solid #dee2e6'
-                            }}>
-                                Search: "{searchFilter}"
-                                <button
-                                    type="button"
-                                    onClick={() => setSearchFilter('')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#6c757d',
-                                        cursor: 'pointer',
-                                        padding: '2px',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '18px',
-                                        height: '18px',
-                                        marginLeft: '4px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = '#dc3545';
-                                        e.target.style.color = 'white';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = 'transparent';
-                                        e.target.style.color = '#6c757d';
-                                    }}
-                                    title="Remove search filter"
-                                >
-                                    <svg
-                                        width="12"
-                                        height="12"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </span>
-                        )}
-
-                        <span style={{ marginLeft: '10px', color: '#6c757d' }}>
-                            ({filteredData.length} of {nonCompleteRequests.length} active requests shown)
-                        </span>
-                    </div>
-
-                    <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #dee2e6' }}>
+                        <div style={{ fontSize: '14px', color: '#6c757d' }}>
+                            Showing {filteredData.length} of {nonCompleteRequests.length} active requests
+                        </div>
                         <button
                             type="button"
                             onClick={clearAllFilters}
@@ -1513,95 +947,167 @@ const TrackRequestIM = () => {
                                 cursor: "pointer",
                                 fontSize: "14px"
                             }}
-                            onMouseEnter={(e) => {
-                                e.target.style.backgroundColor = '#5a6268';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.target.style.backgroundColor = '#6c757d';
-                            }}
                         >
                             Clear All Filters
                         </button>
                     </div>
                 </div>
 
-                <div className='tableContainer' style={{ height: '45vh', overflowY: 'auto' }}>
-                    {currentItems.length > 0 ? (
-                        <table className='table'>
-                            <thead>
-                                <tr>
-                                    <th className='t2'>REQUEST ID</th>
-                                    <th className='th1'>REQUEST DATE</th>
-                                    <th className='th1'>REQUEST FROM</th>
-                                    <th className='th1'>REQUEST TO</th>
-                                    <th className='th1'>REQUEST BY</th>
-                                    <th className='th1'>STATUS</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {currentItems.map((p, i) => (
-                                    <tr
-                                        className='table-row'
-                                        key={i}
-                                        onClick={() => triggerModal('trackRequestDetails', p.request_stock_id)}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        <td className='td-name'>{p.request_stock_id || 'N/A'}</td>
-                                        <td style={{ textAlign: 'center' }}>{p.date || 'N/A'}</td>
-                                        <td style={{ textAlign: 'center' }}>{p.reqFrom || 'N/A'}</td>
-                                        <td style={{ textAlign: 'center' }}>{p.reqTo || 'N/A'}</td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            {`${p.fname || ''} ${p.mname || ''} ${p.lname || ''}`.trim() || 'N/A'}
-                                        </td>
-                                        <td style={{
-                                            fontWeight: 'bold',
-                                            color: p.request_status === "Pending" ? "red"
-                                                : p.request_status === "Delivered" ? "green"
-                                                    : p.request_status === "On Going" ? "orange"
-                                                        : p.request_status === "On Delivery" ? "goldenrod"
-                                                            : p.request_status === "Complete" ? "blue"
-                                                                : "black",
-                                            textAlign: "center",
-                                        }}>
-                                            {p.request_status || 'Unknown'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
+                {/* Request Cards Grid */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                    gap: '20px',
+                    padding: '10px',
+                    maxHeight: '60vh',
+                    overflowY: 'auto'
+                }}>
+                    {currentItems.length > 0 ? currentItems.map((request, index) => {
+                        const progressStep = getProgressStep(request.request_status);
+                        const progressPercentage = (progressStep / 4) * 100;
+
+                        return (
+                            <div
+                                key={index}
+                                onClick={() => triggerModal('trackRequestDetails', request.request_stock_id)}
+                                style={{
+                                    border: '1px solid #e0e0e0',
+                                    borderRadius: '12px',
+                                    padding: '20px',
+                                    backgroundColor: 'white',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0,0,0,0.15)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                                }}
+                            >
+                                {/* Header */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
+                                    <div>
+                                        <h5 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
+                                            #{request.request_stock_id}
+                                        </h5>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#666' }}>{request.date}</p>
+                                    </div>
+                                    <span style={{
+                                        padding: '4px 12px',
+                                        borderRadius: '20px',
+                                        fontSize: '12px',
+                                        fontWeight: 'bold',
+                                        backgroundColor: request.request_status === "Pending" ? "#dc3545" :
+                                            request.request_status === "Delivered" ? "#28a745" :
+                                            request.request_status === "On Going" ? "#fd7e14" :
+                                            request.request_status === "On Delivery" ? "#ffc107" : "#6c757d",
+                                        color: 'white'
+                                    }}>
+                                        {request.request_status}
+                                    </span>
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div style={{ marginBottom: '15px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                        <span style={{ fontSize: '12px', fontWeight: '500', color: '#666' }}>Progress</span>
+                                        <span style={{ fontSize: '12px', fontWeight: '500', color: '#666' }}>{progressPercentage}%</span>
+                                    </div>
+                                    <div style={{
+                                        width: '100%',
+                                        height: '8px',
+                                        backgroundColor: '#e0e0e0',
+                                        borderRadius: '4px',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{
+                                            width: `${progressPercentage}%`,
+                                            height: '100%',
+                                            backgroundColor: request.request_status === "Pending" ? "#dc3545" :
+                                                request.request_status === "Delivered" ? "#28a745" :
+                                                request.request_status === "On Going" ? "#fd7e14" :
+                                                request.request_status === "On Delivery" ? "#ffc107" : "#6c757d",
+                                            transition: 'width 0.3s ease'
+                                        }} />
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
+                                        {steps.map((step, idx) => (
+                                            <div
+                                                key={idx}
+                                                style={{
+                                                    fontSize: '10px',
+                                                    color: idx <= progressStep ? '#28a745' : '#999',
+                                                    fontWeight: idx === progressStep ? 'bold' : 'normal'
+                                                }}
+                                            >
+                                                {idx === 0 ? 'Start' : idx === 4 ? 'End' : ''}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Location Info */}
+                                <div style={{ marginBottom: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                        </svg>
+                                        <span style={{ fontSize: '14px', color: '#333' }}>
+                                            <strong>From:</strong> {request.reqFrom}
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                            <circle cx="12" cy="10" r="3"/>
+                                            <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
+                                        </svg>
+                                        <span style={{ fontSize: '14px', color: '#333' }}>
+                                            <strong>To:</strong> {request.reqTo}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                
+                                {/* User Info */}
+                                <div style={{ paddingTop: '12px', borderTop: '1px solid #eee' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                            <circle cx="12" cy="7" r="4"/>
+                                        </svg>
+                                        <span style={{ fontSize: '13px', color: '#666' }}>
+                                            {`${request.fname || ''} ${request.mname || ''} ${request.lname || ''}`.trim()}
+                                        </span>
+                                    </div>
+                                    <div style={{ textAlign: 'center', marginTop: '8px' }}>
+                                        <span style={{ fontSize: '12px', color: '#007bff', fontStyle: 'italic' }}>
+                                            Click to view details
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    }) : (
                         <div style={{
+                            gridColumn: '1 / -1',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            height: '100%',
-                            textAlign: 'center',
-                            color: '#6c757d',
-                            padding: '40px 20px'
+                            padding: '60px 20px',
+                            textAlign: 'center'
                         }}>
-                            <div style={{
-                                fontSize: '48px',
-                                marginBottom: '20px',
-                                opacity: 0.3
-                            }}>
-                                📋
-                            </div>
-                            <h4 style={{
-                                color: '#495057',
-                                marginBottom: '10px',
-                                fontWeight: '500'
-                            }}>
+                            <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.3 }}>📋</div>
+                            <h4 style={{ color: '#495057', marginBottom: '10px', fontWeight: '500' }}>
                                 {nonCompleteRequests.length === 0 ? 'No active requests to track' : 'No requests match the current filters'}
                             </h4>
-                            <p style={{
-                                margin: '0',
-                                fontSize: '14px',
-                                maxWidth: '300px',
-                                lineHeight: '1.4'
-                            }}>
+                            <p style={{ margin: '0', fontSize: '14px', maxWidth: '400px', lineHeight: '1.6', color: '#6c757d' }}>
                                 {nonCompleteRequests.length === 0
-                                    ? 'All requests are completed. Check the Completed Requests to view completed requests.'
+                                    ? 'All requests are completed. Check the Completed Requests to view them.'
                                     : 'Try adjusting your filters to see more results.'
                                 }
                             </p>
@@ -1609,13 +1115,14 @@ const TrackRequestIM = () => {
                     )}
                 </div>
 
+                {/* Pagination */}
                 {totalPages > 1 && currentItems.length > 0 && (
-                    <div style={{ justifySelf: 'center', marginTop: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
                         <CustomPagination
                             currentPage={currentPage}
                             totalPages={totalPages}
                             onPageChange={handlePageChange}
-                            color="green"
+                            color="#28a745"
                         />
                     </div>
                 )}

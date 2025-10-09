@@ -10,7 +10,7 @@ import CustomPagination from '@/app/Components/Pagination/pagination';
 import { AlertSucces } from '@/app/Components/SweetAlert/success';
 import { showAlertError } from '@/app/Components/SweetAlert/error';
 
-const ITEMS_PER_PAGE = 9;
+const ITEMS_PER_PAGE = 8;
 const ITEMS_PER_PAGE1 = 5;
 
 const DeliveryAdmin = () => {

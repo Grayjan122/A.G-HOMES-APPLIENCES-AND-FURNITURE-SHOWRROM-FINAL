@@ -25,6 +25,8 @@ import Customer from '@/app/Contents/admin-contents/customerPage';
 import InstallmentSC from '@/app/Contents/saleClearkContents/installments';
 import DashboardSalesClerk from '@/app/Contents/saleClearkContents/dashboardSC';
 import PaymentBehavior from '@/app/Contents/saleClearkContents/paymentBehavior';
+import CustomizeSalePage from '@/app/Contents/saleClearkContents/customize';
+import CombinedSalePage from '@/app/Contents/saleClearkContents/posSC';
 
 const SidebarSaleClerk = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -60,13 +62,27 @@ const SidebarSaleClerk = () => {
       children: []
     },
     // { key: 'products', label: 'PRODUCTS', icon: '/assets/images/product1.png', component: <Products /> },
-    { 
-      key: 'pos', 
+    // { 
+    //   key: 'pos', 
+    //   label: 'POS', 
+    //   icon: '/assets/images/sale.png', 
+    //   component: <SalePage />,
+    //   children: []
+    // },
+     { 
+      key: 'pos1', 
       label: 'POS', 
       icon: '/assets/images/sale.png', 
-      component: <SalePage />,
+      component: <CombinedSalePage />,
       children: []
     },
+    // { 
+    //   key: 'customize', 
+    //   label: 'CUSTOMIZE', 
+    //   icon: '/assets/images/sale.png', 
+    //   component: <CustomizeSalePage />,
+    //   children: []
+    // },
     { 
       key: 'installments', 
       label: 'INSTALLMENTS', 

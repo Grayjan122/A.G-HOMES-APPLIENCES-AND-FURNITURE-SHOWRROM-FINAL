@@ -121,6 +121,12 @@ body, html {
 }
 
 /* Responsive Breakpoints */
+@media (max-width: 1500px) {
+  .logo {
+    font-size: 25px;
+    margin-left: 10px;
+  }
+}
 
 /* Tablets and small desktops */
 @media (max-width: 1024px) {
@@ -137,7 +143,7 @@ body, html {
   }
 
   .logo {
-    font-size: 15px;
+    font-size: 20px;
     margin-left: 10px;
   }
 

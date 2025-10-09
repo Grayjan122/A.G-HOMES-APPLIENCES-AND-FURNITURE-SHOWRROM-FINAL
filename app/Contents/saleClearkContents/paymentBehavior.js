@@ -5,7 +5,7 @@ import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
-import { User, Calendar, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { User, Calendar, Clock, CheckCircle, XCircle, Eye, Banknote } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -27,6 +27,7 @@ const PaymentBehavior = () => {
     const [showPenaltyBreakdown, setShowPenaltyBreakdown] = useState(false);
     const [selectedPaymentForBreakdown, setSelectedPaymentForBreakdown] = useState(null);
     const [planStatusFilter, setPlanStatusFilter] = useState('all');
+    const [showPlanSelectionModal, setShowPlanSelectionModal] = useState(false);
 
     useEffect(() => {
         GetCustomer();
@@ -255,7 +256,7 @@ const PaymentBehavior = () => {
             const locationID = sessionStorage.getItem('location_id');
             const locName = sessionStorage.getItem('location_name');
 
-            const customerInstallmentSchedules = installmentDList.filter(schedule => 
+            const customerInstallmentSchedules = installmentDList.filter(schedule =>
                 schedule.installment_id === selectedInstallmentForPayment.installment_sales_id
             );
 
@@ -296,7 +297,7 @@ const PaymentBehavior = () => {
             });
 
             if (!isNaN(response.data) && response.data !== null && response.data !== "") {
-                const selectedPaymentTotal = payAllUnpaid 
+                const selectedPaymentTotal = payAllUnpaid
                     ? unpaidPayments.reduce((sum, payment) => sum + payment.total_amount, 0)
                     : selectedPayments.reduce((sum, ipsId) => {
                         const payment = unpaidPayments.find(p => p.ips_id === ipsId);
@@ -336,9 +337,10 @@ const PaymentBehavior = () => {
     const handleRecordPaymentClick = (installment) => {
         setSelectedInstallmentForPayment(installment);
         setShowCustomerModal(false);
+        setShowPlanSelectionModal(false);
         setRecordPaymentVisible(true);
 
-        const installmentSchedules = installmentDList.filter(schedule => 
+        const installmentSchedules = installmentDList.filter(schedule =>
             schedule.installment_id === installment.installment_sales_id
         );
 
@@ -360,7 +362,7 @@ const PaymentBehavior = () => {
                 .filter(payment => payment.status !== 'Paid')
                 .map(payment => calculateOverduePenalty(payment))
                 .sort((a, b) => parseInt(a.payment_number) - parseInt(b.payment_number));
-            
+
             if (unpaidPayments.length > 0) {
                 setSelectedPayments([unpaidPayments[0].ips_id]);
             } else {
@@ -371,7 +373,7 @@ const PaymentBehavior = () => {
     };
 
     const handlePaymentSelection = (ipsId) => {
-        const installmentSchedules = installmentDList.filter(schedule => 
+        const installmentSchedules = installmentDList.filter(schedule =>
             schedule.installment_id === selectedInstallmentForPayment.installment_sales_id
         );
 
@@ -421,7 +423,7 @@ const PaymentBehavior = () => {
     const canSelectPayment = (payment) => {
         if (payAllUnpaid) return false;
 
-        const installmentSchedules = installmentDList.filter(schedule => 
+        const installmentSchedules = installmentDList.filter(schedule =>
             schedule.installment_id === selectedInstallmentForPayment.installment_sales_id
         );
 
@@ -433,7 +435,7 @@ const PaymentBehavior = () => {
 
         const overduePayments = unpaidPayments.filter(p => p.days_overdue > 3);
 
-        const allOverdueSelected = overduePayments.every(overduePayment => 
+        const allOverdueSelected = overduePayments.every(overduePayment =>
             selectedPayments.includes(overduePayment.ips_id)
         );
 
@@ -477,31 +479,31 @@ const PaymentBehavior = () => {
     };
 
     const getRiskLevel = (paymentBehavior) => {
-        const { 
-            totalScheduled, 
-            totalPaid, 
-            overdueCount, 
-            completionRate, 
+        const {
+            totalScheduled,
+            totalPaid,
+            overdueCount,
+            completionRate,
             latePaymentCount,
-            currentOverduePayments 
+            currentOverduePayments
         } = paymentBehavior;
-        
+
         if (totalScheduled === 0) {
-            return { 
-                level: 'unknown', 
-                color: 'secondary', 
+            return {
+                level: 'unknown',
+                color: 'secondary',
                 label: 'No Payment History',
                 payerType: 'No History',
                 payerColor: 'secondary'
             };
         }
-        
+
         const combinedOverdueCount = overdueCount + latePaymentCount;
         const combinedOverdueRate = totalScheduled > 0 ? ((combinedOverdueCount / totalScheduled) * 100) : 0;
         const latePaymentRate = totalPaid > 0 ? ((latePaymentCount / totalPaid) * 100) : 0;
-        
-        if (currentOverduePayments >= 3 || 
-            combinedOverdueRate >= 40 || 
+
+        if (currentOverduePayments >= 3 ||
+            combinedOverdueRate >= 40 ||
             latePaymentRate >= 50) {
             return {
                 level: 'bad',
@@ -511,8 +513,8 @@ const PaymentBehavior = () => {
                 payerColor: 'danger'
             };
         }
-        
-        if (combinedOverdueRate >= 20 || 
+
+        if (combinedOverdueRate >= 20 ||
             latePaymentRate >= 25 ||
             (currentOverduePayments >= 1 && currentOverduePayments < 3)) {
             return {
@@ -523,9 +525,9 @@ const PaymentBehavior = () => {
                 payerColor: 'warning'
             };
         }
-        
-        if (completionRate >= 80 && 
-            combinedOverdueRate < 20 && 
+
+        if (completionRate >= 80 &&
+            combinedOverdueRate < 20 &&
             latePaymentRate < 25 &&
             currentOverduePayments === 0) {
             return {
@@ -536,7 +538,7 @@ const PaymentBehavior = () => {
                 payerColor: 'success'
             };
         }
-        
+
         if (totalScheduled <= 3 && combinedOverdueRate < 20 && currentOverduePayments === 0) {
             return {
                 level: 'new',
@@ -546,7 +548,7 @@ const PaymentBehavior = () => {
                 payerColor: 'info'
             };
         }
-        
+
         return {
             level: 'average',
             color: 'warning',
@@ -568,7 +570,7 @@ const PaymentBehavior = () => {
     const customersWithInstallments = useMemo(() => {
         return customerList.map(customer => {
             const customerInstallments = installmentList.filter(inst => inst.cust_id === customer.cust_id);
-            const customerPaymentSchedules = installmentDList.filter(schedule => 
+            const customerPaymentSchedules = installmentDList.filter(schedule =>
                 customerInstallments.some(inst => inst.installment_sales_id === schedule.installment_id)
             );
             const customerPaymentRecords = paymentRecord.filter(record =>
@@ -576,10 +578,10 @@ const PaymentBehavior = () => {
             );
 
             const totalScheduled = customerPaymentSchedules.length;
-            const totalPaid = customerPaymentSchedules.filter(schedule => 
+            const totalPaid = customerPaymentSchedules.filter(schedule =>
                 schedule.status.toLowerCase() === 'paid'
             ).length;
-            
+
             const today = new Date();
             const overdueSchedules = customerPaymentSchedules.filter(schedule => {
                 if (schedule.status.toLowerCase() === 'paid') return false;
@@ -587,14 +589,14 @@ const PaymentBehavior = () => {
                 const daysDiff = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
                 return daysDiff > 3;
             });
-            
+
             const pendingOverdueSchedules = customerPaymentSchedules.filter(schedule => {
                 if (schedule.status.toLowerCase() === 'paid') return false;
                 const dueDate = new Date(schedule.due_date);
                 const daysDiff = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
                 return daysDiff > 0 && daysDiff <= 3;
             });
-            
+
             const latePaymentSchedules = customerPaymentSchedules.filter(schedule => {
                 if (schedule.status.toLowerCase() !== 'paid') return false;
                 const paymentRecord = customerPaymentRecords.find(record => record.ips_id === schedule.ips_id);
@@ -604,17 +606,17 @@ const PaymentBehavior = () => {
                 const daysDiff = Math.floor((paymentDate - dueDate) / (1000 * 60 * 60 * 24));
                 return daysDiff > 3;
             });
-            
+
             const overdueCount = overdueSchedules.length;
             const pendingOverdueCount = pendingOverdueSchedules.length;
             const latePaymentCount = latePaymentSchedules.length;
             const currentOverduePayments = overdueSchedules.length;
             const completionRate = totalScheduled > 0 ? ((totalPaid / totalScheduled) * 100) : 0;
             const overdueRate = totalScheduled > 0 ? ((overdueCount / totalScheduled) * 100) : 0;
-            
+
             let totalPenalties = 0;
             let currentOverduePenalties = 0;
-            
+
             customerPaymentSchedules.forEach(schedule => {
                 const processed = calculateOverduePenalty(schedule);
                 if (schedule.status.toLowerCase() === 'paid' && processed.has_penalty) {
@@ -623,11 +625,11 @@ const PaymentBehavior = () => {
                     currentOverduePenalties += processed.penalty_amount;
                 }
             });
-            
-            const totalDebt = customerInstallments.reduce((sum, inst) => 
+
+            const totalDebt = customerInstallments.reduce((sum, inst) =>
                 sum + parseFloat(inst.balance || 0), 0
             );
-            const totalPaymentsWithoutPenalties = customerPaymentSchedules.reduce((sum, schedule) => 
+            const totalPaymentsWithoutPenalties = customerPaymentSchedules.reduce((sum, schedule) =>
                 schedule.status.toLowerCase() === 'paid' ? sum + parseFloat(schedule.amount_due || 0) : sum, 0
             );
 
@@ -663,7 +665,7 @@ const PaymentBehavior = () => {
 
     const filteredCustomers = useMemo(() => {
         let filtered = customersWithInstallments;
-        
+
         if (searchTerm.trim()) {
             filtered = filtered.filter(customer =>
                 customer.cust_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -672,7 +674,7 @@ const PaymentBehavior = () => {
                 customer.address.toLowerCase().includes(searchTerm.toLowerCase())
             );
         }
-        
+
         if (planStatusFilter !== 'all') {
             filtered = filtered.filter(customer => {
                 if (planStatusFilter === 'ongoing') {
@@ -683,7 +685,7 @@ const PaymentBehavior = () => {
                 return true;
             });
         }
-        
+
         return filtered;
     }, [customersWithInstallments, searchTerm, planStatusFilter]);
 
@@ -699,20 +701,25 @@ const PaymentBehavior = () => {
     const closeCustomerModal = () => {
         setShowCustomerModal(false);
         setSelectedCustomer(null);
+        setShowPlanSelectionModal(false);
+    };
+
+    const openPlanSelectionModal = () => {
+        setShowPlanSelectionModal(true);
     };
 
     const getPaymentStatusBadge = (schedule) => {
         const dueDate = new Date(schedule.due_date);
         const today = new Date();
-        
-        const paymentRecord = selectedCustomer?.paymentRecords.find(record => 
+
+        const paymentRecord = selectedCustomer?.paymentRecords.find(record =>
             record.ips_id === schedule.ips_id
         );
-        
+
         if (schedule.status.toLowerCase() === 'paid' && paymentRecord) {
             const paymentDate = new Date(paymentRecord.date);
             const daysDifference = Math.floor((paymentDate - dueDate) / (1000 * 60 * 60 * 24));
-            
+
             if (daysDifference <= 3) {
                 return (
                     <div>
@@ -724,7 +731,7 @@ const PaymentBehavior = () => {
                 );
             } else {
                 const penaltyAmount = parseFloat(schedule.amount_due) * 0.05;
-                
+
                 return (
                     <div>
                         <span className="badge bg-warning mb-1">PAID LATE</span>
@@ -738,18 +745,18 @@ const PaymentBehavior = () => {
                 );
             }
         }
-        
+
         if (schedule.status.toLowerCase() === 'paid') {
             return <span className="badge bg-success">PAID</span>;
         }
-        
+
         const daysDiff = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
         const isOverdue = schedule.status.toLowerCase() === 'unpaid' && daysDiff > 3;
-        
+
         if (isOverdue) {
             const penaltyAmount = parseFloat(schedule.amount_due) * 0.05;
             const totalWithPenalty = parseFloat(schedule.amount_due) + penaltyAmount;
-            
+
             return (
                 <div>
                     <span className="badge bg-danger mb-1">OVERDUE</span>
@@ -762,7 +769,7 @@ const PaymentBehavior = () => {
                 </div>
             );
         }
-        
+
         if (daysDiff > 0 && daysDiff <= 3) {
             const graceDaysLeft = 3 - daysDiff;
             return (
@@ -777,7 +784,7 @@ const PaymentBehavior = () => {
                 </div>
             );
         }
-        
+
         return (
             <div>
                 <span className="badge bg-primary mb-1">PENDING</span>
@@ -790,6 +797,21 @@ const PaymentBehavior = () => {
 
     return (
         <>
+            <style>
+                {`
+                    @keyframes pulse {
+                        0%, 100% {
+                            transform: scale(1);
+                            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+                        }
+                        50% {
+                            transform: scale(1.05);
+                            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6);
+                        }
+                    }
+                `}
+            </style>
+
             <Modal show={showPenaltyBreakdown} onHide={() => setShowPenaltyBreakdown(false)} size="md" centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Penalty Breakdown</Modal.Title>
@@ -819,7 +841,7 @@ const PaymentBehavior = () => {
                                             </tr>
                                             {processed.penalty_breakdown.map((penalty, index) => (
                                                 <tr key={index}>
-                                                    <td>{penalty.type}<br/><small className="text-muted">({penalty.days} - {penalty.rate})</small></td>
+                                                    <td>{penalty.type}<br /><small className="text-muted">({penalty.days} - {penalty.rate})</small></td>
                                                     <td className="text-end text-danger">+{formatCurrency(penalty.amount)}</td>
                                                 </tr>
                                             ))}
@@ -899,7 +921,7 @@ const PaymentBehavior = () => {
                 </Modal.Header>
                 <Modal.Body>
                     {selectedInstallmentForPayment && (() => {
-                        const installmentSchedules = installmentDList.filter(schedule => 
+                        const installmentSchedules = installmentDList.filter(schedule =>
                             schedule.installment_id === selectedInstallmentForPayment.installment_sales_id
                         );
 
@@ -910,7 +932,7 @@ const PaymentBehavior = () => {
 
                         const overduePayments = unpaidPayments.filter(payment => payment.days_overdue > 3);
 
-                        const selectedPaymentTotal = payAllUnpaid 
+                        const selectedPaymentTotal = payAllUnpaid
                             ? unpaidPayments.reduce((sum, payment) => sum + payment.total_amount, 0)
                             : selectedPayments.reduce((sum, ipsId) => {
                                 const payment = unpaidPayments.find(p => p.ips_id === ipsId);
@@ -938,7 +960,7 @@ const PaymentBehavior = () => {
                                     </label>
                                 </div>
 
-                                <div className="table-responsive mb-3" style={{maxHeight: '300px', overflowY: 'auto'}}>
+                                <div className="table-responsive mb-3" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                                     <table className="table table-sm">
                                         <thead className="sticky-top bg-white">
                                             <tr>
@@ -951,12 +973,32 @@ const PaymentBehavior = () => {
                                         </thead>
                                         <tbody>
                                             {unpaidPayments.map((payment) => (
-                                                <tr key={payment.ips_id} style={{
-                                                    backgroundColor: (payAllUnpaid || selectedPayments.includes(payment.ips_id)) ? '#e3f2fd' : 
-                                                                    !canSelectPayment(payment) ? '#f5f5f5' : 'transparent',
-                                                    opacity: !canSelectPayment(payment) && !payAllUnpaid ? 0.6 : 1
-                                                }}>
-                                                    <td>
+                                                <tr 
+                                                    key={payment.ips_id} 
+                                                    onClick={() => {
+                                                        if (canSelectPayment(payment) && !payAllUnpaid) {
+                                                            handlePaymentSelection(payment.ips_id);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        backgroundColor: (payAllUnpaid || selectedPayments.includes(payment.ips_id)) ? '#e3f2fd' :
+                                                            !canSelectPayment(payment) ? '#f5f5f5' : 'transparent',
+                                                        opacity: !canSelectPayment(payment) && !payAllUnpaid ? 0.6 : 1,
+                                                        cursor: (canSelectPayment(payment) && !payAllUnpaid) ? 'pointer' : 'default',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        if (canSelectPayment(payment) && !payAllUnpaid) {
+                                                            e.currentTarget.style.backgroundColor = selectedPayments.includes(payment.ips_id) ? '#e3f2fd' : '#f8f9fa';
+                                                        }
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        if (canSelectPayment(payment) && !payAllUnpaid) {
+                                                            e.currentTarget.style.backgroundColor = (payAllUnpaid || selectedPayments.includes(payment.ips_id)) ? '#e3f2fd' : 'transparent';
+                                                        }
+                                                    }}
+                                                >
+                                                    <td onClick={(e) => e.stopPropagation()}>
                                                         <input
                                                             type="checkbox"
                                                             checked={payAllUnpaid || selectedPayments.includes(payment.ips_id)}
@@ -1006,6 +1048,66 @@ const PaymentBehavior = () => {
                 </Modal.Footer>
             </Modal>
 
+            <Modal show={showPlanSelectionModal} onHide={() => setShowPlanSelectionModal(false)} size="md" centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Select Plan to Record Payment</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {selectedCustomer && (
+                        <div>
+                            <h6 className="mb-3">Customer: {selectedCustomer.cust_name}</h6>
+                            <p className="text-muted mb-3">Select which installment plan you want to record a payment for:</p>
+                            <div className="d-grid gap-2">
+                                {selectedCustomer.installments.map((installment, index) => {
+                                    const planSchedules = selectedCustomer.paymentSchedules.filter(
+                                        schedule => schedule.installment_id === installment.installment_sales_id
+                                    );
+                                    const hasUnpaid = planSchedules.some(s => s.status !== 'Paid');
+                                    const unpaidCount = planSchedules.filter(s => s.status !== 'Paid').length;
+
+                                    return (
+                                        <button
+                                            key={installment.installment_sales_id}
+                                            className={`btn btn-outline-${hasUnpaid ? 'success' : 'secondary'} text-start p-3`}
+                                            onClick={() => handleRecordPaymentClick(installment)}
+                                            disabled={!hasUnpaid}
+                                            style={{
+                                                cursor: hasUnpaid ? 'pointer' : 'not-allowed',
+                                                opacity: hasUnpaid ? 1 : 0.6
+                                            }}
+                                        >
+                                            <div className="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <div className="fw-bold">Plan #{index + 1} - INSTALLMENT ID {installment.installment_sales_id}</div>
+                                                    <small className="text-muted">{formatDate(installment.date)} • {installment.payment_plan} months</small>
+                                                    <div className="mt-1">
+                                                        <span className={`badge bg-${installment.status === 'ON GOING' ? 'primary' : installment.status === 'Complete' ? 'success' : 'secondary'} me-2`}>
+                                                            {installment.status.toUpperCase()}
+                                                        </span>
+                                                        {hasUnpaid && (
+                                                            <span className="badge bg-warning text-dark">
+                                                                {unpaidCount} unpaid payment{unpaidCount > 1 ? 's' : ''}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="text-end">
+                                                    <div className="fw-bold">{formatCurrency(installment.balance)}</div>
+                                                    <small className="text-muted">remaining</small>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowPlanSelectionModal(false)}>Cancel</Button>
+                </Modal.Footer>
+            </Modal>
+
             <Modal show={showCustomerModal} onHide={closeCustomerModal} size="xl" centered>
                 <Modal.Header closeButton>
                     <Modal.Title>
@@ -1013,7 +1115,7 @@ const PaymentBehavior = () => {
                         {selectedCustomer?.cust_name} - Payment Analysis
                     </Modal.Title>
                 </Modal.Header>
-                <Modal.Body style={{maxHeight: '70vh', overflowY: 'auto'}}>
+                <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                     {selectedCustomer && (
                         <>
                             <div className="row mb-4">
@@ -1024,7 +1126,25 @@ const PaymentBehavior = () => {
                                             <div className="mb-2"><small className="text-muted">Email:</small><div>{selectedCustomer.email}</div></div>
                                             <div className="mb-2"><small className="text-muted">Phone:</small><div>{selectedCustomer.phone}</div></div>
                                             <div className="mb-2"><small className="text-muted">Total Loan:</small><div className="h5 text-danger">{formatCurrency(selectedCustomer.paymentBehavior.totalDebt)}</div></div>
-                                            <div><small className="text-muted">Total Payments:</small><div className="h5 text-success">{formatCurrency(selectedCustomer.paymentBehavior.totalPayments)}</div></div>
+                                            <div className="mb-3"><small className="text-muted">Total Payments:</small><div className="h5 text-success">{formatCurrency(selectedCustomer.paymentBehavior.totalPayments)}</div></div>
+                                            
+                                            <Button 
+                                                variant="success" 
+                                                size="lg" 
+                                                onClick={openPlanSelectionModal}
+                                                className="w-100 fw-bold shadow-lg"
+                                                style={{
+                                                    fontSize: '16px',
+                                                    padding: '14px 20px',
+                                                    background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                                                    border: '2px solid #fff',
+                                                    boxShadow: '0 4px 15px rgba(40, 167, 69, 0.5)',
+                                                    animation: 'pulse 2s infinite'
+                                                }}
+                                            >
+                                                <Banknote size={22} className="me-2" />
+                                                RECORD PAYMENT
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>
@@ -1065,9 +1185,9 @@ const PaymentBehavior = () => {
                                                                 {selectedCustomer.paymentBehavior.completionRate}%
                                                             </strong>
                                                         </div>
-                                                        <div className="progress mb-2" style={{height: '8px'}}>
+                                                        <div className="progress mb-2" style={{ height: '8px' }}>
                                                             <div className={`progress-bar ${selectedCustomer.paymentBehavior.completionRate >= 80 ? 'bg-success' : selectedCustomer.paymentBehavior.completionRate >= 60 ? 'bg-warning' : 'bg-danger'}`}
-                                                                style={{width: `${selectedCustomer.paymentBehavior.completionRate}%`}}></div>
+                                                                style={{ width: `${selectedCustomer.paymentBehavior.completionRate}%` }}></div>
                                                         </div>
                                                         <small className="text-muted">{selectedCustomer.paymentBehavior.totalPaid} of {selectedCustomer.paymentBehavior.totalScheduled} completed</small>
                                                     </div>
@@ -1075,18 +1195,17 @@ const PaymentBehavior = () => {
                                                         <div className="d-flex justify-content-between mb-1">
                                                             <small>Combined Overdue Rate</small>
                                                             <strong className={
-                                                                ((selectedCustomer.paymentBehavior.overdueCount + selectedCustomer.paymentBehavior.latePaymentCount) / selectedCustomer.paymentBehavior.totalScheduled * 100) >= 40 ? 'text-danger' : 
-                                                                ((selectedCustomer.paymentBehavior.overdueCount + selectedCustomer.paymentBehavior.latePaymentCount) / selectedCustomer.paymentBehavior.totalScheduled * 100) >= 20 ? 'text-warning' : 'text-success'
+                                                                ((selectedCustomer.paymentBehavior.overdueCount + selectedCustomer.paymentBehavior.latePaymentCount) / selectedCustomer.paymentBehavior.totalScheduled * 100) >= 40 ? 'text-danger' :
+                                                                    ((selectedCustomer.paymentBehavior.overdueCount + selectedCustomer.paymentBehavior.latePaymentCount) / selectedCustomer.paymentBehavior.totalScheduled * 100) >= 20 ? 'text-warning' : 'text-success'
                                                             }>
                                                                 {(((selectedCustomer.paymentBehavior.overdueCount + selectedCustomer.paymentBehavior.latePaymentCount) / selectedCustomer.paymentBehavior.totalScheduled * 100) || 0).toFixed(1)}%
                                                             </strong>
                                                         </div>
-                                                        <div className="progress mb-2" style={{height: '8px'}}>
-                                                            <div className={`progress-bar ${
-                                                                ((selectedCustomer.paymentBehavior.overdueCount + selectedCustomer.paymentBehavior.latePaymentCount) / selectedCustomer.paymentBehavior.totalScheduled * 100) >= 40 ? 'bg-danger' : 
+                                                        <div className="progress mb-2" style={{ height: '8px' }}>
+                                                            <div className={`progress-bar ${((selectedCustomer.paymentBehavior.overdueCount + selectedCustomer.paymentBehavior.latePaymentCount) / selectedCustomer.paymentBehavior.totalScheduled * 100) >= 40 ? 'bg-danger' :
                                                                 ((selectedCustomer.paymentBehavior.overdueCount + selectedCustomer.paymentBehavior.latePaymentCount) / selectedCustomer.paymentBehavior.totalScheduled * 100) >= 20 ? 'bg-warning' : 'bg-success'
-                                                            }`}
-                                                                style={{width: `${((selectedCustomer.paymentBehavior.overdueCount + selectedCustomer.paymentBehavior.latePaymentCount) / selectedCustomer.paymentBehavior.totalScheduled * 100) || 0}%`}}></div>
+                                                                }`}
+                                                                style={{ width: `${((selectedCustomer.paymentBehavior.overdueCount + selectedCustomer.paymentBehavior.latePaymentCount) / selectedCustomer.paymentBehavior.totalScheduled * 100) || 0}%` }}></div>
                                                         </div>
                                                         <small className="text-muted">
                                                             {selectedCustomer.paymentBehavior.overdueCount} past grace + {selectedCustomer.paymentBehavior.latePaymentCount} paid late
@@ -1115,7 +1234,7 @@ const PaymentBehavior = () => {
                                                 <div className="card-header">
                                                     <div className="d-flex justify-content-between align-items-center">
                                                         <div>
-                                                            <h6 className="mb-0">Plan #{index + 1} - ID {installment.installment_sales_id}</h6>
+                                                            <h6 className="mb-0">Plan #{index + 1} -INSTALLMENT ID {installment.installment_sales_id}</h6>
                                                             <small className="text-muted">{formatDate(installment.date)} • {installment.payment_plan} months</small>
                                                         </div>
                                                         <div className="text-end">
@@ -1124,8 +1243,21 @@ const PaymentBehavior = () => {
                                                             </span>
                                                             <div><small>{formatCurrency(installment.balance)} remaining</small></div>
                                                             {hasUnpaid && (
-                                                                <Button size="sm" variant="success" onClick={() => handleRecordPaymentClick(installment)}>
-                                                                    Record Payment
+                                                                <Button 
+                                                                    size="lg" 
+                                                                    variant="success" 
+                                                                    onClick={() => handleRecordPaymentClick(installment)}
+                                                                    className="mt-2 fw-bold shadow-lg"
+                                                                    style={{
+                                                                        fontSize: '16px',
+                                                                        padding: '12px 24px',
+                                                                        animation: 'pulse 2s infinite',
+                                                                        border: '2px solid #fff',
+                                                                        boxShadow: '0 4px 15px rgba(40, 167, 69, 0.4)'
+                                                                    }}
+                                                                >
+                                                                    <Banknote size={20} className="me-2" />
+                                                                    RECORD PAYMENT
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -1270,14 +1402,14 @@ const PaymentBehavior = () => {
                                         <div className="card-body d-flex flex-column">
                                             <div className="d-flex justify-content-between mb-3">
                                                 <div className="flex-grow-1">
+                                                    <div className="text-start" style={{marginBottom: '20px'}}>
+                                                        <span className={`badge bg-${customer.risk.payerColor}`}>
+                                                            {customer.risk.payerType.toUpperCase()}
+                                                        </span>
+                                                    </div>
                                                     <h6 className="mb-1">{customer.cust_name}</h6>
                                                     <small className="text-muted d-block">{customer.email}</small>
                                                     <small className="text-muted">{customer.phone}</small>
-                                                </div>
-                                                <div className="text-end">
-                                                    <span className={`badge bg-${customer.risk.payerColor}`}>
-                                                        {customer.risk.payerType.toUpperCase()}
-                                                    </span>
                                                 </div>
                                             </div>
                                             <div className="mb-3 flex-grow-1">
@@ -1310,13 +1442,35 @@ const PaymentBehavior = () => {
                                             </div>
                                             <div className="mb-3">
                                                 <small className="text-muted d-block mb-1">Payment Completion</small>
-                                                <div className="progress" style={{height: '8px'}}>
+                                                <div className="progress" style={{ height: '8px' }}>
                                                     <div className={`progress-bar ${customer.paymentBehavior.completionRate >= 80 ? 'bg-success' : customer.paymentBehavior.completionRate >= 60 ? 'bg-warning' : 'bg-danger'}`}
-                                                        style={{width: `${customer.paymentBehavior.completionRate}%`}}></div>
+                                                        style={{ width: `${customer.paymentBehavior.completionRate}%` }}></div>
                                                 </div>
                                             </div>
-                                            <Button variant="primary" size="sm" onClick={() => openCustomerModal(customer)} className="w-100">
-                                                <Eye size={16} className="me-1" />View Details
+                                            <Button 
+                                                variant="success" 
+                                                size="lg" 
+                                                onClick={() => openCustomerModal(customer)} 
+                                                className="w-100 fw-bold shadow"
+                                                style={{
+                                                    fontSize: '15px',
+                                                    padding: '12px',
+                                                    background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                                                    border: 'none',
+                                                    boxShadow: '0 4px 12px rgba(40, 167, 69, 0.3)',
+                                                    transition: 'all 0.3s ease'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(40, 167, 69, 0.4)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.3)';
+                                                }}
+                                            >
+                                                <Banknote size={18} className="me-2" />
+                                                VIEW & PAY
                                             </Button>
                                         </div>
                                     </div>

@@ -652,19 +652,44 @@ const InventoryLedgerIM = () => {
                         </thead>
                         <tbody>
                             {currentItems.length > 0 ? (
-                                currentItems.map((p, i) => (
-                                    <tr className='table-row' key={i}>
-                                        <td className='td-name'>{p.product_name}</td>
-                                        <td className='td-name'>{p.description}</td>
-                                        <td>{p.type}</td>
-                                        <td style={{textAlign: 'center'}}>{p.past_balance}</td>
-                                        <td style={{textAlign: 'center'}}>{p.qty}</td>
-                                        <td style={{textAlign: 'center'}}>{p.current_balance}</td>
-                                        <td>{p.date}</td>
-                                        <td>{p.time}</td>
-                                        <td>{`${p.fname || ''} ${p.mname || ''} ${p.lname || ''}`}</td>
-                                    </tr>
-                                ))
+                                currentItems.map((p, i) => {
+                                    // Determine transaction type
+                                    const type = p.type?.toLowerCase() || '';
+                                    const isNegative = type.includes('sales') || type.includes('transfer out');
+                                    const isPositive = type.includes('stock in') || type.includes('transfer in');
+                                    
+                                    // Color coding
+                                    const rowStyle = {
+                                        backgroundColor: isNegative ? '#fff5f5' : isPositive ? '#f0fdf4' : 'transparent'
+                                    };
+                                    
+                                    const typeStyle = {
+                                        color: isNegative ? '#dc2626' : isPositive ? '#16a34a' : '#374151',
+                                        fontWeight: '500'
+                                    };
+                                    
+                                    const qtyStyle = {
+                                        textAlign: 'center',
+                                        color: isNegative ? '#dc2626' : isPositive ? '#16a34a' : '#374151',
+                                        fontWeight: '600'
+                                    };
+                                    
+                                    return (
+                                        <tr className='table-row' key={i} style={rowStyle}>
+                                            <td className='td-name'>{p.product_name}</td>
+                                            <td className='td-name'>{p.description}</td>
+                                            <td style={typeStyle}>{p.type}</td>
+                                            <td style={{textAlign: 'center'}}>{p.past_balance}</td>
+                                            <td style={qtyStyle}>
+                                                {isNegative ? '-' : isPositive ? '+' : ''}{p.qty}
+                                            </td>
+                                            <td style={{textAlign: 'center', fontWeight: '500'}}>{p.current_balance}</td>
+                                            <td>{p.date}</td>
+                                            <td>{p.time}</td>
+                                            <td>{`${p.fname || ''} ${p.mname || ''} ${p.lname || ''}`}</td>
+                                        </tr>
+                                    );
+                                })
                             ) : (
                                 <tr>
                                     <td colSpan="9" style={{ textAlign: "center", padding: "15px", fontStyle: "italic" }}>

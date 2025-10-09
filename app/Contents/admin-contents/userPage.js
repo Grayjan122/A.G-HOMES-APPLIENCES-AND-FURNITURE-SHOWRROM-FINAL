@@ -7,13 +7,15 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import CustomPagination from '@/app/Components/Pagination/pagination';
+import { AlertSucces } from '@/app/Components/SweetAlert/success';
+import { showAlertError } from '@/app/Components/SweetAlert/error';
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 9;
 
 // Status Indicator Component
 const StatusIndicator = ({ status }) => {
     const isOnline = status === 'Online';
-    
+
     return (
         <div style={{
             display: 'flex',
@@ -32,9 +34,9 @@ const StatusIndicator = ({ status }) => {
                 }}
             />
             <span style={{
-                fontSize: '14px',
+                fontSize: '13px',
                 color: isOnline ? '#28a745' : '#6c757d',
-                fontWeight: '500'
+                fontWeight: '600'
             }}>
                 {status}
             </span>
@@ -103,53 +105,7 @@ const User = () => {
 
         setSortField(field);
         setSortDirection(direction);
-        setCurrentPage(1); // Reset to first page when sorting
-    };
-
-    // Render sort arrow
-    const renderSortArrow = (field) => {
-        if (sortField !== field) {
-            return (
-                <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    style={{ opacity: 0.3, marginLeft: '5px' }}
-                >
-                    <path d="m7 14 5-5 5 5" />
-                    <path d="m7 10 5 5 5-5" />
-                </svg>
-            );
-        }
-
-        return sortDirection === 'asc' ? (
-            <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                style={{ marginLeft: '5px' }}
-            >
-                <path d="m7 14 5-5 5 5" />
-            </svg>
-        ) : (
-            <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                style={{ marginLeft: '5px' }}
-            >
-                <path d="m7 10 5 5 5-5" />
-            </svg>
-        );
+        setCurrentPage(1);
     };
 
     // Get unique status values
@@ -158,22 +114,18 @@ const User = () => {
     // Filter and sort the user data
     const filteredAndSortedUsers = useMemo(() => {
         let filtered = userList.filter(user => {
-            // Role filter
             if (roleFilter && user.role_id != roleFilter) {
                 return false;
             }
 
-            // Location filter
             if (locationFilter && user.location_id != locationFilter) {
                 return false;
             }
 
-            // Status filter
             if (statusFilter && user.status !== statusFilter) {
                 return false;
             }
 
-            // Search filter (name, username, email)
             if (searchFilter) {
                 const searchTerm = searchFilter.toLowerCase();
                 const fullName = `${user.fname} ${user.mname} ${user.lname}`.toLowerCase();
@@ -190,12 +142,10 @@ const User = () => {
             return true;
         });
 
-        // Apply sorting
         if (sortField) {
             filtered = [...filtered].sort((a, b) => {
                 let aVal, bVal;
 
-                // Handle different sorting fields
                 switch (sortField) {
                     case 'fullName':
                         aVal = `${a.fname} ${a.mname} ${a.lname}`.toLowerCase();
@@ -207,7 +157,6 @@ const User = () => {
                         break;
                 }
 
-                // Handle string comparison
                 if (typeof aVal === 'string') {
                     aVal = aVal.toLowerCase();
                     bVal = bVal.toLowerCase();
@@ -235,7 +184,6 @@ const User = () => {
         }
     };
 
-    // Reset to page 1 when filters or sorting change
     useEffect(() => {
         setCurrentPage(1);
     }, [roleFilter, locationFilter, statusFilter, searchFilter, sortField, sortDirection]);
@@ -349,13 +297,23 @@ const User = () => {
                 GetUser();
                 resetForm();
                 close_modal();
-                setMessage("New user is successfully added!");
-                setModalTitle('Success ✅');
-                setShow(true);
+               
+                AlertSucces(
+                    "New user is successfully added!",
+                    "success",
+                    true,
+                    'Okay'
+                );
             } else {
-                setMessage(response.data);
-                setModalTitle('Error ❌');
-                setShow(true);
+                showAlertError({
+                    icon: "warning",
+                    title: "Oppsss!",
+                    text: 'Failed to add new user',
+                    button: 'Try Again'
+                });
+                // setMessage(response.data);
+                // setModalTitle('Error ❌');
+                // setShow(true);
             }
         } catch (error) {
             console.error("Error adding new user", error);
@@ -453,13 +411,20 @@ const User = () => {
             if (response.data == 'Success') {
                 GetUser();
                 close_modal();
-                setMessage('User details is successfully updated!');
-                setModalTitle('Success ✅');
-                setShow(true);
+                AlertSucces(
+                    "User details is successfully updated",
+                    "success",
+                    true,
+                    'Okay'
+                );
             } else {
-                setMessage(response.data);
-                setModalTitle('Error ❌');
-                setShow(true);
+                showAlertError({
+                    icon: "warning",
+                    title: "Oppsss!",
+                    text: 'response.data',
+                    button: 'Okay'
+                });
+
             }
         } catch (error) {
             console.error("Error updating user information:", error);
@@ -1073,7 +1038,9 @@ const User = () => {
                     fontSize: '14px',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '10px'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                         <strong>Active Filters:</strong>
@@ -1288,105 +1255,377 @@ const User = () => {
                     </div>
                 </div>
 
-                {/* Users Table */}
-                <div className='tableContainer' style={{ height: '40vh', overflowY: 'auto' }}>
-                    {currentItems && currentItems.length > 0 ? (
-                        <table className='table'>
-                            <thead>
-                                <tr>
-                                    <th 
-                                        className='t2'
-                                        onClick={() => handleSort('fullName')}
-                                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span>NAME</span>
-                                            {renderSortArrow('fullName')}
-                                        </div>
-                                    </th>
-                                    <th 
-                                        className='t2'
-                                        onClick={() => handleSort('role_name')}
-                                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span>ROLE</span>
-                                            {renderSortArrow('role_name')}
-                                        </div>
-                                    </th>
-                                    <th 
-                                        className='t2'
-                                        onClick={() => handleSort('location_name')}
-                                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span>STORE</span>
-                                            {renderSortArrow('location_name')}
-                                        </div>
-                                    </th>
-                                    <th 
-                                        className='t2'
-                                        onClick={() => handleSort('status')}
-                                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span>STATUS</span>
-                                            {renderSortArrow('status')}
-                                        </div>
-                                      
-                                    </th>
-                                     <th 
-                                        className='t2'
-                                        onClick={() => handleSort('active_status')}
-                                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span>ACTIVE STATUS</span>
-                                            {renderSortArrow('active_status')}
-                                        </div>
-                                      
-                                    </th>
-                                    <th className='th1'>ACTION</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {currentItems.map((p, i) => (
-                                    <tr className='table-row' key={i}
-                                        onClick={() => triggerModal('viewUser', p.account_id)}
-                                    >
-                                        <td className='td-name'>{p.fname} {p.mname} {p.lname}</td>
-                                        <td className='td-name'>{p.role_name}</td>
-                                        <td className='td-name'>{p.location_name}</td>
-                                        <td className='td-name'>{p.status}</td>
-                                        <td className='td-name'>
-                                            <StatusIndicator status={p.active_status} />
-                                        </td>
+                {/* Sort Controls */}
+                <div style={{
+                    padding: '10px 15px',
+                    backgroundColor: '#ffffff',
+                    borderRadius: '6px',
+                    margin: '10px 0',
+                    border: '1px solid #e9ecef',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    flexWrap: 'wrap'
+                }}>
+                    <strong style={{ fontSize: '14px' }}>Sort by:</strong>
+                    <button
+                        onClick={() => handleSort('fullName')}
+                        style={{
+                            padding: '6px 12px',
+                            backgroundColor: sortField === 'fullName' ? '#007bff' : '#f8f9fa',
+                            color: sortField === 'fullName' ? 'white' : '#495057',
+                            border: '1px solid #dee2e6',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Name {sortField === 'fullName' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </button>
+                    <button
+                        onClick={() => handleSort('role_name')}
+                        style={{
+                            padding: '6px 12px',
+                            backgroundColor: sortField === 'role_name' ? '#007bff' : '#f8f9fa',
+                            color: sortField === 'role_name' ? 'white' : '#495057',
+                            border: '1px solid #dee2e6',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Role {sortField === 'role_name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </button>
+                    <button
+                        onClick={() => handleSort('location_name')}
+                        style={{
+                            padding: '6px 12px',
+                            backgroundColor: sortField === 'location_name' ? '#007bff' : '#f8f9fa',
+                            color: sortField === 'location_name' ? 'white' : '#495057',
+                            border: '1px solid #dee2e6',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Store {sortField === 'location_name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </button>
+                </div>
 
-                                        <td>
-                                            <span className='action-cust' onClick={(e) => {
-                                                e.stopPropagation();
-                                                triggerModal('editUserDetails', p.account_id, e);
+                {/* User Cards Grid */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                    gap: '20px',
+                    padding: '10px 0',
+                    minHeight: '400px'
+                }}>
+                    {currentItems && currentItems.length > 0 ? (
+                        currentItems.map((user, i) => (
+                            <div
+                                key={i}
+                                onClick={() => triggerModal('viewUser', user.account_id)}
+                                style={{
+                                    backgroundColor: '#ffffff',
+                                    borderRadius: '12px',
+                                    padding: '20px',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                    border: '1px solid #e9ecef',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 123, 255, 0.15)';
+                                    e.currentTarget.style.borderColor = '#007bff';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+                                    e.currentTarget.style.borderColor = '#e9ecef';
+                                }}
+                            >
+                                {/* Decorative Top Border */}
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: '4px',
+                                    background: 'linear-gradient(90deg, #007bff 0%, #0056b3 100%)'
+                                }}></div>
+
+                                {/* Edit Button - Top Right */}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        triggerModal('editUserDetails', user.account_id, e);
+                                    }}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '15px',
+                                        right: '15px',
+                                        width: '36px',
+                                        height: '36px',
+                                        borderRadius: '50%',
+                                        border: '2px solid #007bff',
+                                        backgroundColor: 'white',
+                                        color: '#007bff',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s',
+                                        fontSize: '16px',
+                                        zIndex: 10
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = '#007bff';
+                                        e.currentTarget.style.color = 'white';
+                                        e.currentTarget.style.transform = 'scale(1.1) rotate(15deg)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'white';
+                                        e.currentTarget.style.color = '#007bff';
+                                        e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+                                    }}
+                                    title="Edit User"
+                                >
+                                    ✏️
+                                </button>
+
+                                {/* User Avatar and Name */}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '15px',
+                                    marginBottom: '15px'
+                                }}>
+                                    <div style={{
+                                        width: '60px',
+                                        height: '60px',
+                                        borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        fontSize: '24px',
+                                        fontWeight: '600',
+                                        flexShrink: 0
+                                    }}>
+                                        {user.fname.charAt(0).toUpperCase()}{user.lname.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <h3 style={{
+                                            margin: 0,
+                                            fontSize: '18px',
+                                            fontWeight: '600',
+                                            color: '#2c3e50',
+                                            marginBottom: '4px',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            {user.fname} {user.mname} {user.lname}
+                                        </h3>
+                                        <div style={{
+                                            fontSize: '13px',
+                                            color: '#6c757d',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            @{user.username}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* User Details */}
+                                <div style={{ marginBottom: '15px' }}>
+                                    {/* Role */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '10px',
+                                        marginBottom: '10px',
+                                        padding: '8px',
+                                        backgroundColor: '#f8f9fa',
+                                        borderRadius: '6px'
+                                    }}>
+                                        <div style={{
+                                            color: '#007bff',
+                                            marginTop: '2px',
+                                            flexShrink: 0
+                                        }}>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                                <circle cx="9" cy="7" r="4" />
+                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                            </svg>
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{
+                                                fontSize: '11px',
+                                                color: '#6c757d',
+                                                marginBottom: '2px',
+                                                fontWeight: '600',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.5px'
                                             }}>
-                                                ✏️
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                                Role
+                                            </div>
+                                            <div style={{
+                                                fontSize: '14px',
+                                                color: '#2c3e50',
+                                                fontWeight: '600'
+                                            }}>
+                                                {user.role_name}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Store */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '10px',
+                                        marginBottom: '10px',
+                                        padding: '8px',
+                                        backgroundColor: '#f8f9fa',
+                                        borderRadius: '6px'
+                                    }}>
+                                        <div style={{
+                                            color: '#007bff',
+                                            marginTop: '2px',
+                                            flexShrink: 0
+                                        }}>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                                <polyline points="9 22 9 12 15 12 15 22" />
+                                            </svg>
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{
+                                                fontSize: '11px',
+                                                color: '#6c757d',
+                                                marginBottom: '2px',
+                                                fontWeight: '600',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.5px'
+                                            }}>
+                                                Store
+                                            </div>
+                                            <div style={{
+                                                fontSize: '14px',
+                                                color: '#2c3e50',
+                                                fontWeight: '600',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                {user.location_name}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Status */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '10px',
+                                        padding: '8px',
+                                        backgroundColor: '#f8f9fa',
+                                        borderRadius: '6px'
+                                    }}>
+                                        <div style={{
+                                            color: '#007bff',
+                                            marginTop: '2px',
+                                            flexShrink: 0
+                                        }}>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <polyline points="12 6 12 12 16 14" />
+                                            </svg>
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{
+                                                fontSize: '11px',
+                                                color: '#6c757d',
+                                                marginBottom: '2px',
+                                                fontWeight: '600',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.5px'
+                                            }}>
+                                                Account Status
+                                            </div>
+                                            <div style={{
+                                                fontSize: '14px',
+                                                color: '#2c3e50',
+                                                fontWeight: '600'
+                                            }}>
+                                                {user.status}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Card Footer */}
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    paddingTop: '15px',
+                                    borderTop: '1px solid #e9ecef'
+                                }}>
+                                    {/* <StatusIndicator status={user.active_status} /> */}
+
+                                    <div style={{
+                                        fontSize: '12px',
+                                        color: '#6c757d',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <polyline points="16 12 12 8 8 12" />
+                                            <line x1="12" y1="16" x2="12" y2="8" />
+                                        </svg>
+                                        Click to view details
+                                    </div>
+                                </div>
+                            </div>
+                        ))
                     ) : (
                         <div style={{
+                            gridColumn: '1 / -1',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            height: '100%',
+                            minHeight: '400px',
                             textAlign: 'center',
                             color: '#6c757d',
                             padding: '40px 20px'
                         }}>
                             <div style={{
-                                fontSize: '48px',
+                                fontSize: '64px',
                                 marginBottom: '20px',
                                 opacity: 0.3
                             }}>
@@ -1416,7 +1655,12 @@ const User = () => {
 
                 {/* Pagination */}
                 {totalPages > 1 && currentItems && currentItems.length > 0 && (
-                    <div style={{ justifySelf: 'center', marginTop: '20px' }}>
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        marginTop: '30px',
+                        paddingBottom: '20px'
+                    }}>
                         <CustomPagination
                             currentPage={currentPage}
                             totalPages={totalPages}

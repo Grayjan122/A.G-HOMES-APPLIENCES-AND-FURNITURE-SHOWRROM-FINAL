@@ -6,21 +6,17 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import Alert from 'react-bootstrap/Alert';
-import DropdownButton from 'react-bootstrap/DropdownButton';
 import CustomPagination from '@/app/Components/Pagination/pagination';
 import { showAlertError } from '@/app/Components/SweetAlert/error';
 import { AlertSucces } from '@/app/Components/SweetAlert/success';
 import Dropdown from 'react-bootstrap/Dropdown';
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 9;
 const ITEMS_PER_PAGE_DETAILS = 5;
 
 const RequestManagementWR = () => {
-    // User session data
     const [user_id, setUser_id] = useState('');
     const [location_id, setLocation_id] = useState('');
-
-    // Main data states
     const [requestList, setRequestList] = useState([]);
     const [deliverDetails, setDeliverDetails] = useState([]);
     const [locationList, setLocationList] = useState([]);
@@ -32,44 +28,35 @@ const RequestManagementWR = () => {
     const [statusFilter, setStatusFilter] = useState('');
     const [searchFilter, setSearchFilter] = useState('');
 
-    // Modal visibility states
     const [deliveriesDataVisible, setDeliveriesDataVisible] = useState(true);
     const [appointDriverVisible, setAppointDriverVisible] = useState(true);
 
-    // Alert states
     const [alert1, setAlert1] = useState(false);
     const [alertBG, setAlertBG] = useState('');
     const [alertVariant, setAlertVariant] = useState('');
     const [message, setMessage] = useState('');
 
-    // Request details states
     const [requestID, setRequestID] = useState('');
     const [requestFrom, setRequestFrom] = useState('');
     const [requestBy, setRequestBy] = useState('');
     const [requestStatus, setRequestStatus] = useState('');
     const [reqDateTime, setReqDateTime] = useState("");
 
-    // Driver selection state
     const [transferDriver, setTransferDriver] = useState('');
-    const [selectedStore, setSelectedStore] = useState("Select Store");
     const [rID, setRID] = useState('');
 
-    // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
     const [currentPageDetails, setCurrentPageDetails] = useState(1);
 
-    // Apply filters to the data
     const filteredData = useMemo(() => {
         let filtered = [...requestList];
 
-        // Filter by request from location
         if (requestFromFilter) {
             filtered = filtered.filter(item => {
                 return item.reqFrom?.toLowerCase().includes(requestFromFilter.toLowerCase());
             });
         }
 
-        // Filter by request by user
         if (requestByFilter) {
             filtered = filtered.filter(item => {
                 const fullName = `${item.fname || ''} ${item.mname || ''} ${item.lname || ''}`.toLowerCase();
@@ -77,12 +64,10 @@ const RequestManagementWR = () => {
             });
         }
 
-        // Filter by status
         if (statusFilter) {
             filtered = filtered.filter(item => item.request_status === statusFilter);
         }
 
-        // Filter by search term (ID, location, or name)
         if (searchFilter.trim()) {
             const searchTerm = searchFilter.toLowerCase();
             filtered = filtered.filter(item =>
@@ -95,7 +80,6 @@ const RequestManagementWR = () => {
         return filtered;
     }, [requestList, requestFromFilter, requestByFilter, statusFilter, searchFilter]);
 
-    // Pagination calculations using filtered data
     const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const currentItems = filteredData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -104,25 +88,21 @@ const RequestManagementWR = () => {
     const startIndexDetails = (currentPageDetails - 1) * ITEMS_PER_PAGE_DETAILS;
     const currentItemsDetails = deliverDetails.slice(startIndexDetails, startIndexDetails + ITEMS_PER_PAGE_DETAILS);
 
-    // Reset page when filters change
     useEffect(() => {
         setCurrentPage(1);
     }, [requestFromFilter, requestByFilter, statusFilter, searchFilter]);
 
-    // Initialize user session data
     useEffect(() => {
         setUser_id(sessionStorage.getItem('user_id'));
         setLocation_id(sessionStorage.getItem('location_id'));
     }, []);
 
-    // Load initial data
     useEffect(() => {
         GetRequest();
         GetUser();
         GetLocation();
     }, []);
 
-    // Get users (drivers)
     const GetUser = async () => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'users.php';
@@ -140,7 +120,6 @@ const RequestManagementWR = () => {
         }
     };
 
-    // Get locations
     const GetLocation = async () => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'location.php';
@@ -158,7 +137,6 @@ const RequestManagementWR = () => {
         }
     };
 
-    // Get ongoing requests
     const GetRequest = async () => {
         const LocationID = parseInt(sessionStorage.getItem('location_id'));
         const baseURL = sessionStorage.getItem('baseURL');
@@ -182,7 +160,6 @@ const RequestManagementWR = () => {
         }
     };
 
-    // Logging function
     const Logs = async (accID, activity) => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'audit-log.php';
@@ -200,7 +177,6 @@ const RequestManagementWR = () => {
         }
     };
 
-    // Get delivery data
     const GetDeliveriesData = async (transaction_id) => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'delivery.php';
@@ -253,7 +229,6 @@ const RequestManagementWR = () => {
         }
     };
 
-    // Get delivery details
     const GetDeliveriesDetails = async (transaction_id) => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'requestStock.php';
@@ -272,7 +247,6 @@ const RequestManagementWR = () => {
         }
     };
 
-    // Deliver stock
     const DeliverStock = async () => {
         if (transferDriver === '') {
             showAlertError({
@@ -326,7 +300,6 @@ const RequestManagementWR = () => {
         }
     };
 
-    // Pagination handlers
     const handlePageChange = (page) => {
         if (page >= 1 && page <= totalPages) {
             setCurrentPage(page);
@@ -339,7 +312,6 @@ const RequestManagementWR = () => {
         }
     };
 
-    // Clear all filters function
     const clearAllFilters = () => {
         setRequestFromFilter('');
         setRequestByFilter('');
@@ -348,16 +320,25 @@ const RequestManagementWR = () => {
         setCurrentPage(1);
     };
 
-    // Get unique locations from request data
     const getUniqueLocations = () => {
         const uniqueLocations = [...new Set(requestList.map(item => item.reqFrom).filter(Boolean))];
         return uniqueLocations.sort();
     };
 
-    // Get unique users from request data
     const getUniqueUsers = () => {
         const uniqueUsers = [...new Set(requestList.map(item => `${item.fname || ''} ${item.mname || ''} ${item.lname || ''}`.trim()).filter(name => name))];
         return uniqueUsers.sort();
+    };
+
+    const getStatusColor = (status) => {
+        switch(status) {
+            case 'Pending': return { bg: '#fff3cd', text: '#856404', border: '#ffc107' };
+            case 'On Going': return { bg: '#fff3e0', text: '#e65100', border: '#ff9800' };
+            case 'On Delivery': return { bg: '#e3f2fd', text: '#0d47a1', border: '#2196f3' };
+            case 'Delivered': return { bg: '#d4edda', text: '#155724', border: '#28a745' };
+            case 'Complete': return { bg: '#cfe2ff', text: '#084298', border: '#0d6efd' };
+            default: return { bg: '#f8f9fa', text: '#495057', border: '#6c757d' };
+        }
     };
 
     return (
@@ -451,40 +432,17 @@ const RequestManagementWR = () => {
                 size='md'
                 centered
             >
-                <Modal.Header
-                    closeButton
-                    className='searched-product-header'
-                    style={{
-                        borderBottom: '2px solid #dee2e6'
-                    }}
-                >
-                    <Modal.Title style={{
-                        fontSize: '1.25rem',
-                        fontWeight: '600',
-                        color: '#2c3e50'
-                    }}>
-                        <i className="fas fa-truck-loading" style={{ marginRight: '10px' }}></i>
+                <Modal.Header closeButton style={{ borderBottom: '2px solid #dee2e6' }}>
+                    <Modal.Title style={{ fontSize: '1.25rem', fontWeight: '600', color: '#2c3e50' }}>
                         Appoint Driver To Deliver
                     </Modal.Title>
                 </Modal.Header>
-                <Modal.Body
-                    className='searched-product-body'
-                    style={{ padding: '20px' }}
-                >
-                    <div className='div-input-add-prod' style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '15px'
-                    }}>
-                        <label className='add-prod-label' style={{
-                            fontSize: '1rem',
-                            fontWeight: '500',
-                            color: '#34495e'
-                        }}>
+                <Modal.Body style={{ padding: '20px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        <label style={{ fontSize: '1rem', fontWeight: '500', color: '#34495e' }}>
                             Choose Driver:
                         </label>
 
-                        {/* Driver Selection Dropdown */}
                         <Dropdown>
                             <Dropdown.Toggle
                                 variant="primary"
@@ -520,20 +478,7 @@ const RequestManagementWR = () => {
                             }}>
                                 <Dropdown.Item
                                     onClick={() => setTransferDriver('')}
-                                    style={{
-                                        padding: '10px 15px',
-                                        fontSize: '0.95rem',
-                                        color: '#6c757d',
-                                        fontStyle: 'italic'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = '#f8f9fa';
-                                        e.target.style.color = '#495057';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = '';
-                                        e.target.style.color = '#6c757d';
-                                    }}
+                                    style={{ padding: '10px 15px', fontSize: '0.95rem', color: '#6c757d', fontStyle: 'italic' }}
                                 >
                                     -- Select a Driver --
                                 </Dropdown.Item>
@@ -544,20 +489,7 @@ const RequestManagementWR = () => {
                                         <Dropdown.Item
                                             key={driver.account_id}
                                             onClick={() => setTransferDriver(driver.account_id.toString())}
-                                            style={{
-                                                padding: '10px 15px',
-                                                fontSize: '0.95rem',
-                                                whiteSpace: 'normal',
-                                                wordWrap: 'break-word'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.target.style.backgroundColor = '#0056b3';
-                                                e.target.style.color = 'white';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.target.style.backgroundColor = '';
-                                                e.target.style.color = '';
-                                            }}
+                                            style={{ padding: '10px 15px', fontSize: '0.95rem' }}
                                         >
                                             {driver.fname + " " + driver.mname + " " + driver.lname}
                                         </Dropdown.Item>
@@ -565,7 +497,6 @@ const RequestManagementWR = () => {
                             </Dropdown.Menu>
                         </Dropdown>
 
-                        {/* Selected Driver Display */}
                         {transferDriver && (
                             <div style={{
                                 padding: '10px 15px',
@@ -583,36 +514,9 @@ const RequestManagementWR = () => {
                             </div>
                         )}
                     </div>
-
-                    <div style={{
-                        marginTop: '20px',
-                        padding: '15px',
-                        backgroundColor: '#f8f9fa',
-                        borderRadius: '8px',
-                        fontSize: '0.9rem',
-                        color: '#666'
-                    }}>
-                        <p style={{ margin: 0 }}>
-                            <i className="fas fa-info-circle" style={{ marginRight: '8px', color: '#3498db' }}></i>
-                            Select a driver to handle the delivery of these items. Once appointed, the delvery will be tracked on delivery page.
-                        </p>
-                    </div>
                 </Modal.Body>
-                <Modal.Footer
-                    className='searched-product-footer'
-                    style={{
-                        borderTop: '1px solid #dee2e6',
-                        padding: '15px'
-                    }}
-                >
-                    <Button
-                        variant="outline-secondary"
-                        onClick={() => { setAppointDriverVisible(true) }}
-                        style={{
-                            padding: '8px 20px',
-                            borderRadius: '6px'
-                        }}
-                    >
+                <Modal.Footer style={{ borderTop: '1px solid #dee2e6', padding: '15px' }}>
+                    <Button variant="outline-secondary" onClick={() => { setAppointDriverVisible(true) }}>
                         Cancel
                     </Button>
                     <Button
@@ -620,9 +524,6 @@ const RequestManagementWR = () => {
                         onClick={DeliverStock}
                         disabled={!transferDriver}
                         style={{
-                            padding: '8px 25px',
-                            borderRadius: '6px',
-                            marginLeft: '10px',
                             backgroundColor: transferDriver ? '#2563eb' : '#6c757d',
                             border: 'none',
                             opacity: transferDriver ? 1 : 0.6
@@ -633,12 +534,12 @@ const RequestManagementWR = () => {
                 </Modal.Footer>
             </Modal>
 
-            <div className='customer-main'>
+            <div className='customer-main' style={{overflowY: 'auto'}}>
                 <div className='customer-header'>
                     <h1 className='h-customer'>REQUEST MANAGEMENT</h1>
                 </div>
 
-                {/* Enhanced Filter Controls */}
+                {/* Filters */}
                 <div style={{
                     padding: '15px',
                     backgroundColor: '#ffffff',
@@ -653,14 +554,8 @@ const RequestManagementWR = () => {
                         gap: '15px',
                         alignItems: 'end'
                     }}>
-                        {/* Request From Filter */}
                         <div>
-                            <label style={{ 
-                                display: 'block', 
-                                marginBottom: '5px', 
-                                fontWeight: '500', 
-                                fontSize: '14px'
-                            }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
                                 Filter by Request From
                             </label>
                             <select
@@ -676,21 +571,13 @@ const RequestManagementWR = () => {
                             >
                                 <option value="">All Locations</option>
                                 {getUniqueLocations().map((location, index) => (
-                                    <option key={index} value={location}>
-                                        {location}
-                                    </option>
+                                    <option key={index} value={location}>{location}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* Request By Filter */}
                         <div>
-                            <label style={{ 
-                                display: 'block', 
-                                marginBottom: '5px', 
-                                fontWeight: '500', 
-                                fontSize: '14px'
-                            }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
                                 Filter by Request By
                             </label>
                             <select
@@ -706,24 +593,13 @@ const RequestManagementWR = () => {
                             >
                                 <option value="">All Users</option>
                                 {getUniqueUsers().map((user, index) => (
-                                    <option key={index} value={user}>
-                                        {user}
-                                    </option>
+                                    <option key={index} value={user}>{user}</option>
                                 ))}
                             </select>
                         </div>
 
-                       
-                       
-
-                        {/* Search Filter */}
                         <div>
-                            <label style={{ 
-                                display: 'block', 
-                                marginBottom: '5px', 
-                                fontWeight: '500', 
-                                fontSize: '14px'
-                            }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
                                 Search Requests
                             </label>
                             <div style={{ position: 'relative' }}>
@@ -735,16 +611,7 @@ const RequestManagementWR = () => {
                                     zIndex: 1,
                                     color: '#6c757d'
                                 }}>
-                                    <svg
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <circle cx="11" cy="11" r="8" />
                                         <path d="m21 21-4.35-4.35" />
                                     </svg>
@@ -752,7 +619,7 @@ const RequestManagementWR = () => {
 
                                 <input
                                     type="text"
-                                    placeholder="Search by ID, location, or user..."
+                                    placeholder="Search..."
                                     value={searchFilter}
                                     onChange={(e) => setSearchFilter(e.target.value)}
                                     style={{
@@ -777,22 +644,10 @@ const RequestManagementWR = () => {
                                             border: 'none',
                                             color: '#6c757d',
                                             cursor: 'pointer',
-                                            padding: '4px',
-                                            borderRadius: '50%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
+                                            padding: '4px'
                                         }}
-                                        title="Clear search"
                                     >
-                                        <svg
-                                            width="14"
-                                            height="14"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                        >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                             <line x1="18" y1="6" x2="6" y2="18"></line>
                                             <line x1="6" y1="6" x2="18" y2="18"></line>
                                         </svg>
@@ -803,7 +658,7 @@ const RequestManagementWR = () => {
                     </div>
                 </div>
 
-                {/* Active filters section */}
+                {/* Active Filters */}
                 <div style={{
                     padding: '10px',
                     backgroundColor: '#f8f9fa',
@@ -812,52 +667,25 @@ const RequestManagementWR = () => {
                     fontSize: '14px',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '10px'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                        <strong>Active Filters:</strong>
+                        <strong>Filters:</strong>
 
                         {requestFromFilter && (
                             <span style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 8px',
+                                gap: '4px',
+                                padding: '3px 8px',
                                 backgroundColor: '#e9ecef',
-                                borderRadius: '16px',
-                                fontSize: '13px',
-                                border: '1px solid #dee2e6'
+                                borderRadius: '12px',
+                                fontSize: '12px'
                             }}>
-                                Request From: {requestFromFilter}
-                                <button
-                                    type="button"
-                                    onClick={() => setRequestFromFilter('')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#6c757d',
-                                        cursor: 'pointer',
-                                        padding: '2px',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '18px',
-                                        height: '18px',
-                                        marginLeft: '4px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = '#dc3545';
-                                        e.target.style.color = 'white';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = 'transparent';
-                                        e.target.style.color = '#6c757d';
-                                    }}
-                                    title="Remove filter"
-                                >
-                                    ×
-                                </button>
+                                {requestFromFilter}
+                                <button onClick={() => setRequestFromFilter('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>×</button>
                             </span>
                         )}
 
@@ -865,219 +693,300 @@ const RequestManagementWR = () => {
                             <span style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 8px',
+                                gap: '4px',
+                                padding: '3px 8px',
                                 backgroundColor: '#e9ecef',
-                                borderRadius: '16px',
-                                fontSize: '13px',
-                                border: '1px solid #dee2e6'
+                                borderRadius: '12px',
+                                fontSize: '12px'
                             }}>
-                                Request By: {requestByFilter}
-                                <button
-                                    type="button"
-                                    onClick={() => setRequestByFilter('')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#6c757d',
-                                        cursor: 'pointer',
-                                        padding: '2px',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '18px',
-                                        height: '18px',
-                                        marginLeft: '4px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = '#dc3545';
-                                        e.target.style.color = 'white';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = 'transparent';
-                                        e.target.style.color = '#6c757d';
-                                    }}
-                                    title="Remove filter"
-                                >
-                                    ×
-                                </button>
+                                {requestByFilter}
+                                <button onClick={() => setRequestByFilter('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>×</button>
                             </span>
                         )}
 
-                        {statusFilter && (
-                            <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 8px',
-                                backgroundColor: '#e9ecef',
-                                borderRadius: '16px',
-                                fontSize: '13px',
-                                border: '1px solid #dee2e6'
-                            }}>
-                                Status: {statusFilter}
-                                <button
-                                    type="button"
-                                    onClick={() => setStatusFilter('')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#6c757d',
-                                        cursor: 'pointer',
-                                        padding: '2px',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '18px',
-                                        height: '18px',
-                                        marginLeft: '4px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = '#dc3545';
-                                        e.target.style.color = 'white';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = 'transparent';
-                                        e.target.style.color = '#6c757d';
-                                    }}
-                                    title="Remove filter"
-                                >
-                                    ×
-                                </button>
-                            </span>
+                        {!requestFromFilter && !requestByFilter && !searchFilter && (
+                            <span style={{ color: '#6c757d' }}>None</span>
                         )}
 
-                        {searchFilter && (
-                            <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 8px',
-                                backgroundColor: '#e9ecef',
-                                borderRadius: '16px',
-                                fontSize: '13px',
-                                border: '1px solid #dee2e6'
-                            }}>
-                                Search: "{searchFilter}"
-                                <button
-                                    type="button"
-                                    onClick={() => setSearchFilter('')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#6c757d',
-                                        cursor: 'pointer',
-                                        padding: '2px',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '18px',
-                                        height: '18px',
-                                        marginLeft: '4px'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = '#dc3545';
-                                        e.target.style.color = 'white';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = 'transparent';
-                                        e.target.style.color = '#6c757d';
-                                    }}
-                                    title="Remove search filter"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        )}
-
-                        <span style={{ marginLeft: '10px', color: '#6c757d' }}>
-                            ({filteredData.length} of {requestList.length} records shown)
+                        <span style={{ marginLeft: '6px', color: '#6c757d', fontSize: '12px' }}>
+                            ({filteredData.length} of {requestList.length})
                         </span>
                     </div>
 
-                    <div>
-                        <button
-                            type="button"
-                            onClick={clearAllFilters}
-                            style={{
-                                padding: "8px 16px",
-                                backgroundColor: "#6c757d",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                fontSize: "14px"
-                            }}
-                            onMouseEnter={(e) => {
-                                e.target.style.backgroundColor = '#5a6268';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.target.style.backgroundColor = '#6c757d';
-                            }}
-                        >
-                            Clear All Filters
-                        </button>
-                    </div>
+                    <button onClick={clearAllFilters} style={{
+                        padding: "6px 12px",
+                        backgroundColor: "#6c757d",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "12px"
+                    }}>
+                        Clear All
+                    </button>
                 </div>
 
-                <div className='tableContainer' style={{ height: '45vh', overflowY: 'auto' }}>
+                {/* Request Cards Grid */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                    gap: '20px',
+                    padding: '10px 0',
+                    minHeight: '400px'
+                }}>
                     {currentItems.length > 0 ? (
-                        <table className='table'>
-                            <thead>
-                                <tr>
-                                    <th className='t2'>REQUEST ID</th>
-                                    <th className='th1'>REQUEST FROM</th>
-                                    <th className='th1'>REQUEST BY</th>
-                                    <th className='th1'>STATUS</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {currentItems.map((p, i) => (
-                                    <tr
-                                        className='table-row'
-                                        key={i}
-                                        onClick={() => {
-                                            setDeliveriesDataVisible(false);
-                                            GetDeliveriesData(p.request_stock_id);
-                                            GetDeliveriesDetails(p.request_stock_id);
-                                            setRID(p.request_stock_id);
-                                        }}
-                                    >
-                                        <td className='td-name'>{p.request_stock_id}</td>
-                                        <td style={{textAlign: 'center'}}>{p.reqFrom}</td>
-                                        <td style={{textAlign: 'center'}}>{`${p.fname || ''} ${p.mname || ''} ${p.lname || ''}`}</td>
-                                        <td
-                                            style={{
-                                                textAlign: 'center',
-                                                fontWeight: 'bold',
-                                                color: p.request_status === "Pending" ? "red"
-                                                    : p.request_status === "Delivered" ? "green"
-                                                        : p.request_status === "On Going" ? "orange"
-                                                            : p.request_status === "On Delivery" ? "goldenrod"
-                                                                : p.request_status === "Complete" ? "blue"
-                                                                    : "black",
-                                            }}
-                                        >{p.request_status}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        currentItems.map((request, i) => {
+                            const statusColors = getStatusColor(request.request_status);
+                            return (
+                                <div
+                                    key={i}
+                                    onClick={() => {
+                                        setDeliveriesDataVisible(false);
+                                        GetDeliveriesData(request.request_stock_id);
+                                        GetDeliveriesDetails(request.request_stock_id);
+                                        setRID(request.request_stock_id);
+                                    }}
+                                    style={{
+                                        backgroundColor: '#ffffff',
+                                        borderRadius: '12px',
+                                        padding: '20px',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                        border: '1px solid #e9ecef',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-4px)';
+                                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(102, 126, 234, 0.15)';
+                                        e.currentTarget.style.borderColor = '#667eea';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+                                        e.currentTarget.style.borderColor = '#e9ecef';
+                                    }}
+                                >
+                                    {/* Top Border */}
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        height: '4px',
+                                        background: `linear-gradient(90deg, ${statusColors.border} 0%, ${statusColors.text} 100%)`
+                                    }}></div>
+
+                                    {/* Request ID Badge */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        marginBottom: '15px'
+                                    }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px'
+                                        }}>
+                                            <div style={{
+                                                width: '50px',
+                                                height: '50px',
+                                                borderRadius: '10px',
+                                                background: `linear-gradient(135deg, ${statusColors.border} 0%, ${statusColors.text} 100%)`,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: 'white',
+                                                fontSize: '24px',
+                                                flexShrink: 0
+                                            }}>
+                                                📋
+                                            </div>
+                                            <div>
+                                                <div style={{
+                                                    fontSize: '11px',
+                                                    color: '#6c757d',
+                                                    marginBottom: '2px',
+                                                    fontWeight: '500',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.5px'
+                                                }}>
+                                                    Request ID
+                                                </div>
+                                                <div style={{
+                                                    fontSize: '18px',
+                                                    fontWeight: '700',
+                                                    color: '#2c3e50'
+                                                }}>
+                                                    #{request.request_stock_id}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Status Badge */}
+                                        <div style={{
+                                            padding: '6px 14px',
+                                            borderRadius: '20px',
+                                            fontSize: '12px',
+                                            fontWeight: '600',
+                                            backgroundColor: statusColors.bg,
+                                            color: statusColors.text,
+                                            border: `2px solid ${statusColors.border}`,
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            {request.request_status}
+                                        </div>
+                                    </div>
+
+                                    {/* Request Details */}
+                                    <div style={{ marginBottom: '15px' }}>
+                                        {/* Request From */}
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            gap: '10px',
+                                            marginBottom: '12px',
+                                            padding: '10px',
+                                            backgroundColor: '#f8f9fa',
+                                            borderRadius: '8px'
+                                        }}>
+                                            <div style={{
+                                                color: '#667eea',
+                                                marginTop: '2px',
+                                                flexShrink: 0
+                                            }}>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                                    <circle cx="12" cy="10" r="3"/>
+                                                </svg>
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{
+                                                    fontSize: '11px',
+                                                    color: '#6c757d',
+                                                    marginBottom: '3px',
+                                                    fontWeight: '600',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.5px'
+                                                }}>
+                                                    Request From
+                                                </div>
+                                                <div style={{
+                                                    fontSize: '15px',
+                                                    color: '#2c3e50',
+                                                    fontWeight: '600',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    {request.reqFrom}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Request By */}
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            gap: '10px',
+                                            padding: '10px',
+                                            backgroundColor: '#f8f9fa',
+                                            borderRadius: '8px'
+                                        }}>
+                                            <div style={{
+                                                color: '#667eea',
+                                                marginTop: '2px',
+                                                flexShrink: 0
+                                            }}>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                    <circle cx="12" cy="7" r="4"/>
+                                                </svg>
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{
+                                                    fontSize: '11px',
+                                                    color: '#6c757d',
+                                                    marginBottom: '3px',
+                                                    fontWeight: '600',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.5px'
+                                                }}>
+                                                    Requested By
+                                                </div>
+                                                <div style={{
+                                                    fontSize: '15px',
+                                                    color: '#2c3e50',
+                                                    fontWeight: '600',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    {`${request.fname || ''} ${request.mname || ''} ${request.lname || ''}`.trim() || 'N/A'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Card Footer */}
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        paddingTop: '15px',
+                                        borderTop: '1px solid #e9ecef'
+                                    }}>
+                                        <div style={{
+                                            fontSize: '12px',
+                                            color: '#6c757d',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                            </svg>
+                                            Click to view details
+                                        </div>
+
+                                        <div style={{
+                                            width: '36px',
+                                            height: '36px',
+                                            borderRadius: '50%',
+                                            border: '2px solid #667eea',
+                                            backgroundColor: 'white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#667eea',
+                                            fontSize: '16px',
+                                            transition: 'all 0.2s'
+                                        }}>
+                                            →
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
                     ) : (
                         <div style={{
+                            gridColumn: '1 / -1',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            height: '100%',
+                            minHeight: '400px',
                             textAlign: 'center',
                             color: '#6c757d',
                             padding: '40px 20px'
                         }}>
                             <div style={{
-                                fontSize: '48px',
+                                fontSize: '64px',
                                 marginBottom: '20px',
                                 opacity: 0.3
                             }}>
@@ -1105,8 +1014,14 @@ const RequestManagementWR = () => {
                     )}
                 </div>
 
+                {/* Pagination */}
                 {totalPages > 1 && currentItems.length > 0 && (
-                    <div style={{ justifySelf: 'center' }}>
+                    <div style={{ 
+                        display: 'flex',
+                        justifyContent: 'center',
+                        marginTop: '30px',
+                        paddingBottom: '20px'
+                    }}>
                         <CustomPagination
                             currentPage={currentPage}
                             totalPages={totalPages}

@@ -107,9 +107,12 @@ const ProductsAdmin = () => {
             }
         } catch (error) {
             console.error('Upload error:', error);
-            setMessage('Failed to upload image: ' + error.message);
-            setModalTitle('Upload Error ❌');
-            setShow(true);
+            showAlertError({
+                icon: "error",
+                title: "Opss!",
+                text: 'Failed to upload image: ' + error.message,
+                button: 'Try Again'
+            });
             return null;
         } finally {
             setUploadingImage(false);
@@ -367,24 +370,22 @@ const ProductsAdmin = () => {
                 GetProduct();
                 resetForm();
                 close_modal();
-                setMessage("New product is successfully added!");
-                setAlertBG('#0ced93');
-                setAlertVariant('success');
-                setAlert1(true);
-
-                setTimeout(() => {
-                    setAlert1(false);
-                }, 3000);
+                AlertSucces(
+                    "New product is successfully added!",
+                    "success",
+                    true,
+                    'Okay'
+                );
                 return;
 
             } else {
-                setMessage("Failed to add new product.");
-                setAlertBG('#dc7a80');
-                setAlertVariant('danger');
-                setAlert1(true);
-                setTimeout(() => {
-                    setAlert1(false);
-                }, 3000);
+
+                showAlertError({
+                    icon: "error",
+                    title: "Opss!",
+                    text: 'Failed to add new product.',
+                    button: 'Try Again'
+                });
                 return;
             }
 

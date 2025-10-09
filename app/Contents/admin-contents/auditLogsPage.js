@@ -350,7 +350,7 @@ const Audit = () => {
                 onClick={close_modal}
                 hidden={bgVisible} ></div>
 
-            <div className='customer-main' style={{ height: mainSize }}>
+            <div className='customer-main' >
                 <div className='customer-header'>
                     <h1 className='h-customer'>AUDIT LOGS</h1>
                     <button

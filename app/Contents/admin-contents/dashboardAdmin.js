@@ -2601,10 +2601,17 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                                 }}>
                                                     <span>{new Date(sale.date).toLocaleDateString('en-US', { weekday: 'short' })}</span>
                                                     <span style={{ color: '#dee2e6' }}>•</span>
-                                                    <span>{new Date(sale.date).toLocaleTimeString('en-US', {
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })}</span>
+                                                    <span>
+                                                        {(() => {
+                                                            const [hours, minutes] = sale.time.split(':');
+                                                            const date = new Date();
+                                                            date.setHours(parseInt(hours), parseInt(minutes));
+                                                            return date.toLocaleTimeString('en-US', {
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            });
+                                                        })()}
+                                                    </span>
                                                 </div>
                                             </td>
 

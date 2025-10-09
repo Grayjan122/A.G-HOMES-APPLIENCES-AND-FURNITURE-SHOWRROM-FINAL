@@ -571,7 +571,7 @@ const ReceiveStockIM = () => {
                             <tbody>
                                 {currentItems.map((p, i) => (
                                     <tr key={i}
-                                        // onClick={() => { handleCheckboxChange1(p.product_id, location_id) }}
+                                    // onClick={() => { handleCheckboxChange1(p.product_id, location_id) }}
                                     >
                                         {/* <td>
                                             <input
@@ -626,7 +626,22 @@ const ReceiveStockIM = () => {
             < div className='customer-main' >
 
                 <div className='customer-header'>
-                    <h1 className='h-customer'>Receive Stock {rs_StoreID} </h1>
+                    <h1 className='h-customer'>Receive Stock Delivery</h1>
+                    <div style={{
+                        // marginTop: '15px',
+                        padding: '12px 20px',
+                        backgroundColor: '#fff3cd',
+                        border: '1px solid #ffc107',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px'
+                    }}>
+                        <span style={{ fontSize: '20px' }}>ℹ️</span>
+                        <span style={{ color: '#856404', fontSize: '14px', fontWeight: '500' }}>
+                            Note: Deliveries are processed on a first-come, first-served basis.
+                        </span>
+                    </div>
                 </div>
 
                 <div className='search-customer'>
@@ -634,7 +649,7 @@ const ReceiveStockIM = () => {
                         <div >
                             <label className='label'>Store:</label>
                             <select className='new' value={rs_StoreID} onChange={(e) => setRs_StoreID(e.target.value)} id='c-loc'>
-                                <option value={' '}> Select A Location</option>
+                                <option value={' '}> Select All Location</option>
 
                                 {locationList.map((r) => (
                                     <option key={r.location_id} value={r.location_id}>

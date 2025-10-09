@@ -435,7 +435,7 @@ const RequestStockIM = () => {
                 setStockInList(prevList =>
                     prevList.filter(item => item.product_id !== productId)
                 );
-                
+
                 Swal.fire({
                     title: "Removed!",
                     text: "Item has been removed from your request list.",
@@ -1157,7 +1157,7 @@ const RequestStockIM = () => {
                 <Modal.Header closeButton className='searched-product-header'>
                     <Modal.Title>Search Product To Request</Modal.Title>
                 </Modal.Header>
-                <Modal.Body style={{ height: '550px', overflow: 'hidden' }}>
+                <Modal.Body style={{ height: '550px', overflow: 'auto' }}>
                     <Container>
                         <Row>
                             {/* Left Column - Available Products */}
@@ -1224,6 +1224,7 @@ const RequestStockIM = () => {
                                                 />
                                             </div>
                                         </div>
+                                        <div style={{marginTop: '40px'}}></div>
 
                                         {/* Second row - Select All Options */}
                                         <div style={{
@@ -1505,6 +1506,11 @@ const RequestStockIM = () => {
                                                     onBlur={(e) => e.target.style.borderColor = '#ccc'}
                                                 />
                                             </div>
+                                        </div>
+
+
+                                        <div>
+                                            <p><strong>NOTE:</strong> You can edit the quantity after adding the product to the list .</p>
                                         </div>
 
                                         {/* Second row - Clear List button */}
@@ -1868,7 +1874,7 @@ const RequestStockIM = () => {
                                                             >
                                                                 −
                                                             </button>
-                                                            
+
                                                             <input
                                                                 type="number"
                                                                 value={p.qty}
@@ -1893,7 +1899,7 @@ const RequestStockIM = () => {
                                                                 onFocus={(e) => e.target.style.borderColor = '#007bff'}
                                                                 onBlur={(e) => e.target.style.borderColor = '#ced4da'}
                                                             />
-                                                            
+
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
@@ -2023,6 +2029,7 @@ const RequestStockIM = () => {
                                         />
                                     )}
                                 </div>
+
 
                                 <div style={{ display: 'flex', gap: '10px', marginRight: '10px' }}>
                                     <Button

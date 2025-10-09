@@ -203,7 +203,7 @@ export default function Header() {
                       ':hover': {
                         backgroundColor: '#f5f5f5'
                       }
-                    }}>Profile</li>
+                    }} >Profile</li>
                     <li style={{
                       padding: '8px 20px',
                       cursor: 'pointer',

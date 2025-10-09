@@ -14,7 +14,6 @@ import { showAlertError } from '@/app/Components/SweetAlert/error';
 import { AlertSucces } from '@/app/Components/SweetAlert/success';
 
 import InputGroup from 'react-bootstrap/InputGroup';
-import SplitButton from 'react-bootstrap/SplitButton';
 import Form from 'react-bootstrap/Form';
 
 
@@ -31,19 +30,10 @@ const StockInWR = () => {
 
     // Input states
     const [prodName, setProdName] = useState('');
-    const [prodQty, setProdQty] = useState(1);
-    const [selectedProdName, setSelectedProdName] = useState('');
 
     // Modal states
-    const [searchedProdVisible, setSearchedProdVisible] = useState(true);
-    const [editListVisible, setEditListVisible] = useState(true);
     const [clearReq, setClearReq] = useState(true);
     const [continueSendReq, setContinueSendReq] = useState(true);
-
-    // Edit states
-    const [editProdID, setEditProdID] = useState('');
-    const [editProdName, setEditProdName] = useState('');
-    const [editQTY, setEditQty] = useState('');
 
     // Alert states
     const [alert1, setAlert1] = useState(false);
@@ -206,13 +196,16 @@ const StockInWR = () => {
             );
 
             if (!product) {
-                alert("Product is unavailable! Please select other.");
-                setSelectedProdName('');
+                showAlertError({
+                    icon: "error",
+                    title: "Product Not Found!",
+                    text: "Product is unavailable! Please select another.",
+                    button: 'Try Again'
+                });
                 return;
             }
 
-            setSelectedProdName(product.product_name);
-            triggerModal('searchedProduct', product.product_id);
+            addProductToList(product);
         }
     };
 
@@ -223,115 +216,102 @@ const StockInWR = () => {
         );
 
         if (!product) {
-            alert("Product is unavailable! Please select other.");
-            setSelectedProdName('');
-            return;
-        }
-
-        setSelectedProdName(product.product_name);
-        triggerModal('searchedProduct', product.product_id);
-        setSearchList([]);
-        setProdName('');
-    };
-
-    const addInStockList = () => {
-
-
-        if (prodQty < 1) {
-            // showAlert("Qty can't be less than 1, Please input a valid qty!", 'danger', '#dc7a80');
             showAlertError({
                 icon: "error",
-                title: "Something Went Wrong!",
-                text: "Qty can't be less than 1, Please input a valid qty!",
+                title: "Product Not Found!",
+                text: "Product is unavailable! Please select another.",
                 button: 'Try Again'
             });
             return;
         }
 
-        const product = productList.find(product =>
-            product.product_name.toLowerCase() === selectedProdName.toLowerCase()
-        );
-        const incomingQty = parseInt(prodQty) || 0;
+        addProductToList(product);
+    };
 
+    const addProductToList = (product) => {
         setStockInList(prev => {
-            const existingIndex = prev.findIndex(item => item.product_name === product.product_name);
+            const existingIndex = prev.findIndex(item => item.product_id === product.product_id);
             if (existingIndex !== -1) {
-                // showAlert('Product is already on list!', 'danger', '#dc7a80');
                 showAlertError({
                     icon: "warning",
-                    title: "Product is already on list!!",
-                    text: "Click to edit the qty it or to remove",
-                    button: 'Try Again'
+                    title: "Product Already Added!",
+                    text: "This product is already in your list. Adjust the quantity in the table.",
+                    button: 'OK'
                 });
                 return prev;
             } else {
-                return [...prev, { ...product, qty: incomingQty }];
+                AlertSucces(
+                    `${product.product_name} added to list!`,
+                    "success",
+                    false,
+                    'OK'
+                );
+                return [...prev, { ...product, qty: 1 }];
             }
         });
 
-        setSearchedProdVisible(true);
-        setProdQty(1);
-        setSelectedProdName('');
+        setSearchList([]);
+        setProdName('');
+        document.getElementById("prod-search")?.focus();
     };
 
-    const triggerModal = (operation, id) => {
-        switch (operation) {
-            case 'searchedProduct':
-                setSearchedProdVisible(false);
-                break;
-            case 'editList':
-                setEditProdID(id);
-                const product = stockInList.find(product => product.product_id === id);
-                if (product) {
-                    setEditProdName(product.product_name);
-                    setEditQty(product.qty);
-                }
-                setEditListVisible(false);
-                break;
-        }
-    };
-
-    const editItemFromList = () => {
-        if (editQTY < 1) {
-            showAlertError({
-                icon: "error",
-                title: "Something Went Wrong!",
-                text: "Qty can't be less than 1, Please input a valid qty!",
-                button: 'Try Again'
-            });
+    const updateQuantity = (productId, newQty) => {
+        const qty = parseInt(newQty);
+        if (isNaN(qty) || qty < 1) {
             return;
         }
 
         setStockInList(prevList =>
             prevList.map(item =>
-                item.product_id === editProdID
-                    ? { ...item, qty: editQTY }
+                item.product_id === productId
+                    ? { ...item, qty: qty }
                     : item
             )
         );
-
-        resetEditState();
     };
 
-    const removeItem = () => {
+    const incrementQuantity = (productId) => {
         setStockInList(prevList =>
-            prevList.filter(item => item.product_id !== editProdID)
-        );
-
-        resetEditState();
-        AlertSucces(
-            "Item removed!",
-            "success",
-            true,
-            'Ok'
+            prevList.map(item =>
+                item.product_id === productId
+                    ? { ...item, qty: item.qty + 1 }
+                    : item
+            )
         );
     };
 
-    const resetEditState = () => {
-        setEditProdID('');
-        setEditProdName('');
-        setEditQty('');
-        setEditListVisible(true);
+    const decrementQuantity = (productId) => {
+        setStockInList(prevList =>
+            prevList.map(item =>
+                item.product_id === productId
+                    ? { ...item, qty: Math.max(1, item.qty - 1) }
+                    : item
+            )
+        );
+    };
+
+    const removeItem = (productId, productName) => {
+        Swal.fire({
+            title: "Remove Item?",
+            text: `Remove ${productName} from the list?`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#6c757d",
+            confirmButtonText: "Yes, remove it!"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                setStockInList(prevList =>
+                    prevList.filter(item => item.product_id !== productId)
+                );
+                AlertSucces(
+                    "Item removed from list!",
+                    "success",
+                    false,
+                    'OK'
+                );
+            }
+        });
     };
 
     const clearList = () => {
@@ -432,6 +412,336 @@ const StockInWR = () => {
 
     return (
         <>
+            <style jsx>{`
+                .search-container {
+                    position: relative;
+                    width: 100%;
+                    margin-bottom: 20px;
+                }
+
+                .search-input-wrapper {
+                    position: relative;
+                    width: 100%;
+                }
+
+                .search-input {
+                    width: 100%;
+                    padding: 12px 16px;
+                    font-size: 16px;
+                    border: 2px solid #e0e0e0;
+                    border-radius: 8px;
+                    transition: all 0.3s ease;
+                    background-color: #fff;
+                }
+
+                .search-input:focus {
+                    outline: none;
+                    border-color: #007bff;
+                    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+                }
+
+                .dropdown-search-responsive {
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    margin-top: 4px;
+                    max-height: 300px;
+                    overflow-y: auto;
+                    z-index: 1000;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                }
+
+                .dropdown-search-responsive ul {
+                    list-style: none;
+                    padding: 0;
+                    margin: 0;
+                }
+
+                .dropdown-search-responsive li {
+                    padding: 12px 16px;
+                    cursor: pointer;
+                    transition: background-color 0.2s;
+                    border-bottom: 1px solid #f0f0f0;
+                    font-size: 14px;
+                }
+
+                .dropdown-search-responsive li:last-child {
+                    border-bottom: none;
+                }
+
+                .dropdown-search-responsive li:hover {
+                    background-color: #f8f9fa;
+                }
+
+                .responsive-table-container {
+                    width: 100%;
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                }
+
+                .responsive-table {
+                    width: 100%;
+                    min-width: 700px;
+                    border-collapse: collapse;
+                }
+
+                .responsive-table thead {
+                    background-color: #f8f9fa;
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                }
+
+                .responsive-table th {
+                    padding: 14px 12px;
+                    text-align: left;
+                    font-weight: 600;
+                    font-size: 13px;
+                    color: #495057;
+                    border-bottom: 2px solid #dee2e6;
+                    white-space: nowrap;
+                }
+
+                .responsive-table td {
+                    padding: 12px;
+                    border-bottom: 1px solid #f0f0f0;
+                    font-size: 14px;
+                    color: #212529;
+                }
+
+                .responsive-table tbody tr {
+                    transition: background-color 0.2s;
+                }
+
+                .responsive-table tbody tr:hover {
+                    background-color: #f8f9fa;
+                }
+
+                .qty-controls {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    justify-content: center;
+                }
+
+                .qty-btn {
+                    width: 32px;
+                    height: 32px;
+                    padding: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 18px;
+                    font-weight: bold;
+                    border: 1px solid #dee2e6;
+                    background: white;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    transition: all 0.2s;
+                }
+
+                .qty-btn:hover {
+                    background-color: #e9ecef;
+                    border-color: #adb5bd;
+                }
+
+                .qty-btn:active {
+                    transform: scale(0.95);
+                }
+
+                .qty-input {
+                    width: 60px;
+                    text-align: center;
+                    padding: 6px;
+                    border: 1px solid #dee2e6;
+                    border-radius: 4px;
+                    font-weight: 600;
+                }
+
+                .qty-input:focus {
+                    outline: none;
+                    border-color: #007bff;
+                }
+
+                .action-cell {
+                    text-align: center;
+                }
+
+                .remove-btn {
+                    padding: 6px 12px;
+                    font-size: 13px;
+                    background-color: #dc3545;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+
+                .remove-btn:hover {
+                    background-color: #c82333;
+                }
+
+                .action-buttons-container {
+                    display: flex;
+                    gap: 10px;
+                    justify-content: flex-end;
+                    margin-top: 15px;
+                    flex-wrap: wrap;
+                }
+
+                .empty-state {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 300px;
+                    text-align: center;
+                    color: #6c757d;
+                    padding: 40px 20px;
+                }
+
+                .empty-state-icon {
+                    font-size: 48px;
+                    margin-bottom: 20px;
+                    opacity: 0.3;
+                }
+
+                .empty-state-title {
+                    color: #495057;
+                    margin-bottom: 10px;
+                    font-weight: 500;
+                    font-size: 18px;
+                }
+
+                .empty-state-text {
+                    margin: 0;
+                    font-size: 14px;
+                    max-width: 300px;
+                    line-height: 1.5;
+                }
+
+                @media (max-width: 992px) {
+                    .responsive-table th,
+                    .responsive-table td {
+                        padding: 10px 8px;
+                        font-size: 13px;
+                    }
+
+                    .action-buttons-container {
+                        justify-content: center;
+                    }
+
+                    .qty-controls {
+                        gap: 6px;
+                    }
+
+                    .qty-btn {
+                        width: 28px;
+                        height: 28px;
+                        font-size: 16px;
+                    }
+
+                    .qty-input {
+                        width: 50px;
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .search-input {
+                        font-size: 16px;
+                    }
+
+                    .responsive-table {
+                        min-width: 100%;
+                    }
+
+                    .responsive-table th,
+                    .responsive-table td {
+                        padding: 8px 6px;
+                        font-size: 12px;
+                    }
+
+                    .qty-controls {
+                        gap: 4px;
+                        flex-wrap: nowrap;
+                    }
+
+                    .qty-btn {
+                        width: 26px;
+                        height: 26px;
+                        font-size: 14px;
+                    }
+
+                    .qty-input {
+                        width: 45px;
+                        padding: 4px;
+                        font-size: 12px;
+                    }
+
+                    .remove-btn {
+                        padding: 4px 8px;
+                        font-size: 11px;
+                    }
+
+                    .action-buttons-container {
+                        width: 100%;
+                    }
+
+                    .action-buttons-container button {
+                        flex: 1;
+                        min-width: 120px;
+                    }
+
+                    .empty-state {
+                        min-height: 250px;
+                        padding: 30px 15px;
+                    }
+
+                    .empty-state-icon {
+                        font-size: 36px;
+                    }
+
+                    .empty-state-title {
+                        font-size: 16px;
+                    }
+
+                    .empty-state-text {
+                        font-size: 13px;
+                    }
+                }
+
+                @media (max-width: 576px) {
+                    .responsive-table th,
+                    .responsive-table td {
+                        padding: 6px 4px;
+                        font-size: 11px;
+                    }
+
+                    .dropdown-search-responsive li {
+                        padding: 10px 12px;
+                        font-size: 13px;
+                    }
+
+                    .qty-btn {
+                        width: 24px;
+                        height: 24px;
+                        font-size: 12px;
+                    }
+
+                    .qty-input {
+                        width: 40px;
+                    }
+                }
+            `}</style>
+
             <Alert
                 variant={alertVariant}
                 className='alert-inventory'
@@ -441,7 +751,6 @@ const StockInWR = () => {
                 {message}
             </Alert>
 
-            {/* Clear List Confirmation Modal */}
             <Modal show={!clearReq} onHide={() => setClearReq(true)} size='md' className='searched-product-modal'>
                 <Modal.Header closeButton className='searched-product-header'>
                     <Modal.Title>Continue this action?</Modal.Title>
@@ -459,7 +768,6 @@ const StockInWR = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* Continue Stock In Modal */}
             <Modal show={!continueSendReq} onHide={() => setContinueSendReq(true)} size='md' className='searched-product-modal'>
                 <Modal.Header closeButton className='searched-product-header'>
                     <Modal.Title>Continue stock in?</Modal.Title>
@@ -477,250 +785,160 @@ const StockInWR = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* Add Product Modal */}
-            <Modal show={!searchedProdVisible} onHide={() => setSearchedProdVisible(true)} size='md' className='searched-product-modal'>
-                <Modal.Header closeButton className='searched-product-header'>
-                    <Modal.Title>Input QTY</Modal.Title>
-                </Modal.Header>
-                <Modal.Body className='searched-product-body'>
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Product Code</label>
-                        <div className='stock-in-prod'>
-                            <input
-                                className='prod-name'
-                                disabled={true}
-                                value={selectedProdName}
-                            />
-                            <InputGroup className="mb-3" style={{ maxWidth: "150px", height: '50px' }}>
-                                <Button variant="outline-secondary" onClick={
-                                    () => {
-                                        setProdQty(prodQty - 1)
-                                    }}>
-                                    –
-                                </Button>
-                                <Form.Control
-                                    type="number"
-                                    value={prodQty}
-                                    min="1"
-                                    onChange={(e) => setProdQty(e.target.value)}
-                                    aria-label="Quantity"
-                                />
-                                <Button variant="outline-secondary" onClick={
-                                    () => {
-                                        setProdQty(parseInt(prodQty) + 1)
-                                    }}>
-                                    +
-                                </Button>
-                            </InputGroup>
-                        </div>
-
-                    </div>
-                </Modal.Body>
-                <Modal.Footer className='searched-product-footer'>
-                    <Button variant="secondary" onClick={() => setSearchedProdVisible(true)}>
-                        Close
-                    </Button>
-                    <Button variant="primary" onClick={addInStockList}>
-                        Add to list
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
-            {/* Edit Item Modal */}
-            <Modal show={!editListVisible} onHide={() => setEditListVisible(true)} size='md' className='searched-product-modal'>
-                <Modal.Header closeButton className='searched-product-header'>
-                    <Modal.Title>Edit Item</Modal.Title>
-                </Modal.Header>
-                <Modal.Body className='searched-product-body'>
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Product Code</label>
-                        <div className='stock-in-prod'>
-                            <input
-                                className='prod-name'
-                                disabled={true}
-                                value={editProdName}
-                            />
-                            <InputGroup className="mb-3" style={{ maxWidth: "150px", height: '50px' }}>
-                                <Button variant="outline-secondary" onClick={
-                                    () => {
-                                        setEditQty(editQTY - 1)
-                                    }}>
-                                    –
-                                </Button>
-                                <Form.Control
-                                    type="number"
-                                    value={editQTY}
-                                    min="1"
-                                    onChange={(e) => setEditQty(e.target.value)}
-                                    aria-label="Quantity"
-                                />
-                                <Button variant="outline-secondary" onClick={
-                                    () => {
-                                        setEditQty(parseInt(editQTY) + 1)
-                                    }}>
-                                    +
-                                </Button>
-                            </InputGroup>
-                        </div>
-                    </div>
-                </Modal.Body>
-                <Modal.Footer className='searched-product-footer'>
-                    <Button variant="outline-danger" onClick={removeItem}>
-                        Remove
-                    </Button>
-                    <Button variant="primary" onClick={editItemFromList}>
-                        Save
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
-            {/* Main Content */}
             <div className='customer-main'>
                 <div className='customer-header'>
                     <h1 className='h-customer'>STOCK IN</h1>
                 </div>
 
-                <Container>
+                <Container fluid>
                     <Row>
-                        <Col md={3}>
-                            <div className='div-input-add-prod'>
-                                <label className='add-prod-label'>Search Product</label>
-                                <div>
+                        <Col xs={12} lg={3} className="mb-3 mb-lg-0">
+                            <div className='search-container'>
+                                <label className='add-prod-label' style={{ marginBottom: '8px', display: 'block' }}>
+                                    Search Product
+                                </label>
+                                <div className='search-input-wrapper'>
                                     <input
-                                        className='input'
+                                        className='search-input'
                                         onKeyDown={handleKeyDown}
                                         type='text'
                                         value={prodName}
                                         onChange={(e) => setProdName(e.target.value)}
                                         id='prod-search'
+                                        placeholder="Search by name or ID..."
                                     />
-                                    <div className='dropdown-search1' hidden={!prodName.trim()}>
-                                        <ul>
-                                            {searchList.map((p, i) => (
-                                                <li key={i} onClick={() => searchClick(p.product_name)}>
-                                                    {p.product_name + " - " + p.description}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                                    {prodName.trim() && (
+                                        <div className='dropdown-search-responsive'>
+                                            <ul>
+                                                {searchList.map((p, i) => (
+                                                    <li key={i} onClick={() => searchClick(p.product_name)}>
+                                                        <strong>{p.product_name}</strong>
+                                                        <div style={{ fontSize: '12px', color: '#6c757d', marginTop: '2px' }}>
+                                                            {p.description}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </Col>
 
-                       <Col md={9}>
-    <div className='tableContainer1' style={{ height: '52vh', overflow: 'hidden' }}>
-        {stockInList && stockInList.length > 0 ? (
-            <table className='table'>
-                <thead>
-                    <tr>
-                        <th className='t2'>PRODUCT ID</th>
-                        <th className='t2'>PRODUCT CODE</th>
-                        <th className='t2'>PRODUCT DESCRIPTION</th>
-                        <th className='th1'>QTY</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {currentRequestItems.map((p, i) => (
-                        <tr
-                            className='table-row'
-                            key={p.product_id || i}
-                            onClick={() => triggerModal('editList', p.product_id)}
-                        >
-                            <td className='td-name'>{p.product_id}</td>
-                            <td className='td-name'>{p.product_name}</td>
-                            <td className='td-name'>{p.description}</td>
-                            <td>{p.qty}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        ) : (
-            // Empty State
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                textAlign: 'center',
-                color: '#6c757d',
-                padding: '40px 20px'
-            }}>
-                <div style={{
-                    fontSize: '48px',
-                    marginBottom: '20px',
-                    opacity: 0.3
-                }}>
-                    📦
-                </div>
-                <h4 style={{
-                    color: '#495057',
-                    marginBottom: '10px',
-                    fontWeight: '500'
-                }}>
-                    No items in stock in list
-                </h4>
-                <p style={{
-                    margin: '0',
-                    fontSize: '14px',
-                    maxWidth: '300px',
-                    lineHeight: '1.4'
-                }}>
-                    Search for products in left side and add them to your stock in list to get started.
-                </p>
-            </div>
-        )}
-    </div>
+                        <Col xs={12} lg={9}>
+                            <div className='responsive-table-container' style={{ height: '52vh', overflow: 'auto' }}>
+                                {stockInList && stockInList.length > 0 ? (
+                                    <table className='responsive-table'>
+                                        <thead>
+                                            <tr>
+                                                <th>PRODUCT ID</th>
+                                                <th>PRODUCT CODE</th>
+                                                <th>DESCRIPTION</th>
+                                                <th style={{ textAlign: 'center' }}>QTY</th>
+                                                <th style={{ textAlign: 'center' }}>ACTION</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {currentRequestItems.map((p, i) => (
+                                                <tr key={p.product_id || i}>
+                                                    <td>{p.product_id}</td>
+                                                    <td>{p.product_name}</td>
+                                                    <td>{p.description}</td>
+                                                    <td>
+                                                        <div className='qty-controls'>
+                                                            <button 
+                                                                className='qty-btn'
+                                                                onClick={() => decrementQuantity(p.product_id)}
+                                                            >
+                                                                −
+                                                            </button>
+                                                            <input
+                                                                className='qty-input'
+                                                                type='number'
+                                                                min='1'
+                                                                value={p.qty}
+                                                                onChange={(e) => updateQuantity(p.product_id, e.target.value)}
+                                                            />
+                                                            <button 
+                                                                className='qty-btn'
+                                                                onClick={() => incrementQuantity(p.product_id)}
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    <td className='action-cell'>
+                                                        <button 
+                                                            className='remove-btn'
+                                                            onClick={() => removeItem(p.product_id, p.product_name)}
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div className='empty-state'>
+                                        <div className='empty-state-icon'>📦</div>
+                                        <h4 className='empty-state-title'>No items in stock in list</h4>
+                                        <p className='empty-state-text'>
+                                            Search for products and add them to your stock in list to get started.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
 
-    <Container style={{
-        display: 'flex',
-        flexDirection: 'row',
-        marginTop: '20px',
-        marginLeft: '20px',
-        justifyContent: 'space-between',
-        height: '40px'
-    }}>
-        <div style={{ justifySelf: 'center', marginTop: '20px' }}>
-            {totalRequestPages > 1 && stockInList && stockInList.length > 0 && (
-                <CustomPagination
-                    currentPage={currentRequestPage}
-                    totalPages={totalRequestPages}
-                    onPageChange={handlePageChange}
-                    color="green"
-                />
-            )}
-        </div>
+                            <div style={{ 
+                                display: 'flex', 
+                                flexDirection: 'row',
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                marginTop: '20px',
+                                gap: '15px'
+                            }}>
+                                <div>
+                                    {totalRequestPages > 1 && stockInList && stockInList.length > 0 && (
+                                        <CustomPagination
+                                            currentPage={currentRequestPage}
+                                            totalPages={totalRequestPages}
+                                            onPageChange={handlePageChange}
+                                            color="green"
+                                        />
+                                    )}
+                                </div>
 
-        <div style={{ display: 'flex', gap: '10px', marginRight: '10px' }}>
-            <Button
-                variant="danger"
-                onClick={clearListAlert}
-                disabled={!stockInList || stockInList.length === 0}
-            >
-                Clear List
-            </Button>
-            <Button
-                variant="primary"
-                onClick={() => {
-                    if (stockInList.length > 0) {
-                        setContinueSendReq(false);
-                        GetCurrentStoreInventory();
-                    } else {
-                        showAlertError({
-                            icon: "error",
-                            title: "Something Went Wrong!",
-                            text: 'Your list is currently empty!',
-                            button: 'Okay'
-                        });
-                    }
-                }}
-                disabled={!stockInList || stockInList.length === 0}
-            >
-                Save Stock In
-            </Button>
-        </div>
-    </Container>
-</Col>
+                                <div className='action-buttons-container'>
+                                    <Button
+                                        variant="danger"
+                                        onClick={clearListAlert}
+                                        disabled={!stockInList || stockInList.length === 0}
+                                    >
+                                        Clear List
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        onClick={() => {
+                                            if (stockInList.length > 0) {
+                                                setContinueSendReq(false);
+                                                GetCurrentStoreInventory();
+                                            } else {
+                                                showAlertError({
+                                                    icon: "error",
+                                                    title: "Something Went Wrong!",
+                                                    text: 'Your list is currently empty!',
+                                                    button: 'Okay'
+                                                });
+                                            }
+                                        }}
+                                        disabled={!stockInList || stockInList.length === 0}
+                                    >
+                                        Save Stock In
+                                    </Button>
+                                </div>
+                            </div>
+                        </Col>
                     </Row>
                 </Container>
             </div>

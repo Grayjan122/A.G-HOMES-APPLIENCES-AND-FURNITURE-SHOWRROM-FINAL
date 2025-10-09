@@ -12,7 +12,6 @@ import { showAlertError } from '@/app/Components/SweetAlert/error';
 
 const ITEMS_PER_PAGE = 8;
 const MODAL_ITEMS_PER_PAGE = 5;
-
 const InstallmentSC = () => {
     // Core states
     const [installmentList, setInstallmentList] = useState([]);
