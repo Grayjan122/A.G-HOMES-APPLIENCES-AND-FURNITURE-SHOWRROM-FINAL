@@ -10,8 +10,11 @@ class User
         include 'conn.php';
         //$json = '{"username":"pitok","password":"12345"}'
         $json = json_decode($json, true);
-        $sql = "SELECT a.location_id, a.location_name, a.contact_person, a.phone, a.email, a.address, a.branch_id, b.branch_name
-                FROM location a JOIN branch b ON a.branch_id = b.branch_id ORDER BY a.location_name ASC";
+        $sql = "SELECT a.location_id, a.location_name, a.contact_person, a.phone, a.email, a.address, a.branch_id, b.branch_name, c.name
+                FROM location a 
+                JOIN branch b ON a.branch_id = b.branch_id
+                JOIN location_type c ON a.loc_type_id = c.loc_type_id
+                ORDER BY a.location_name ASC";
 
         $stmt = $conn->prepare($sql);
         // $stmt->bindParam(':username', $json['username']);
