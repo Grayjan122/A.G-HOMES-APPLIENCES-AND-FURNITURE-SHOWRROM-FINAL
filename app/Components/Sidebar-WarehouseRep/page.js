@@ -14,6 +14,8 @@ import InventoryLedgerWR from '@/app/Contents/warehouse-contents/inventoryAuditW
 import DeliveryWR from '@/app/Contents/warehouse-contents/delivery';
 import StockInWR from '@/app/Contents/warehouse-contents/stockin';
 import DashboardWR from '@/app/Contents/warehouse-contents/dashboardWR';
+import CustomizeRequest from '@/app/Contents/warehouse-contents/customizeReq';
+import CombinedRequests from '@/app/Contents/warehouse-contents/requestPage';
 
 const SidebarWarehouseRep = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -60,10 +62,20 @@ const SidebarWarehouseRep = () => {
       icon: '/assets/images/req-mng.png',
       component: <RequestManagementWR />,
       children: [
-        {
-          key: 'inventory-transfer-request',
-          label: 'Stock Request',
-          component: <StockRequestWR />,
+        // {
+        //   key: 'inventory-transfer-request',
+        //   label: 'Stock Request',
+        //   component: <StockRequestWR />,
+        // },
+        //  {
+        //   key: 'customize-request',
+        //   label: 'Customize Request',
+        //   component: <CustomizeRequest />,
+        // },
+         {
+          key: 'request-all',
+          label: 'Product Requests',
+          component: <CombinedRequests />,
         },
       ],
     },
