@@ -16,6 +16,9 @@ import { showAlertError } from './Components/SweetAlert/error';
 export default function LoginPage() {
   const [show, setShow] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [debugInfo, setDebugInfo] = useState([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);
@@ -28,19 +31,81 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    const input = document.getElementById('email');
-    input?.focus();
-    generateRandomNumbers();
-  }, []);
-
   const [modalHeader, setModalHeader] = useState('');
   const [modalBody, setModalBody] = useState('');
   const [borderColor, setBorderColor] = useState('');
 
   const router = useRouter();
 
-  // Custom Eye Icon SVG
+  // Base URL configuration
+  const BASE_URL = 'https://ag-home.site/backend/';
+
+  // Add debug log
+  const addDebugLog = (message, data = null) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = {
+      time: timestamp,
+      message: message,
+      data: data
+    };
+    setDebugInfo(prev => [...prev, logEntry]);
+    console.log(`[${timestamp}] ${message}`, data || '');
+  };
+
+  // Test backend connection with detailed error reporting
+  const testConnection = async () => {
+    addDebugLog('Testing connection to backend...', BASE_URL);
+
+    try {
+      // First, try a simple GET request to see if the server responds
+      const testUrl = BASE_URL;
+      addDebugLog('Attempting basic connection test to:', testUrl);
+
+      const response = await axios.get(testUrl, {
+        timeout: 10000,
+        validateStatus: function (status) {
+          // Accept any status code to see what the server returns
+          return status < 600;
+        }
+      });
+
+      addDebugLog('Server responded with status:', response.status);
+      addDebugLog('Response headers:', response.headers);
+
+      if (response.data) {
+        addDebugLog('Response data:', response.data);
+      }
+
+      sessionStorage.setItem('baseURL', BASE_URL);
+      return true;
+
+    } catch (error) {
+      addDebugLog('Connection test failed:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+
+      // Set the URL anyway for further testing
+      sessionStorage.setItem('baseURL', BASE_URL);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      sessionStorage.clear();
+      await testConnection();
+      const input = document.getElementById('email');
+      input?.focus();
+      generateRandomNumbers();
+    };
+
+    init();
+  }, []);
+
+  // Custom Eye Icons (keeping your existing icons)
   const EyeIcon = () => (
     <svg
       width="25"
@@ -58,7 +123,6 @@ export default function LoginPage() {
     </svg>
   );
 
-  // Custom Eye Off Icon SVG
   const EyeOffIcon = () => (
     <svg
       width="25"
@@ -93,11 +157,6 @@ export default function LoginPage() {
     }
   }, [userAnswer]);
 
-  useEffect(() => {
-    generateRandomNumbers();
-    sessionStorage.clear();
-  }, []);
-
   const generateRandomNumbers = () => {
     setNum1(Math.floor(Math.random() * 49) + 1);
     setNum2(Math.floor(Math.random() * 8) + 1);
@@ -107,164 +166,368 @@ export default function LoginPage() {
   };
 
   const Logs = async (accID, acct) => {
-    const baseURL = sessionStorage.getItem('baseURL');
+    const baseURL = sessionStorage.getItem('baseURL') || BASE_URL;
     const url = baseURL + 'audit-log.php';
 
     const Details = {
       accID: accID,
       activity: acct
-    }
+    };
+
     try {
+      addDebugLog('Sending audit log:', { url, Details });
+
       const response = await axios.get(url, {
         params: {
           json: JSON.stringify(Details),
           operation: "Logs"
-        }
+        },
+        timeout: 10000,
+        validateStatus: (status) => status < 600
       });
+
+      addDebugLog('Audit log response:', {
+        status: response.status,
+        data: response.data
+      });
+
     } catch (error) {
-      console.error("Error fetching inventory stock out:", error);
+      addDebugLog('Audit log error:', {
+        message: error.message,
+        response: error.response?.data
+      });
     }
-    return;
   };
 
   const OnlineState = async (accID) => {
-    const baseURL = sessionStorage.getItem('baseURL');
+    const baseURL = sessionStorage.getItem('baseURL') || BASE_URL;
     const url = baseURL + 'login.php';
 
     const Details = {
       userID: accID,
       state: 'Online'
-    }
+    };
+
     try {
+      addDebugLog('Updating online state:', { url, Details });
+
       const response = await axios.get(url, {
         params: {
           json: JSON.stringify(Details),
           operation: "actStatus"
-        }
+        },
+        timeout: 10000,
+        validateStatus: (status) => status < 600
       });
+
+      addDebugLog('Online state response:', {
+        status: response.status,
+        data: response.data
+      });
+
     } catch (error) {
-      console.error("Error fetching inventory stock out:", error);
+      addDebugLog('Online state error:', {
+        message: error.message,
+        response: error.response?.data
+      });
     }
-    return;
   };
 
   const login = async (e) => {
     e.preventDefault();
 
-    sessionStorage.setItem('loginSuccess', 'true');
-    sessionStorage.setItem('baseURL', 'http://localhost/capstone-api/api/');
-    // sessionStorage.setItem('baseURL', 'http://192.168.254.119//capstone-api/api/');
+    if (isLoading) return;
+    setIsLoading(true);
 
+    // Clear previous debug logs for this login attempt
+    setDebugInfo([]);
+    addDebugLog('=== Starting Login Process ===');
 
-    const correctAnswer = num1 + num2;
-    if (parseInt(userAnswer) !== correctAnswer) {
-      // setModalHeader('Authentication Failed⚠️');
-      // setModalBody('Please solve the authentication question correctly!');
-      // setShow(true);
-      showAlertError({
-        icon: "error",
-        title: "Opss!",
-        text: 'Please solve the authentication question correctly!',
-        button: 'Try Again'
+    try {
+      // Verify captcha
+      const correctAnswer = num1 + num2;
+      addDebugLog('Captcha check:', {
+        expected: correctAnswer,
+        received: parseInt(userAnswer),
+        valid: parseInt(userAnswer) === correctAnswer
       });
 
-      return;
-    }
-
-    const baseURL = sessionStorage.getItem('baseURL');
-    const url = baseURL + 'login.php';
-    const LogCridentials = { username: email, password: password };
-
-    var response = await axios.get(url, {
-      params: { json: JSON.stringify(LogCridentials), operation: "login" }
-    });
-
-    if (response.data.length > 0) {
-      console.log(response.data[0].active_status);
-
-      if (response.data[0].role_name == 'Admin') {
-        sessionStorage.setItem('user_id', response.data[0].account_id);
-        sessionStorage.setItem('location_id', response.data[0].location_id);
-        sessionStorage.setItem('user_fname', response.data[0].fname);
-        sessionStorage.setItem('user_role', response.data[0].role_name);
-        sessionStorage.setItem('fullname', response.data[0].fname + ' ' + response.data[0].mname + ' ' + response.data[0].lname);
-
-        router.push('/adminPage');
-        OnlineState(response.data[0].account_id);
-
-      } else if (response.data[0].role_name == 'Inventory Manager') {
-        sessionStorage.setItem('user_id', response.data[0].account_id);
-        sessionStorage.setItem('location_id', response.data[0].location_id);
-        sessionStorage.setItem('user_fname', response.data[0].fname);
-        sessionStorage.setItem('user_role', response.data[0].role_name);
-        sessionStorage.setItem('location_name', response.data[0].location_name);
-        sessionStorage.setItem('fullname', response.data[0].fname + ' ' + response.data[0].mname + ' ' + response.data[0].lname);
-
-        router.push('/inventoryPage');
-        OnlineState(response.data[0].account_id);
-
-      } else if (response.data[0].role_name == 'Warehouse Representative') {
-        sessionStorage.setItem('user_id', response.data[0].account_id);
-        sessionStorage.setItem('location_id', response.data[0].location_id);
-        sessionStorage.setItem('user_fname', response.data[0].fname);
-        sessionStorage.setItem('user_role', response.data[0].role_name);
-        sessionStorage.setItem('location_name', response.data[0].location_name);
-        sessionStorage.setItem('fullname', response.data[0].fname + ' ' + response.data[0].mname + ' ' + response.data[0].lname);
-
-
-        router.push('/warehousePage');
-        OnlineState(response.data[0].account_id);
-
-      } else if (response.data[0].role_name == 'Sales Clerk') {
-        sessionStorage.setItem('user_id', response.data[0].account_id);
-        sessionStorage.setItem('location_id', response.data[0].location_id);
-        sessionStorage.setItem('user_fname', response.data[0].fname);
-        sessionStorage.setItem('user_role', response.data[0].role_name);
-        sessionStorage.setItem('location_name', response.data[0].location_name);
-        sessionStorage.setItem('fullname', response.data[0].fname + ' ' + response.data[0].mname + ' ' + response.data[0].lname);
-
-
-        router.push('/salesClerkPage');
-        OnlineState(response.data[0].account_id);
-
-      } else {
-        // setModalHeader('Account not found⚠️');
-        // setModalBody('User credentials are not found, please check your email and password!');
-        // setShow(true);
+      if (parseInt(userAnswer) !== correctAnswer) {
         showAlertError({
           icon: "error",
-          title: "Account not found⚠️",
-          text: 'User credentials are not found, please check your email and password!',
+          title: "Oops!",
+          text: 'Please solve the authentication question correctly!',
           button: 'Try Again'
         });
-
+        setIsLoading(false);
         return;
       }
 
-      Logs(response.data[0].account_id, 'Online');
-      return;
+      sessionStorage.setItem('loginSuccess', 'true');
+      const baseURL = sessionStorage.getItem('baseURL') || BASE_URL;
+      const url = baseURL + 'login.php';
+      const LogCredentials = {
+        username: email.trim(),
+        password: password
+      };
 
-    } else {
-      showAlertError({
+      addDebugLog('Login attempt details:', {
+        url: url,
+        credentials: {
+          username: email.trim(),
+          password: '***' + password.slice(-2) // Show only last 2 chars for security
+        },
+        method: 'GET',
+        params: {
+          operation: "login"
+        }
+      });
+
+      // Create axios instance with interceptors for debugging
+      const axiosInstance = axios.create({
+        timeout: 15000,
+        validateStatus: function (status) {
+          // Don't throw error for any status code so we can debug
+          return status < 600;
+        }
+      });
+
+      // Add request interceptor
+      axiosInstance.interceptors.request.use(
+        (config) => {
+          addDebugLog('Request being sent:', {
+            url: config.url,
+            params: config.params,
+            headers: config.headers
+          });
+          return config;
+        },
+        (error) => {
+          addDebugLog('Request error:', error);
+          return Promise.reject(error);
+        }
+      );
+
+      // Add response interceptor
+      axiosInstance.interceptors.response.use(
+        (response) => {
+          addDebugLog('Response received:', {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+            data: response.data
+          });
+          return response;
+        },
+        (error) => {
+          addDebugLog('Response error:', {
+            message: error.message,
+            code: error.code,
+            response: error.response
+          });
+          return Promise.reject(error);
+        }
+      );
+
+      const response = await axiosInstance.get(url, {
+        params: {
+          json: JSON.stringify(LogCredentials),
+          operation: "login"
+        }
+      });
+
+      // Check if we got a 500 error
+      if (response.status === 500) {
+        addDebugLog('❌ Server Error 500 - PHP script has an error');
+        addDebugLog('Server response:', response.data);
+
+        // Try to parse any error message from the server
+        let errorDetails = 'Internal server error';
+        if (typeof response.data === 'string') {
+          // Check if it's a PHP error message
+          if (response.data.includes('Fatal error') || response.data.includes('Warning') || response.data.includes('Parse error')) {
+            errorDetails = 'PHP Error detected. Check server logs.';
+            addDebugLog('PHP Error found in response:', response.data);
+          }
+        }
+
+        showAlertError({
           icon: "error",
-          title: "Account not found⚠️",
-          text: 'User credentials are not found, please check your email and password!',
+          title: "Server Error",
+          text: `The server encountered an error (500). ${errorDetails}`,
           button: 'Try Again'
         });
-    }
 
-    generateRandomNumbers();
-  }
+        setIsLoading(false);
+        return;
+      }
+
+      // Check for successful response
+      if (response.status === 200) {
+        addDebugLog('✅ Server responded with 200 OK');
+
+        if (response.data && response.data.length > 0) {
+          const userData = response.data[0];
+          addDebugLog('User data received:', {
+            ...userData,
+            password: undefined // Don't log password
+          });
+
+          // Store user data
+          sessionStorage.setItem('user_id', userData.account_id);
+          sessionStorage.setItem('location_id', userData.location_id);
+          sessionStorage.setItem('user_fname', userData.fname);
+          sessionStorage.setItem('user_role', userData.role_name);
+          sessionStorage.setItem('fullname', `${userData.fname} ${userData.mname || ''} ${userData.lname}`.trim());
+
+          if (userData.location_name) {
+            sessionStorage.setItem('location_name', userData.location_name);
+          }
+
+          // Update online status
+          await OnlineState(userData.account_id);
+
+          // Log the activity
+          await Logs(userData.account_id, 'Online');
+
+          // Route based on role
+          const roleRoutes = {
+            'Admin': '/adminPage',
+            'Inventory Manager': '/inventoryPage',
+            'Warehouse Representative': '/warehousePage',
+            'Sales Clerk': '/salesClerkPage'
+          };
+
+          const route = roleRoutes[userData.role_name];
+          if (route) {
+            addDebugLog(`✅ Login successful! Redirecting to ${route}`);
+            router.push(route);
+          } else {
+            throw new Error(`Unknown role: ${userData.role_name}`);
+          }
+
+        } else {
+          addDebugLog('❌ No user data in response');
+          showAlertError({
+            icon: "error",
+            title: "Account not found⚠️",
+            text: 'User credentials are not found, please check your email and password!',
+            button: 'Try Again'
+          });
+          generateRandomNumbers();
+        }
+      } else {
+        addDebugLog(`⚠️ Unexpected status code: ${response.status}`);
+      }
+
+    } catch (error) {
+      addDebugLog('❌ Login error caught:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response
+      });
+
+      let errorMessage = 'An error occurred during login. Please check the debug panel for details.';
+
+      if (error.response) {
+        errorMessage = `Server error: ${error.response.status}. Check debug panel for details.`;
+      } else if (error.request) {
+        errorMessage = 'Cannot connect to server. Please check your internet connection.';
+      }
+
+      showAlertError({
+        icon: "error",
+        title: "Login Failed",
+        text: errorMessage,
+        button: 'Try Again'
+      });
+
+      generateRandomNumbers();
+    } finally {
+      setIsLoading(false);
+      addDebugLog('=== Login Process Completed ===');
+    }
+  };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !isLoading) {
       login(e);
     }
   };
 
+  // Debug Panel Component
+  const DebugPanel = () => (
+    <div style={{
+      position: 'fixed',
+      bottom: '20px',
+      left: '20px',
+      right: '20px',
+      maxHeight: '300px',
+      backgroundColor: '#1e1e1e',
+      color: '#fff',
+      border: '2px solid #333',
+      borderRadius: '8px',
+      padding: '15px',
+      overflowY: 'auto',
+      zIndex: 9999,
+      fontFamily: 'monospace',
+      fontSize: '12px'
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '10px',
+        borderBottom: '1px solid #444',
+        paddingBottom: '10px'
+      }}>
+        <h5 style={{ margin: 0, color: '#fff' }}>🐛 Debug Console</h5>
+        <button
+          onClick={() => setShowDebugPanel(false)}
+          style={{
+            background: '#ff4444',
+            border: 'none',
+            color: '#fff',
+            padding: '5px 10px',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Close
+        </button>
+      </div>
+      <div>
+        {debugInfo.map((log, index) => (
+          <div key={index} style={{
+            marginBottom: '8px',
+            padding: '5px',
+            backgroundColor: '#2a2a2a',
+            borderRadius: '4px'
+          }}>
+            <span style={{ color: '#00ff00' }}>[{log.time}]</span>{' '}
+            <span style={{ color: '#ffff00' }}>{log.message}</span>
+            {log.data && (
+              <pre style={{
+                margin: '5px 0 0 0',
+                color: '#00ffff',
+                fontSize: '11px',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all'
+              }}>
+                {typeof log.data === 'object'
+                  ? JSON.stringify(log.data, null, 2)
+                  : log.data}
+              </pre>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <Modal show={show} onHide={handleClose} animation={true} >
+      <Modal show={show} onHide={handleClose} animation={true}>
         <Modal.Header closeButton>
           <Modal.Title>{modalHeader}</Modal.Title>
         </Modal.Header>
@@ -277,12 +540,34 @@ export default function LoginPage() {
       </Modal>
 
       <div className='main_div'>
+        {/* Debug Toggle Button */}
+        {/* <button
+          onClick={() => setShowDebugPanel(!showDebugPanel)}
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            backgroundColor: '#ff6b6b',
+            color: '#fff',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            zIndex: 1000,
+            fontWeight: 'bold',
+            boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+          }}
+        >
+          {showDebugPanel ? '🐛 Hide Debug' : '🐛 Show Debug'}
+        </button> */}
+
         <div className='as'>
           <div className='pic-slog'>
             <Image src={'/assets/images/AG.png'} width={90} height={90} alt='logo' className='logo' />
-            <h1>A.G Home Appliance <br></br>
+            <h1>A.G Home Appliance <br />
               & Furniture Showroom</h1>
           </div>
+
           <form onSubmit={login} className='log-in-form'>
             <h2 className='Log-1'>Sign in to start your session</h2>
 
@@ -297,10 +582,10 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 id='email'
+                disabled={isLoading}
               />
             </div>
 
-            {/* Enhanced password input with toggle */}
             <div style={{ marginTop: '10px' }}>
               <label className='label'>
                 Password:
@@ -314,6 +599,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete='current-password'
+                  disabled={isLoading}
                   style={{
                     paddingRight: '45px',
                     width: '100%'
@@ -322,6 +608,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={togglePasswordVisibility}
+                  disabled={isLoading}
                   style={{
                     position: 'absolute',
                     right: '5px',
@@ -329,7 +616,7 @@ export default function LoginPage() {
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    cursor: 'pointer',
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
                     padding: '6px',
                     display: 'flex',
                     alignItems: 'center',
@@ -338,15 +625,7 @@ export default function LoginPage() {
                     transition: 'all 0.2s ease',
                     zIndex: 2,
                     color: '#666',
-
-                  }}
-                  onMouseEnter={(e) => {
-                    // e.target.style.backgroundColor = 'rgba(102, 126, 234, 0.1)';
-                    // e.target.style.color = '#667eea';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'transparent';
-                    e.target.style.color = '#666';
+                    opacity: isLoading ? 0.5 : 1
                   }}
                 >
                   {showPassword ? <EyeOffIcon /> : <EyeIcon />}
@@ -367,14 +646,28 @@ export default function LoginPage() {
                 value={userAnswer}
                 onChange={(e) => setUserAnswer(e.target.value)}
                 onKeyDown={handleKeyDown}
+                disabled={isLoading}
               />
-              <button type="button" className='operator-1' onClick={generateRandomNumbers}>
+              <button
+                type="button"
+                className='operator-1'
+                onClick={generateRandomNumbers}
+                disabled={isLoading}
+              >
                 <Image src={'/assets/images/refresh.png'} width={60} height={55} alt="Refresh" />
               </button>
             </div>
 
-            <button type="submit" className='sub-button'>
-              Login
+            <button
+              type="submit"
+              className='sub-button'
+              disabled={isLoading}
+              style={{
+                opacity: isLoading ? 0.7 : 1,
+                cursor: isLoading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isLoading ? 'Logging in...' : 'Login'}
             </button>
           </form>
         </div>
@@ -382,6 +675,9 @@ export default function LoginPage() {
         {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
         {success && <p style={{ color: 'green', marginTop: '10px' }}>{success}</p>}
       </div>
+
+      {/* Debug Panel */}
+      {showDebugPanel && <DebugPanel />}
     </>
   );
 }
