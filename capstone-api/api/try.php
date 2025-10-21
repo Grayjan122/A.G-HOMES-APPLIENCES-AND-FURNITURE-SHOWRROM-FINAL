@@ -703,28 +703,6 @@ class User
         return json_encode($returnValue);
     }
 
-     function GetcustomizeTracking($json)
-    {
-        include 'conn.php';
-
-        // $json = json_decode($json, true);
-
-        $accountID = isset($json['accID']) ? (int) $json['accID'] : 0;
-        $locationID = isset($json['locID']) ? (int) $json['locID'] : 0;
-
-        $json = json_decode($json, true);
-        $sql = "SELECT `crr_id`, `customize_request_id`, `status`, `date`, `time` FROM `customize_request_report` ;";
-
-
-        $stmt = $conn->prepare($sql);
-        // $stmt->bindValue(':locationId', $json['locID'], PDO::PARAM_INT);
-        $stmt->execute();
-        $returnValue = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        unset($conn);
-        unset($stmt);
-        return json_encode($returnValue);
-    }
-
 
 
 }
@@ -752,10 +730,6 @@ switch ($operation) {
         break;
     case 'GetCustomizeRequestFrom':
         echo $user->GetcustomizeRequestFrom($json);
-        break;
-    
-    case 'GetCustomizeTracking':
-        echo $user->GetcustomizeTracking($json);
         break;
 
 

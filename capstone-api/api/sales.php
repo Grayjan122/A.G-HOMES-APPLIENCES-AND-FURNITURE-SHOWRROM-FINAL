@@ -555,7 +555,7 @@ class User
                     $stmt->bindValue(':customerSalesId', $customize_sales_id, PDO::PARAM_INT);
                     $stmt->bindValue(':baseProductId', $sales['baseProduct']['product_id'], PDO::PARAM_INT);
                     $stmt->bindValue(':modifications', $sales['modifications']);
-                    $stmt->bindValue(':origPrice', $sales['baseProduct']['price'], PDO::PARAM_INT);
+                    $stmt->bindValue(':origPrice', $sales['baseProduct']['price']);
                     $stmt->bindValue(':adjustedPrice', $sales['price']);
                     $stmt->bindValue(':qty', $sales['quantity'], PDO::PARAM_INT);
                     $stmt->bindValue(':total', $sales['price'] * $sales['quantity']);

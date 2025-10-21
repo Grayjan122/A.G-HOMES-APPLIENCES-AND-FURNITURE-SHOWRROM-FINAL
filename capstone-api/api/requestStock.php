@@ -797,16 +797,20 @@ class User
         // $time = date("H:i:s");
 
         $sql = "SELECT a.`r_deliver_id`, a.`request_stock_id`, a.`date`, a.`delivery_status`, 
-                            a.`account_id`, b.fname, b.mname, b.lname, c.request_from, d.location_name
+                            a.`account_id`, b.fname, b.mname, b.lname, c.request_from, d.location_name AS 'reqFrom',
+                    c.request_to, e.location_name AS 'reqTo',
+                    c.request_by, f.fname AS 'firstName', f.mname AS 'middleName', f.lname AS 'lastName'               
                     FROM `request_deliver` a INNER JOIN account b ON a.account_id = b.account_id
                     INNER JOIN request_stock c ON a.request_stock_id = c.request_stock_id
                     INNER JOIN location d ON d.location_id = c.request_from
-                    WHERE a.delivery_status != 'Complete'
-                    ORDER BY a.r_deliver_id ASC;";
+                    INNER JOIN location e ON c.request_to = e.location_id
+                    INNER JOIN account f ON c.request_by = f.account_id
+                    WHERE a.delivery_status != 'Complete' 
+                    AND c.request_to = :locID
+                    ORDER BY a.r_deliver_id ASC";
 
         $stmt = $conn->prepare($sql);
-
-
+        $stmt->bindParam(':locID', $details['locID'] , PDO::PARAM_INT);
         $stmt->execute();
         $returnValue = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
