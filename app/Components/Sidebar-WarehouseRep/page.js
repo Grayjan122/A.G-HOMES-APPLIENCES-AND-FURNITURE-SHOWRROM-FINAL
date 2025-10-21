@@ -16,6 +16,9 @@ import StockInWR from '@/app/Contents/warehouse-contents/stockin';
 import DashboardWR from '@/app/Contents/warehouse-contents/dashboardWR';
 import CustomizeRequest from '@/app/Contents/warehouse-contents/customizeReq';
 import CombinedRequests from '@/app/Contents/warehouse-contents/requestPage';
+import RequestManagementCustomizeWR from '@/app/Contents/warehouse-contents/requestManagementCustomize';
+import UnifiedRequestManagement from '@/app/Contents/warehouse-contents/combineRequestManagement';
+import DeliveryCustomizeWR from '@/app/Contents/warehouse-contents/customizeDelivery';
 
 const SidebarWarehouseRep = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -56,34 +59,73 @@ const SidebarWarehouseRep = () => {
         },
       ],
     },
-    {
-      key: 'requestmanagement',
+     {
+      key: 'combineRequestManagement',
       label: 'Request Management',
       icon: '/assets/images/req-mng.png',
-      component: <RequestManagementWR />,
+      component: <UnifiedRequestManagement />,
       children: [
-        // {
-        //   key: 'inventory-transfer-request',
-        //   label: 'Stock Request',
-        //   component: <StockRequestWR />,
-        // },
-        //  {
-        //   key: 'customize-request',
-        //   label: 'Customize Request',
-        //   component: <CustomizeRequest />,
-        // },
-         {
+        {
           key: 'request-all',
           label: 'Product Requests',
           component: <CombinedRequests />,
         },
+       
       ],
     },
+    // {
+    //   key: 'requestmanagement',
+    //   label: 'Request Management',
+    //   icon: '/assets/images/req-mng.png',
+    //   component: <RequestManagementWR />,
+    //   children: [
+    //     // {
+    //     //   key: 'inventory-transfer-request',
+    //     //   label: 'Stock Request',
+    //     //   component: <StockRequestWR />,
+    //     // },
+    //     //  {
+    //     //   key: 'customize-request',
+    //     //   label: 'Customize Request',
+    //     //   component: <CustomizeRequest />,
+    //     // },
+    //     //  {
+    //     //   key: 'request-all',
+    //     //   label: 'Product Requests',
+    //     //   component: <CombinedRequests />,
+    //     // },
+    //   ],
+    // },
+    //  {
+    //   key: 'requestmanagementcustomize',
+    //   label: 'Request Management Customize',
+    //   icon: '/assets/images/req-mng.png',
+    //   component: <RequestManagementCustomizeWR />,
+    //   children: [
+    //     // {
+    //     //   key: 'inventory-transfer-request',
+    //     //   label: 'Stock Request',
+    //     //   component: <StockRequestWR />,
+    //     // },
+    //     //  {
+    //     //   key: 'customize-request',
+    //     //   label: 'Customize Request',
+    //     //   component: <CustomizeRequest />,
+    //     // },
+       
+    //   ],
+    // },
     {
       key: 'delivery',
       label: 'Delivery',
       icon: '/assets/images/delivery-removebg-preview.png',
       component: <DeliveryWR />,
+    },
+     {
+      key: 'deliverycustomize',
+      label: 'Delivery Customize',
+      icon: '/assets/images/delivery-removebg-preview.png',
+      component: <DeliveryCustomizeWR />,
     },
   ];
 

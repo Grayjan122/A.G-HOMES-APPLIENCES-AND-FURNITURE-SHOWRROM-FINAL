@@ -377,6 +377,8 @@ const CombinedRequests = () => {
                 params: { json: JSON.stringify(ID), operation: "GetCustomizeRequest" }
             });
             setCustomizeRequestList(response.data);
+            console.log(response.data);
+            
         } catch (error) {
             console.error("Error fetching customize requests:", error);
         }
@@ -498,7 +500,7 @@ const CombinedRequests = () => {
 
     const openCustomizeModal = async (request) => {
         const salesId = request.customize_sales_id;
-        
+
         setC_ReqID(request.customize_req_id);
         setC_SalesID(request.customize_sales_id);
         setC_ReqDate(formatDate(request.date));
@@ -513,7 +515,7 @@ const CombinedRequests = () => {
         GetStatsAndDate(request.status, request.customize_req_id);
 
         const [semiData, fullData] = await Promise.all([GetSemiDetails(), GetFullDetails()]);
-        
+
         const filteredSemi = semiData.filter(item => parseInt(item.customize_sales_id) === parseInt(salesId));
         const filteredFull = fullData.filter(item => parseInt(item.customize_sales_id) === parseInt(salesId));
 
@@ -528,16 +530,16 @@ const CombinedRequests = () => {
 
     // Combine and sort all requests
     const allRequests = [
-        ...stockRequestList.map(req => ({ 
-            ...req, 
-            type: 'stock', 
+        ...stockRequestList.map(req => ({
+            ...req,
+            type: 'stock',
             id: req.request_stock_id,
             displayDate: req.date,
             displayTime: req.time
         })),
-        ...customizeRequestList.filter(req => req.status === 'Pending').map(req => ({ 
-            ...req, 
-            type: 'customize', 
+        ...customizeRequestList.filter(req => req.status === 'Pending').map(req => ({
+            ...req,
+            type: 'customize',
             id: req.customize_req_id,
             displayDate: req.date,
             displayTime: req.time
@@ -555,13 +557,14 @@ const CombinedRequests = () => {
             </Alert>
 
             {/* Stock Request Modal */}
+            {/* Stock Request Modal */}
             <Modal show={showStockModal} onHide={() => { setShowStockModal(false); setAvailProducts([]); }} size="lg" className='request-modal'>
                 <Modal.Header closeButton className='searched-product-header'>
                     <Modal.Title>Request Details</Modal.Title>
                 </Modal.Header>
                 <Modal.Body className='request-modal-body'>
-                   
-                     <div className="r-details-head">
+
+                    <div className="r-details-head">
                         <div className='r-d-div'>
                             <div className='r-1'><strong>REQUEST ID:</strong> {s_reqID}</div>
                             <div><strong>REQUEST DATE:</strong> {s_reqDate ? formatDate(s_reqDate) : 'N/A'}</div>
@@ -580,7 +583,7 @@ const CombinedRequests = () => {
                     </div>
 
                     {/* Summary Card */}
-                    <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+                    <div style={{ display: 'flex', gap: '15px', marginTop: '15px', marginBottom: '20px' }}>
                         <div style={{ flex: 1, padding: '15px', backgroundColor: '#d4edda', borderRadius: '8px', border: '1px solid #28a745' }}>
                             <div style={{ fontSize: '14px', color: '#155724', marginBottom: '5px' }}>Total Items Requested</div>
                             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#155724' }}>{stockRequestDetails.length}</div>
@@ -593,35 +596,57 @@ const CombinedRequests = () => {
                         </div>
                     </div>
 
-                    <div style={{ height: '300px', overflowY: 'auto', marginBottom: '15px' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ backgroundColor: '#f8f9fa' }}>
-                                    <th style={{ padding: '10px', border: '1px solid #dee2e6' }}>Product Code</th>
-                                    <th style={{ padding: '10px', border: '1px solid #dee2e6' }}>Description</th>
-                                    <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>QTY</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {currentStockItems.map((p, i) => (
-                                    <tr key={i}>
-                                        <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{p.product_name}</td>
-                                        <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{p.description}</td>
-                                        <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>{p.qty}</td>
+                    <div style={{ border: '1px solid #ddd', borderRadius: '4px', display: 'flex', flexDirection: 'column', height: '500px' }}>
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 0 }}>
+                                <thead style={{ backgroundColor: '#f8f9fa', position: 'sticky', top: 0, zIndex: 1 }}>
+                                    <tr>
+                                        <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '25%' }}>Product Code</th>
+                                        <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '55%' }}>Description</th>
+                                        <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '20%', textAlign: 'center' }}>QTY</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {currentStockItems.length > 0 ? (
+                                        currentStockItems.map((p, i) => (
+                                            <tr key={i}>
+                                                <td style={{ padding: '12px', border: '1px solid #dee2e6', fontWeight: '500' }}>{p.product_name}</td>
+                                                <td style={{ padding: '12px', border: '1px solid #dee2e6' }}>{p.description}</td>
+                                                <td style={{ padding: '12px', border: '1px solid #dee2e6', textAlign: 'center', fontWeight: '500', fontSize: '16px' }}>{p.qty}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="3" style={{ textAlign: "center", padding: "30px", fontStyle: "italic", color: '#666' }}>
+                                                <div style={{ fontSize: '48px', marginBottom: '15px' }}>📦</div>
+                                                <div style={{ fontSize: '16px' }}>No items found</div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
 
-                    {/* Fixed Pagination */}
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <CustomPagination
-                            currentPage={currentStockPage}
-                            totalPages={totalStockPages}
-                            onPageChange={handleStockPageChange}
-                            color="green"
-                        />
+                        {/* Fixed Pagination Footer */}
+                        <div style={{
+                            borderTop: '1px solid #ddd',
+                            backgroundColor: '#f8f9fa',
+                            minHeight: '60px',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                        }}>
+                            {totalStockPages > 1 ? (
+                                <CustomPagination
+                                    currentPage={currentStockPage}
+                                    totalPages={totalStockPages}
+                                    onPageChange={handleStockPageChange}
+                                    color="green"
+                                />
+                            ) : (
+                                <div style={{ height: '40px' }}></div>
+                            )}
+                        </div>
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
@@ -636,10 +661,10 @@ const CombinedRequests = () => {
                     <Modal.Title>Customize Request Details</Modal.Title>
                 </Modal.Header>
                 <Modal.Body className='request-modal-body'>
-                     <div className="r-details-head">
+                    <div className="r-details-head">
                         <div className='r-d-div'>
                             <div><strong>CUSTOMIZE REQUEST ID:</strong> {c_reqID}</div>
-                             <div><strong>REQUEST DATE:</strong> {c_reqDate}</div>
+                            <div><strong>REQUEST DATE:</strong> {c_reqDate}</div>
                         </div>
 
                         <div><strong>REQUEST FROM:</strong> {c_reqFrom}</div>
@@ -656,96 +681,118 @@ const CombinedRequests = () => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                        <div style={{ flex: 1, padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '14px', color: '#856404' }}>Semi-Customized Items</div>
+                    <div style={{ display: 'flex', gap: '15px', marginTop: '15px', marginBottom: '20px' }}>
+                        <div style={{ flex: 1, padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffc107' }}>
+                            <div style={{ fontSize: '14px', color: '#856404', marginBottom: '5px' }}>Semi-Customized Items</div>
                             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#856404' }}>{currentSemiDetails.length}</div>
                         </div>
-                        <div style={{ flex: 1, padding: '15px', backgroundColor: '#d1ecf1', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '14px', color: '#0c5460' }}>Full-Customized Items</div>
+                        <div style={{ flex: 1, padding: '15px', backgroundColor: '#d1ecf1', borderRadius: '8px', border: '1px solid #17a2b8' }}>
+                            <div style={{ fontSize: '14px', color: '#0c5460', marginBottom: '5px' }}>Full-Customized Items</div>
                             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#0c5460' }}>{currentFullDetails.length}</div>
                         </div>
-                        <div style={{ flex: 1, padding: '15px', backgroundColor: '#d4edda', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '14px', color: '#155724' }}>Total Items</div>
+                        <div style={{ flex: 1, padding: '15px', backgroundColor: '#d4edda', borderRadius: '8px', border: '1px solid #28a745' }}>
+                            <div style={{ fontSize: '14px', color: '#155724', marginBottom: '5px' }}>Total Items</div>
                             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#155724' }}>{currentSemiDetails.length + currentFullDetails.length}</div>
                         </div>
                     </div>
 
-                    {/* Semi-Customized Section */}
-                    {currentSemiDetails.length > 0 && (
-                        <div style={{ marginBottom: '30px' }}>
-                            <h6 style={{ padding: '10px', backgroundColor: '#fff3cd', fontWeight: 'bold', color: '#856404' }}>
-                                Semi-Customized Items ({currentSemiDetails.length})
-                            </h6>
-                            <div style={{ height: '250px', overflowY: 'auto', marginBottom: '15px' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                    <thead style={{ backgroundColor: '#f8f9fa', position: 'sticky', top: 0 }}>
-                                        <tr>
-                                            <th style={{ padding: '10px', border: '1px solid #dee2e6' }}>Base Product ID</th>
-                                            <th style={{ padding: '10px', border: '1px solid #dee2e6' }}>Modifications</th>
-                                            <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Quantity</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {currentSemiItems.map((item, i) => (
-                                            <tr key={i}>
-                                                <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.baseProduct_id || 'N/A'}</td>
-                                                <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.modifications || 'No modifications'}</td>
-                                                <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>{item.qty || 0}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {/* Semi Pagination - Fixed Position */}
-                            <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                <CustomPagination
-                                    currentPage={currentCustomizeSemiPage}
-                                    totalPages={totalSemiPages}
-                                    onPageChange={handleSemiPageChange}
-                                    color="green"
-                                />
-                            </div>
-                        </div>
-                    )}
+                    <div style={{ border: '1px solid #ddd', borderRadius: '4px', display: 'flex', flexDirection: 'column', height: '500px' }}>
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            {(() => {
+                                // Combine semi and full items into one array
+                                const allCustomizeItems = [
+                                    ...(currentSemiDetails || []).map(item => ({
+                                        type: 'Semi-Customized',
+                                        baseProductId: item.baseProduct_id,
+                                        description: item.description || 'No description',
+                                        additionalDescription: item.modifications || 'No modifications specified',
+                                        qty: item.qty
+                                    })),
+                                    ...(currentFullDetails || []).map(item => ({
+                                        type: 'Full-Customized',
+                                        baseProductId: null,
+                                        description: item.description || 'N/A',
+                                        additionalDescription: item.additional_description || 'N/A',
+                                        qty: item.qty
+                                    }))
+                                ];
 
-                    {/* Full-Customized Section */}
-                    {currentFullDetails.length > 0 && (
-                        <div>
-                            <h6 style={{ padding: '10px', backgroundColor: '#d1ecf1', fontWeight: 'bold', color: '#0c5460' }}>
-                                Full-Customized Items ({currentFullDetails.length})
-                            </h6>
-                            <div style={{ height: '250px', overflowY: 'auto', marginBottom: '15px' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                    <thead style={{ backgroundColor: '#f8f9fa', position: 'sticky', top: 0 }}>
-                                        <tr>
-                                            <th style={{ padding: '10px', border: '1px solid #dee2e6' }}>Description</th>
-                                            <th style={{ padding: '10px', border: '1px solid #dee2e6' }}>Additional Description</th>
-                                            <th style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>Quantity</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {currentFullItems.map((item, i) => (
-                                            <tr key={i}>
-                                                <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.description || 'N/A'}</td>
-                                                <td style={{ padding: '10px', border: '1px solid #dee2e6' }}>{item.additional_description || 'N/A'}</td>
-                                                <td style={{ padding: '10px', border: '1px solid #dee2e6', textAlign: 'center' }}>{item.qty || 0}</td>
+                                // Calculate pagination for combined items
+                                const startIndex = (currentCustomizeSemiPage - 1) * ITEMS_PER_PAGE;
+                                const paginatedItems = allCustomizeItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+                                return allCustomizeItems.length > 0 ? (
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 0 }}>
+                                        <thead style={{ backgroundColor: '#f8f9fa', position: 'sticky', top: 0, zIndex: 1 }}>
+                                            <tr>
+                                                <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '15%' }}>Type</th>
+                                                <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '15%' }}>Base Product Code</th>
+                                                <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '35%' }}>Description</th>
+                                                <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '25%' }}>Additional Description</th>
+                                                <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '10%', textAlign: 'center' }}>Quantity</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {/* Full Pagination - Fixed Position */}
-                            <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                <CustomPagination
-                                    currentPage={currentCustomizeFullPage}
-                                    totalPages={totalFullPages}
-                                    onPageChange={handleFullPageChange}
-                                    color="green"
-                                />
-                            </div>
+                                        </thead>
+                                        <tbody>
+                                            {paginatedItems.map((item, index) => (
+                                                <tr key={index}>
+                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6' }}>
+                                                        <span style={{
+                                                            padding: '4px 8px',
+                                                            borderRadius: '4px',
+                                                            fontSize: '12px',
+                                                            fontWeight: 'bold',
+                                                            backgroundColor: item.type === 'Semi-Customized' ? '#fff3cd' : '#d1ecf1',
+                                                            color: item.type === 'Semi-Customized' ? '#856404' : '#0c5460'
+                                                        }}>
+                                                            {item.type}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6', fontWeight: '500' }}>{item.baseProductId || 'N/A'}</td>
+                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6' }}>{item.description}</td>
+                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6' }}>{item.additionalDescription || 'N/A'}</td>
+                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6', textAlign: 'center', fontWeight: '500', fontSize: '16px' }}>{item.qty || 0}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div style={{ textAlign: "center", padding: "30px", fontStyle: "italic", color: '#666' }}>
+                                        <div style={{ fontSize: '48px', marginBottom: '15px' }}>📦</div>
+                                        <div style={{ fontSize: '16px' }}>No customize items found</div>
+                                    </div>
+                                );
+                            })()}
                         </div>
-                    )}
+
+                        {/* Fixed Pagination Footer */}
+                        <div style={{
+                            borderTop: '1px solid #ddd',
+                            backgroundColor: '#f8f9fa',
+                            minHeight: '60px',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                        }}>
+                            {(() => {
+                                const allCustomizeItems = [
+                                    ...(currentSemiDetails || []),
+                                    ...(currentFullDetails || [])
+                                ];
+                                const totalPagesCustomize = Math.ceil(allCustomizeItems.length / ITEMS_PER_PAGE);
+
+                                return totalPagesCustomize > 1 ? (
+                                    <CustomPagination
+                                        currentPage={currentCustomizeSemiPage}
+                                        totalPages={totalPagesCustomize}
+                                        onPageChange={handleSemiPageChange}
+                                        color="green"
+                                    />
+                                ) : (
+                                    <div style={{ height: '40px' }}></div>
+                                );
+                            })()}
+                        </div>
+                    </div>
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => { setShowCustomizeModal(false); setCurrentSemiDetails([]); setCurrentFullDetails([]); }}>Close</Button>
@@ -795,7 +842,7 @@ const CombinedRequests = () => {
                                             <span className="cardLabel" style={{ fontSize: '30px' }}>{req.type === 'stock' ? 'REQUEST ID:' : 'CUSTOMIZE REQUEST ID:'}</span>
                                             <span className="cardValue" style={{ fontSize: '30px', fontWeight: 'bold' }}>{req.id}</span>
                                         </div>
-                                        
+
                                         {req.type === 'stock' ? (
                                             <>
                                                 <div className="cardRow">
@@ -832,7 +879,7 @@ const CombinedRequests = () => {
                                             </>
                                         )}
                                     </div>
-                                    
+
                                     <div className="statusIcon">
                                         {(req.type === 'stock' ? req.request_status : req.status) === 'Pending' && <span>⟳</span>}
                                         {(req.type === 'stock' ? req.request_status : req.status) === 'Approved' && <span>✅</span>}

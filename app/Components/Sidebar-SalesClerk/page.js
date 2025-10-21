@@ -2,133 +2,123 @@
 
 import '../../css/sidebar.css';
 import Image from 'next/image';
-import { useState } from 'react';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 // Components
-import Dashboard from '@/app/Contents/admin-contents/Dashboard/page';
-import Products from '@/app/Contents/admin-contents/Products/page';
-import Sale from '@/app/Contents/admin-contents/Sale/page';
-import Analytics from '@/app/Contents/admin-contents/Analytics/page';
-import Inventory from '@/app/Contents/admin-contents/Inventory/page';
-import Location from '@/app/Contents/admin-contents/Location/page';
-import Delivery from '@/app/Contents/admin-contents/Delivery/page';
-
-import User from '@/app/Contents/admin-contents/User/page';
-import Setting from '@/app/Contents/admin-contents/Setting/page';
-import InventoryIM from '@/app/Contents/inventory-contents/Inventory/page';
-import DeliveryDriver from '@/app/Contents/driver-contens/Delivery/page';
-import PosSale from '@/app/Contents/saleClreck-contents/pos';
-import SalePage from '@/app/Contents/saleClearkContents/pos';
-import Customer from '@/app/Contents/admin-contents/customerPage';
-import InstallmentSC from '@/app/Contents/saleClearkContents/installments';
 import DashboardSalesClerk from '@/app/Contents/saleClearkContents/dashboardSC';
-import PaymentBehavior from '@/app/Contents/saleClearkContents/paymentBehavior';
-import CustomizeSalePage from '@/app/Contents/saleClearkContents/customize';
 import CombinedSalePage from '@/app/Contents/saleClearkContents/posSC';
+import PaymentBehavior from '@/app/Contents/saleClearkContents/paymentBehavior';
+import CustomizeInventorySC from '@/app/Contents/saleClearkContents/customizInventory';
+import ReceiveCustomizeSC from '@/app/Contents/saleClearkContents/receiveCustomize';
+import CustomizeManagementSC from '@/app/Contents/saleClearkContents/customizeManagement';
+import Customer from '@/app/Contents/admin-contents/customerPage';
+import ProfileSetting from '../profileSetting/userProfilePage';
 
 const SidebarSaleClerk = () => {
   const [activePage, setActivePage] = useState('dashboard');
   const [expandedParent, setExpandedParent] = useState(null);
   const [user_id, setUser_id] = useState('');
 
+  // ✅ Get user_id and check if there's a stored active page
   useEffect(() => {
     setUser_id(sessionStorage.getItem('user_id'));
+
+    const savedPage = sessionStorage.getItem('activePage');
+    if (savedPage) {
+      setActivePage(savedPage);
+      sessionStorage.removeItem('activePage'); // clear it after switching
+    }
   }, []);
 
   const [mainSize, setMainSize] = useState('755px');
   useEffect(() => {
     const ua = navigator.userAgent;
-
-    if (ua.includes("Edg")) {
+    if (ua.includes('Edg')) {
       setMainSize('755px');
-    } else if (ua.includes("Chrome")) {
+    } else if (ua.includes('Chrome')) {
       setMainSize('715px');
     }
   }, []);
 
-  // Handle page change
+  // 📌 handle page change
   const handlePageChange = (pageKey) => {
     setActivePage(pageKey);
   };
 
+  // 📃 list of all pages in sidebar
   const pages = [
-    { 
-      key: 'dashboard', 
-      label: 'DASHBOARD', 
-      icon: '/assets/images/dashboard.png', 
+    {
+      key: 'dashboard',
+      label: 'DASHBOARD',
+      icon: '/assets/images/dashboard.png',
       component: <DashboardSalesClerk />,
       children: []
     },
-    // { key: 'products', label: 'PRODUCTS', icon: '/assets/images/product1.png', component: <Products /> },
-    // { 
-    //   key: 'pos', 
-    //   label: 'POS', 
-    //   icon: '/assets/images/sale.png', 
-    //   component: <SalePage />,
-    //   children: []
-    // },
-     { 
-      key: 'pos1', 
-      label: 'POS', 
-      icon: '/assets/images/sale.png', 
+    {
+      key: 'pos1',
+      label: 'POS',
+      icon: '/assets/images/dash-icons/ag-14.png',
       component: <CombinedSalePage />,
       children: []
     },
-    // { 
-    //   key: 'customize', 
-    //   label: 'CUSTOMIZE', 
-    //   icon: '/assets/images/sale.png', 
-    //   component: <CustomizeSalePage />,
-    //   children: []
-    // },
-    { 
-      key: 'installments', 
-      label: 'INSTALLMENTS', 
-      icon: '/assets/images/dash-icons/ag-11.png', 
+    {
+      key: 'installments',
+      label: 'INSTALLMENTS',
+      icon: '/assets/images/dash-icons/ag-11.png',
       component: <PaymentBehavior />,
-      // component: <InstallmentSC />,
       children: []
     },
-
-    // { key: 'analytics', label: 'ANALYTICS', icon: '/assets/images/anal1.png', component: <Analytics /> },
-    // { key: 'inventory', label: 'INVENTORY', icon: '/assets/images/inventory.png', component: <InventoryIM /> },
-    // { key: 'locations', label: 'LOCATIONS', icon: '/assets/images/warehouse.png', component: <Location /> },
-    // { key: 'delivery', label: 'DELIVERY', icon: '/assets/images/delivery-removebg-preview.png', component: <DeliveryDriver/> },
     {
-      key: 'customer', 
-      label: 'CUSTOMER', 
-      icon: '/assets/images/customer.png', 
-      component: <Customer />, 
+      key: 'customizemanagement',
+      label: 'CUSTOMIZE MANAGEMENT',
+      icon: '/assets/images/dash-icons/ag-13.png',
+      component: <CustomizeManagementSC />,
+      children: []
+    },
+    {
+      key: 'customize',
+      label: 'CUSTOMIZE INVENTORY',
+      icon: '/assets/images/dash-icons/ag-13.png',
+      component: <CustomizeInventorySC />,
       children: [
-        // {
-        //   key: 'PaymentBehavior',
-        //   label: 'Payment Behavior',
-        //   component: <PaymentBehavior />,
-        // },
+        {
+          key: 'customizeRecieve',
+          label: 'Receive Customize',
+          icon: '/assets/images/sale.png',
+          component: <ReceiveCustomizeSC />
+        }
       ]
     },
-    // { key: 'users', label: 'USERS', icon: '/assets/images/user-removebg-preview.png', component: <User /> },
-    // { key: 'setting', label: 'SETTING', icon: '/assets/images/setting.png', component: <Setting /> },
+    {
+      key: 'customer',
+      label: 'CUSTOMER',
+      icon: '/assets/images/customer.png',
+      component: <Customer />,
+      children: []
+    },
+    {
+      key: 'profileSetting',
+      label: 'PROFILE SETTING',
+      icon: '/assets/images/customer.png',
+      component: <ProfileSetting />,
+      children: []
+    // 64px
+    }
   ];
 
-  // Helper function to check if a parent should be active
+  // 🧠 check if parent should be active
   const isParentActive = (page) => {
-    // Parent is active if it's directly selected
     if (activePage === page.key) return true;
-    
-    // Parent is also active if any of its children are selected
     if (page.children && page.children.length > 0) {
-      return page.children.some(child => child.key === activePage);
+      return page.children.some((child) => child.key === activePage);
     }
-    
     return false;
   };
 
+  // 📌 toggle expand for menu with children
   const toggleExpand = (key, hasChildren) => {
     handlePageChange(key);
-
     if (hasChildren) {
       if (expandedParent !== key) {
         setExpandedParent(key);
@@ -138,20 +128,19 @@ const SidebarSaleClerk = () => {
     }
   };
 
+  // 🧭 render selected content
   const renderContent = () => {
-    // First check for direct page match
     for (const page of pages) {
       if (page.key === activePage) return page.component;
-      
-      // Then check for child page match
       if (page.children && page.children.length > 0) {
-        const child = page.children.find(child => child.key === activePage);
+        const child = page.children.find((child) => child.key === activePage);
         if (child) return child.component;
       }
     }
     return null;
   };
 
+  // 📝 get page label for document.title
   const getPageLabel = () => {
     const parent = pages.find((p) => p.key === activePage);
     let label = parent?.label;
@@ -167,16 +156,12 @@ const SidebarSaleClerk = () => {
         }
       }
     }
-
-    // fallback
-    if (!label) label = "dashboard";
-
-    // Capitalize: first letter uppercase, rest lowercase
+    if (!label) label = 'dashboard';
     return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
   };
 
   useEffect(() => {
-    document.title = "Sales Clerk - " + getPageLabel();
+    document.title = 'Sales Clerk - ' + getPageLabel();
   }, [activePage]);
 
   return (
@@ -184,16 +169,13 @@ const SidebarSaleClerk = () => {
       <div className="container-layout">
         <aside className="sidebar1">
           <h2 className="sidebar-title">SALES CLERK</h2>
-          <p className='line'>_________________</p>
-          {/* <p>{user_id}</p> */}
+          <p className="line">_________________</p>
           <nav className="sidebar-nav">
             {pages.map((page) => (
               <div key={page.key}>
                 <p
                   className={`sidebar-item ${isParentActive(page) ? 'active' : ''}`}
-                  onClick={() => {
-                    toggleExpand(page.key, page.children && page.children.length > 0);
-                  }}
+                  onClick={() => toggleExpand(page.key, page.children && page.children.length > 0)}
                 >
                   <Image src={page.icon} width={40} height={40} alt={page.label} />
                   {page.label}
@@ -205,12 +187,10 @@ const SidebarSaleClerk = () => {
                       <p
                         key={child.key}
                         className={`sidebar-child-item ${activePage === child.key ? 'active' : ''}`}
-                        onClick={() => {
-                          handlePageChange(child.key);
-                        }}
+                        onClick={() => handlePageChange(child.key)}
                       >
                         &nbsp;&nbsp;
-                        <Image src={'/assets/images/arrow.png'} alt='arrow' height={40} width={40} />
+                        <Image src={'/assets/images/arrow.png'} alt="arrow" height={40} width={40} />
                         {child.label}
                       </p>
                     ))}

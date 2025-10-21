@@ -28,7 +28,7 @@ export default function Header() {
     setUser_Fname(sessionStorage.getItem('user_fname'));
     setUser_Role(sessionStorage.getItem('user_role'));
     setUserFullname(sessionStorage.getItem('fullname'));
-    
+
 
   }, []);
 
@@ -197,13 +197,21 @@ export default function Header() {
                     padding: '8px 0',
                     margin: 0
                   }}>
-                    <li style={{
-                      padding: '8px 20px',
-                      cursor: 'pointer',
-                      ':hover': {
-                        backgroundColor: '#f5f5f5'
-                      }
-                    }} >Profile</li>
+                    <li
+                      style={{
+                        padding: '8px 20px',
+                        cursor: 'pointer',
+                        ':hover': {
+                          backgroundColor: '#f5f5f5'
+                        }
+                      }}
+                      onClick={() => {
+                        sessionStorage.setItem('activePage', 'profileSetting'); // store the target page
+                        window.location.reload(); // reload the page to trigger Sidebar useEffect
+                      }}
+                    >
+                      Profile
+                    </li>
                     <li style={{
                       padding: '8px 20px',
                       cursor: 'pointer',
