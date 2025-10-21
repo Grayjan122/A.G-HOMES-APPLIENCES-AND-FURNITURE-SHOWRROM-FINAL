@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 14, 2025 at 08:58 PM
+-- Generation Time: Oct 21, 2025 at 04:57 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -50,12 +50,12 @@ CREATE TABLE `account` (
 --
 
 INSERT INTO `account` (`account_id`, `username`, `user_password`, `fname`, `mname`, `lname`, `role_id`, `email`, `address`, `phone`, `status`, `active_status`, `date_created`, `birth_date`, `location_id`) VALUES
-(7, 'admin2025', 'admin2025', 'Jan Nichols', 'Nguyen', 'Maristela', 1, 'jang.maristela.coc@phinmaed.com', 'Zone 3 canitoan', '09972654952', 'Offline', 'Offline', '2025-07-25', '2003-01-22', 12),
+(7, 'admin2025', 'admin2025', 'Jan Nichols', 'Nguyen', 'Maristela', 1, 'jang.maristela.coc@phinmaed.com', 'Zone 3 canitoan', '09972654952', 'Offline', 'Online', '2025-07-25', '2003-01-22', 12),
 (8, 'inventory2025', 'inventory2025', 'Gray', 'Nguyen', 'Fullbuster', 3, 'janmaristela2003@gmail.com', 'Zone 3 canitoan', '09476976978', 'Offline', 'Online', '2025-07-25', '0000-00-00', 12),
-(9, 'lyca2025', 'lyca2025', 'Lyca', 'Bahandi', 'Cantilado', 5, 'lyca@gmail.com', 'Carmen Ylaya', '1', 'Offline', 'Offline', '2025-07-28', '2002-10-03', 13),
+(9, 'lyca2025', 'lyca2025', 'Lyca', 'Bahandi', 'Cantilado', 5, 'lyca@gmail.com', 'Carmen Ylaya', '1', 'Offline', 'Online', '2025-07-28', '2002-10-03', 13),
 (10, 'kyu', 'kyuchansue', 'Christian', 'Colipano', 'Butaya', 2, 'christianbutaya23@gmail.com', 'Zone 5, Cagayan de Oro City', '09353216482', 'Offline', 'Offline', '2025-08-01', '2025-11-23', 12),
 (11, 'carl', 'carl123', 'Carl', 'Ranisses', 'Hibaya', 3, 'hibayacj8@gmail.com', 'zone-9 caffas, macanhan cagayand de oro city', '09635819495', 'Active', 'Offline', '2025-08-01', '2003-01-21', 13),
-(12, 'reyzyl', 'balaba', 'Reyzyl', 'Alcantara', 'Balaba', 2, 'balaba@gmail.com', 'Mambuaya, cdoc', '0935432737', 'Offline', 'Online', '2025-08-01', '2025-01-01', 12),
+(12, 'reyzyl', 'Janix2003%', 'Reyzyl', 'Alcantara', 'Balaba', 2, 'balaba@gmail.com', 'Mambuaya, cdoc', '0935432737', 'Offline', 'Online', '2025-08-01', '2025-01-01', 12),
 (14, 'cristopher2025', 'cristopher2025', 'Cristopher', 'S', 'Johansson', 2, 'johansson@gmail.com', 'Carmen', '12', 'Offline', 'Online', '2025-08-04', '2025-08-04', 14),
 (15, 'claire2025', 'claire2025', 'Claire Ivy', ' Hemosilla', 'Arcay', 4, 'claire@gmail.com', 'Canitoan', '1', 'Offline', 'Offline', '2025-08-05', '2003-05-03', 12),
 (16, 'saletester1', 'saletester1', 'Sales Clerk', 'T', 'Tester 1', 2, 'tester1@gmail.com', 'tester1', '1', 'Offline', 'Offline', '2025-08-26', '2025-08-26', 14),
@@ -2968,7 +2968,126 @@ INSERT INTO `activity_log` (`activity_log_id`, `activity`, `time`, `date`, `acco
 (2882, 'Sent a request from Agora Showroom Main to Warehouse CDO', '02:45', '2025-10-15', 8),
 (2883, 'Accept the request #112', '02:48', '2025-10-15', 9),
 (2884, 'Accept the request #111', '02:50', '2025-10-15', 9),
-(2885, 'Accept the customize request #4', '02:53', '2025-10-15', 9);
+(2885, 'Accept the customize request #4', '02:53', '2025-10-15', 9),
+(2886, 'Get the inventory reports of Agora Showroom Main', '18:36', '2025-10-15', 8),
+(2887, 'Get the inventory reports of Agora Showroom Main', '18:36', '2025-10-15', 8),
+(2888, 'Get the inventory reports of Agora Showroom Main', '18:36', '2025-10-15', 8),
+(2889, 'Get the inventory reports of Agora Showroom Main', '18:36', '2025-10-15', 8),
+(2890, 'Log Out', '21:02', '2025-10-15', 8),
+(2891, 'Online', '21:02', '2025-10-15', 9),
+(2892, 'Get the inventory reports of Warehouse CDO', '06:42', '2025-10-16', 9),
+(2893, 'Get the inventory reports of Warehouse CDO', '06:42', '2025-10-16', 9),
+(2894, 'Get the inventory reports of Warehouse CDO', '06:42', '2025-10-16', 9),
+(2895, 'Get the inventory reports of Warehouse CDO', '06:42', '2025-10-16', 9),
+(2896, 'Deliver the request #2', '06:55', '2025-10-16', 9),
+(2897, 'Deliver the request #4', '07:02', '2025-10-16', 9),
+(2898, 'Accept the customize request #3', '08:00', '2025-10-16', 9),
+(2899, 'Log Out', '20:55', '2025-10-16', 9),
+(2900, 'Log Out', '20:55', '2025-10-16', 9),
+(2901, 'Log Out', '20:55', '2025-10-16', 12),
+(2902, 'Online', '10:44', '2025-10-17', 9),
+(2903, 'Deliver the customize request #3', '15:27', '2025-10-17', 9),
+(2904, 'Get the inventory reports of Warehouse CDO', '22:09', '2025-10-17', 9),
+(2905, 'Get the inventory reports of Warehouse CDO', '22:09', '2025-10-17', 9),
+(2906, 'Get the inventory reports of Warehouse CDO', '22:09', '2025-10-17', 9),
+(2907, 'Get the inventory reports of Warehouse CDO', '22:09', '2025-10-17', 9),
+(2908, 'Get the inventory reports of Warehouse CDO', '22:10', '2025-10-17', 9),
+(2909, 'Get the inventory reports of Warehouse CDO', '22:10', '2025-10-17', 9),
+(2910, 'Get the inventory reports of Warehouse CDO', '22:10', '2025-10-17', 9),
+(2911, 'Get the inventory reports of Warehouse CDO', '22:10', '2025-10-17', 9),
+(2912, 'Online', '17:34', '2025-10-18', 9),
+(2913, 'Online', '18:51', '2025-10-18', 8),
+(2914, 'Receive the delivery from request #105', '18:51', '2025-10-18', 8),
+(2915, 'Get the inventory reports of Agora Showroom Main', '19:01', '2025-10-18', 8),
+(2916, 'Get the inventory reports of Agora Showroom Main', '19:01', '2025-10-18', 8),
+(2917, 'Get the inventory reports of Agora Showroom Main', '19:01', '2025-10-18', 8),
+(2918, 'Get the inventory reports of Agora Showroom Main', '19:01', '2025-10-18', 8),
+(2919, 'Get the inventory reports of Agora Showroom Main', '19:01', '2025-10-18', 8),
+(2920, 'Get the inventory reports of Agora Showroom Main', '19:01', '2025-10-18', 8),
+(2921, 'Get the inventory reports of Agora Showroom Main', '19:01', '2025-10-18', 8),
+(2922, 'Get the inventory reports of Agora Showroom Main', '19:01', '2025-10-18', 8),
+(2923, 'Track the request #62', '19:02', '2025-10-18', 8),
+(2924, 'Track the request #62', '19:02', '2025-10-18', 8),
+(2925, 'Online', '19:04', '2025-10-18', 12),
+(2926, 'Get the inventory reports of Agora Showroom Main', '01:10', '2025-10-19', 8),
+(2927, 'Get the inventory reports of Agora Showroom Main', '01:10', '2025-10-19', 8),
+(2928, 'Get the inventory reports of Agora Showroom Main', '01:10', '2025-10-19', 8),
+(2929, 'Get the inventory reports of Agora Showroom Main', '01:10', '2025-10-19', 8),
+(2930, 'Deliver the request #88', '02:09', '2025-10-19', 9),
+(2931, 'Get the inventory reports of Agora Showroom Main', '02:09', '2025-10-19', 8),
+(2932, 'Get the inventory reports of Agora Showroom Main', '02:09', '2025-10-19', 8),
+(2933, 'Get the inventory reports of Agora Showroom Main', '02:09', '2025-10-19', 8),
+(2934, 'Get the inventory reports of Agora Showroom Main', '02:09', '2025-10-19', 8),
+(2935, 'Accept the customize request #5', '02:18', '2025-10-19', 9),
+(2936, 'Deliver the customize request #5', '02:19', '2025-10-19', 9),
+(2937, 'Get the inventory reports of Agora Showroom Main', '02:21', '2025-10-19', 8),
+(2938, 'Get the inventory reports of Agora Showroom Main', '02:21', '2025-10-19', 8),
+(2939, 'Get the inventory reports of Agora Showroom Main', '02:21', '2025-10-19', 8),
+(2940, 'Get the inventory reports of Agora Showroom Main', '02:21', '2025-10-19', 8),
+(2941, 'Get the inventory reports of Agora Showroom Main', '02:23', '2025-10-19', 8),
+(2942, 'Get the inventory reports of Agora Showroom Main', '02:23', '2025-10-19', 8),
+(2943, 'Get the inventory reports of Agora Showroom Main', '02:23', '2025-10-19', 8),
+(2944, 'Get the inventory reports of Agora Showroom Main', '02:23', '2025-10-19', 8),
+(2945, 'Log Out', '02:38', '2025-10-19', 12),
+(2946, 'Online', '02:38', '2025-10-19', 12),
+(2947, 'Accept the customize request #6', '03:24', '2025-10-19', 9),
+(2948, 'Get the inventory reports of Warehouse CDO', '13:41', '2025-10-19', 9),
+(2949, 'Get the inventory reports of Warehouse CDO', '13:41', '2025-10-19', 9),
+(2950, 'Get the inventory reports of Warehouse CDO', '13:41', '2025-10-19', 9),
+(2951, 'Get the inventory reports of Warehouse CDO', '13:41', '2025-10-19', 9),
+(2952, 'Received customize delivery #13', '21:54', '2025-10-19', 12),
+(2953, 'Get the inventory reports of Warehouse CDO', '23:36', '2025-10-19', 9),
+(2954, 'Get the inventory reports of Warehouse CDO', '23:36', '2025-10-19', 9),
+(2955, 'Get the inventory reports of Warehouse CDO', '23:36', '2025-10-19', 9),
+(2956, 'Get the inventory reports of Warehouse CDO', '23:36', '2025-10-19', 9),
+(2957, 'Get the inventory reports of Warehouse CDO', '23:37', '2025-10-19', 9),
+(2958, 'Get the inventory reports of Warehouse CDO', '23:37', '2025-10-19', 9),
+(2959, 'Get the inventory reports of Warehouse CDO', '23:37', '2025-10-19', 9),
+(2960, 'Get the inventory reports of Warehouse CDO', '23:37', '2025-10-19', 9),
+(2961, 'Get the inventory reports of Warehouse CDO', '23:37', '2025-10-19', 9),
+(2962, 'Get the inventory reports of Warehouse CDO', '23:37', '2025-10-19', 9),
+(2963, 'Get the inventory reports of Warehouse CDO', '23:37', '2025-10-19', 9),
+(2964, 'Get the inventory reports of Warehouse CDO', '23:37', '2025-10-19', 9),
+(2965, 'Get the inventory reports of Warehouse CDO', '23:39', '2025-10-19', 9),
+(2966, 'Get the inventory reports of Warehouse CDO', '23:39', '2025-10-19', 9),
+(2967, 'Get the inventory reports of Warehouse CDO', '23:39', '2025-10-19', 9),
+(2968, 'Get the inventory reports of Warehouse CDO', '23:39', '2025-10-19', 9),
+(2969, 'Get the inventory reports of A.G-122 (Semi) in Agora Showroom Main store', '01:51', '2025-10-20', 12),
+(2970, 'Get the inventory reports of Full-7 (Full) in Agora Showroom Main store', '01:51', '2025-10-20', 12),
+(2971, 'Get the inventory reports of A.G-122 (Semi) in Agora Showroom Main store', '01:55', '2025-10-20', 12),
+(2972, 'Get the inventory reports of CSTM-6 (Semi) in Agora Showroom Main store', '02:21', '2025-10-20', 12),
+(2973, 'Get the inventory reports of CSTM-6 (Semi) in Agora Showroom Main store', '02:22', '2025-10-20', 12),
+(2974, 'Get the inventory reports of CSTM-6 (Semi) in Agora Showroom Main store', '02:22', '2025-10-20', 12),
+(2975, 'Get the inventory reports of CSTM-7 (Full) in Agora Showroom Main store', '02:22', '2025-10-20', 12),
+(2976, 'Get the inventory reports of CSTM-6 (Semi) in Agora Showroom Main store', '03:00', '2025-10-20', 12),
+(2977, 'Get the inventory reports of CSTM-6 (Semi) in Agora Showroom Main store', '03:00', '2025-10-20', 12),
+(2978, 'Get the inventory reports of CSTM-6 (Semi) in Agora Showroom Main store', '03:01', '2025-10-20', 12),
+(2979, 'Get the inventory reports of CSTM-6 (Semi) in Agora Showroom Main store', '03:01', '2025-10-20', 12),
+(2980, 'Get the inventory reports of A.G-122 in Agora Showroom Main store', '12:26', '2025-10-20', 8),
+(2981, 'Get the inventory reports of CSTM-7 (Full) in Agora Showroom Main store', '12:43', '2025-10-20', 12),
+(2982, 'Get the inventory reports of CSTM-6 (Semi) in Agora Showroom Main store', '17:38', '2025-10-20', 12),
+(2983, 'Get the inventory reports of CSTM-6 (Semi) in Agora Showroom Main store', '17:42', '2025-10-20', 12),
+(2984, 'Online', '22:58', '2025-10-20', 7),
+(2985, 'Track the request #62', '23:26', '2025-10-20', 12),
+(2986, 'Track the request #62', '23:26', '2025-10-20', 12),
+(2987, 'Track the request #62', '23:26', '2025-10-20', 12),
+(2988, 'Track the request #62', '23:26', '2025-10-20', 12),
+(2989, 'Track the request #110', '23:26', '2025-10-20', 12),
+(2990, 'Track the request #110', '23:26', '2025-10-20', 12),
+(2991, 'Track the request #112', '23:27', '2025-10-20', 12),
+(2992, 'Track the request #112', '23:27', '2025-10-20', 12),
+(2993, 'Online', '23:43', '2025-10-20', 9),
+(2994, 'Track the request #62', '23:51', '2025-10-20', 12),
+(2995, 'Track the request #62', '23:51', '2025-10-20', 12),
+(2996, 'Get the inventory reports of Warehouse CDO', '23:54', '2025-10-20', 9),
+(2997, 'Get the inventory reports of Warehouse CDO', '23:54', '2025-10-20', 9),
+(2998, 'Get the inventory reports of Warehouse CDO', '23:54', '2025-10-20', 9),
+(2999, 'Get the inventory reports of Warehouse CDO', '23:54', '2025-10-20', 9),
+(3000, 'Online', '00:52', '2025-10-21', 12),
+(3001, 'Log Out', '02:40', '2025-10-21', 12),
+(3002, 'Online', '17:16', '2025-10-21', 12),
+(3003, 'Online', '22:25', '2025-10-21', 7),
+(3004, 'Get the inventory reports of CSTM-6 (Semi) in Agora Showroom Main store', '22:32', '2025-10-21', 12);
 
 -- --------------------------------------------------------
 
@@ -2990,7 +3109,10 @@ CREATE TABLE `approved_customize_request` (
 
 INSERT INTO `approved_customize_request` (`acr_id`, `customize_request_id`, `aprroved_by`, `date`, `time`) VALUES
 (1, 2, 9, '2025-10-15', '00:46'),
-(2, 4, 9, '2025-10-15', '02:53');
+(2, 4, 9, '2025-10-15', '02:53'),
+(3, 3, 9, '2025-10-16', '08:00'),
+(4, 5, 9, '2025-10-19', '02:18'),
+(5, 6, 9, '2025-10-19', '03:24');
 
 -- --------------------------------------------------------
 
@@ -3154,64 +3276,52 @@ INSERT INTO `customer_sales_details` (`c_sale_details`, `customer_sales_id`, `pr
 -- --------------------------------------------------------
 
 --
--- Table structure for table `customized_product`
+-- Table structure for table `customize_inventory_ledgerr`
 --
 
-CREATE TABLE `customized_product` (
-  `customized_id` int(50) NOT NULL,
-  `customized_req_id` int(50) NOT NULL,
-  `price_adjustment` int(50) NOT NULL,
-  `total_price` int(50) NOT NULL,
-  `status` varchar(50) NOT NULL,
-  `creation_date` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `customized_product_pricing`
---
-
-CREATE TABLE `customized_product_pricing` (
-  `cpp_id` int(50) NOT NULL,
-  `customized_req_id` int(50) NOT NULL,
-  `price_adjustment` int(50) NOT NULL,
-  `total_price` int(50) NOT NULL,
-  `time` int(6) NOT NULL,
-  `date` int(6) NOT NULL,
-  `account_id` int(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `customized_product_request`
---
-
-CREATE TABLE `customized_product_request` (
-  `customized_req_id` int(50) NOT NULL,
-  `cust_account_id` int(50) NOT NULL,
-  `base_product_id` int(50) NOT NULL,
-  `custome_details` varchar(1000) NOT NULL,
-  `customized_product_image` varchar(50) NOT NULL,
-  `time` time(6) NOT NULL,
-  `date` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `customized_product_update`
---
-
-CREATE TABLE `customized_product_update` (
-  `cpu_id` int(50) NOT NULL,
-  `customized_id` int(50) NOT NULL,
-  `description` int(50) NOT NULL,
+CREATE TABLE `customize_inventory_ledgerr` (
+  `cil_id` int(11) NOT NULL,
+  `csi_id` int(100) NOT NULL,
+  `cp_id` int(100) NOT NULL,
+  `type` varchar(100) NOT NULL,
+  `past_balance` int(10) NOT NULL,
+  `qty` int(10) NOT NULL,
+  `current_balance` int(10) NOT NULL,
   `date` date NOT NULL,
-  `time` time(6) NOT NULL,
-  `account_id` int(50) NOT NULL
+  `time` varchar(10) NOT NULL,
+  `locationd_id` int(100) NOT NULL,
+  `account_id` int(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `customize_inventory_ledgerr`
+--
+
+INSERT INTO `customize_inventory_ledgerr` (`cil_id`, `csi_id`, `cp_id`, `type`, `past_balance`, `qty`, `current_balance`, `date`, `time`, `locationd_id`, `account_id`) VALUES
+(1, 3, 6, 'Stock In', 0, 1, 1, '2025-10-19', '22:47', 12, 12),
+(2, 4, 7, 'Stock In', 0, 1, 1, '2025-10-19', '22:47', 12, 12);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `customize_products`
+--
+
+CREATE TABLE `customize_products` (
+  `cp_id` int(11) NOT NULL,
+  `customize_type` varchar(100) NOT NULL,
+  `price` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `customize_products`
+--
+
+INSERT INTO `customize_products` (`cp_id`, `customize_type`, `price`) VALUES
+(2, 'Semi', 25000.00),
+(3, 'Full', 20000.00),
+(6, 'Semi', 25000.00),
+(7, 'Full', 20000.00);
 
 -- --------------------------------------------------------
 
@@ -3234,9 +3344,12 @@ CREATE TABLE `customize_request` (
 --
 
 INSERT INTO `customize_request` (`customize_req_id`, `customize_sales_id`, `status`, `date`, `time`, `req_from`, `req_to`) VALUES
-(2, 6, 'On Going', '2025-10-14', '09:28', 12, 13),
-(3, 7, 'Pending', '2025-10-14', '13:23', 12, 13),
-(4, 10, 'On Going', '2025-10-15', '02:47', 12, 13);
+(2, 6, 'On Delivery', '2025-10-14', '09:28', 12, 13),
+(3, 7, 'Completed', '2025-10-14', '13:23', 12, 13),
+(4, 10, 'On Delivery', '2025-10-15', '02:47', 12, 13),
+(5, 11, 'Delivered', '2025-10-19', '02:16', 12, 13),
+(6, 12, 'On Going', '2025-10-19', '03:21', 12, 13),
+(8, 14, 'Pending', '2025-10-19', '21:22', 12, 13);
 
 -- --------------------------------------------------------
 
@@ -3261,7 +3374,20 @@ INSERT INTO `customize_request_report` (`crr_id`, `customize_request_id`, `statu
 (2, 3, 'Pending', '2025-10-14', '13:23'),
 (3, 2, 'On Going', '2025-10-15', '00:46'),
 (4, 4, 'Pending', '2025-10-15', '02:47'),
-(5, 4, 'On Going', '2025-10-15', '02:53');
+(5, 4, 'On Going', '2025-10-15', '02:53'),
+(6, 2, 'On Delivery', '2025-10-16', '06:55'),
+(7, 4, 'On Delivery', '2025-10-16', '07:02'),
+(8, 3, 'On Going', '2025-10-16', '08:00'),
+(9, 3, 'On Delivery', '2025-10-17', '15:27'),
+(10, 3, 'Delivered', '2025-10-17', '9:26'),
+(12, 3, 'Completed', '2025-10-17', '22:38'),
+(13, 5, 'Pending', '2025-10-19', '02:16'),
+(14, 5, 'On Going', '2025-10-19', '02:18'),
+(15, 5, 'On Delivery', '2025-10-19', '02:19'),
+(16, 6, 'Pending', '2025-10-19', '03:21'),
+(17, 6, 'On Going', '2025-10-19', '03:24'),
+(19, 8, 'Pending', '2025-10-19', '21:22'),
+(20, 5, 'Delivered', '2025-10-19', '22:47');
 
 -- --------------------------------------------------------
 
@@ -3288,7 +3414,32 @@ CREATE TABLE `customize_sales` (
 INSERT INTO `customize_sales` (`customize_sales_id`, `invoice_id`, `total_qty`, `total_price`, `down_payment`, `balance`, `status`, `customize_type`, `cust_id`) VALUES
 (6, 161, 1, 27500.00, 13750.00, 13750.00, 'Partial', 'Semi-Customized', 3),
 (7, 162, 1, 10000.00, 5000.00, 5000.00, 'Partial', 'Full-Customized', 3),
-(10, 165, 1, 25000.00, 12500.00, 12500.00, 'Partial', 'Semi-Customized', 3);
+(10, 165, 1, 25000.00, 12500.00, 12500.00, 'Partial', 'Semi-Customized', 3),
+(11, 166, 2, 45000.00, 45000.00, 0.00, 'Paid', 'Semi-Customized and Full-Customized', 3),
+(12, 167, 2, 37500.00, 37500.00, 0.00, 'Paid', 'Semi-Customized and Full-Customized', 5),
+(14, 169, 1, 32400.50, 32400.50, 0.00, 'Paid', 'Semi-Customized', 4);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `customize_store_inventory`
+--
+
+CREATE TABLE `customize_store_inventory` (
+  `csi_id` int(11) NOT NULL,
+  `cp_id` int(100) NOT NULL,
+  `status` varchar(100) NOT NULL,
+  `qty` int(100) NOT NULL,
+  `locationd_id` int(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `customize_store_inventory`
+--
+
+INSERT INTO `customize_store_inventory` (`csi_id`, `cp_id`, `status`, `qty`, `locationd_id`) VALUES
+(3, 6, 'Available', 1, 12),
+(4, 7, 'Available', 1, 12);
 
 -- --------------------------------------------------------
 
@@ -3324,6 +3475,34 @@ CREATE TABLE `delivery_details` (
   `location_id` int(50) NOT NULL,
   `delivery_location` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `deliver_customize`
+--
+
+CREATE TABLE `deliver_customize` (
+  `deliver_customize_id` int(11) NOT NULL,
+  `customize_request_id` int(100) NOT NULL,
+  `driver` varchar(255) NOT NULL,
+  `status` varchar(100) NOT NULL,
+  `date` date NOT NULL,
+  `time` varchar(100) NOT NULL,
+  `deliver_to` int(10) NOT NULL,
+  `deliver_from` int(10) NOT NULL,
+  `done_by` int(10) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `deliver_customize`
+--
+
+INSERT INTO `deliver_customize` (`deliver_customize_id`, `customize_request_id`, `driver`, `status`, `date`, `time`, `deliver_to`, `deliver_from`, `done_by`) VALUES
+(8, 2, 'Manong Driver', 'On Delivery', '2025-10-16', '06:55', 12, 13, 9),
+(11, 4, 'Janix', 'On Delivery', '2025-10-16', '07:02', 12, 13, 9),
+(12, 3, 'Janix', 'Completed', '2025-10-17', '15:27', 12, 13, 9),
+(13, 5, 'Simple Man', 'Delivered', '2025-10-19', '02:19', 12, 13, 9);
 
 -- --------------------------------------------------------
 
@@ -3392,7 +3571,31 @@ CREATE TABLE `full_customize_details` (
 --
 
 INSERT INTO `full_customize_details` (`fcd_id`, `customize_sales_id`, `additional_description`, `description`, `price`, `qty`, `total_price`) VALUES
-(2, 7, 'dasdada', 'adas', 10000.00, 1, 10000.00);
+(2, 7, 'dasdada', 'adas', 10000.00, 1, 10000.00),
+(3, 11, 'adsada', 'dasd', 20000.00, 1, 20000.00),
+(4, 12, 'DASD', 'ADASDA', 10000.00, 1, 10000.00);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `full_customize_products`
+--
+
+CREATE TABLE `full_customize_products` (
+  `fcp_id` int(11) NOT NULL,
+  `cp_id` int(100) NOT NULL,
+  `description` varchar(255) NOT NULL,
+  `additional_description` varchar(255) NOT NULL,
+  `price` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `full_customize_products`
+--
+
+INSERT INTO `full_customize_products` (`fcp_id`, `cp_id`, `description`, `additional_description`, `price`) VALUES
+(1, 3, 'dasd', 'adsada', 20000.00),
+(2, 7, 'dasd', 'adsada', 20000.00);
 
 -- --------------------------------------------------------
 
@@ -3729,7 +3932,11 @@ INSERT INTO `invoice` (`invoice_id`, `sales_from`, `amount`, `date`, `time`, `lo
 (160, 'Customize Sales', 27500.00, '2025-10-13', '21:55', 12, 12),
 (161, 'Customize Sales', 13750.00, '2025-10-14', '09:28', 12, 12),
 (162, 'Customize Sales', 5000.00, '2025-10-14', '13:23', 12, 12),
-(165, 'Customize Sales', 12500.00, '2025-10-15', '02:47', 12, 12);
+(165, 'Customize Sales', 12500.00, '2025-10-15', '02:47', 12, 12),
+(166, 'Customize Sales', 45000.00, '2025-10-19', '02:16', 12, 12),
+(167, 'Customize Sales', 37500.00, '2025-10-19', '03:21', 12, 12),
+(168, 'Customize Sales', 12000.99, '2025-10-19', '21:20', 12, 12),
+(169, 'Customize Sales', 32400.50, '2025-10-19', '21:22', 12, 12);
 
 -- --------------------------------------------------------
 
@@ -4040,7 +4247,8 @@ INSERT INTO `request_deliver` (`r_deliver_id`, `request_stock_id`, `date`, `deli
 (50, 107, '2025-10-04', 'Complete', 15),
 (51, 109, '2025-10-06', 'Delivered', 15),
 (52, 110, '2025-10-06', 'Complete', 15),
-(53, 105, '2025-10-07', 'On Delivery', 15);
+(53, 105, '2025-10-07', 'Complete', 15),
+(54, 88, '2025-10-19', 'On Delivery', 15);
 
 -- --------------------------------------------------------
 
@@ -4308,7 +4516,10 @@ INSERT INTO `request_reports` (`rr_id`, `request_stock_id`, `date`, `time`, `sta
 (263, 111, '2025-10-15', '02:24', 'Request Sent', 8),
 (264, 112, '2025-10-15', '02:45', 'Request Sent', 8),
 (265, 112, '2025-10-15', '02:47', 'On Going', 9),
-(266, 111, '2025-10-15', '02:50', 'On Going', 9);
+(266, 111, '2025-10-15', '02:50', 'On Going', 9),
+(268, 105, '2025-10-18', '18:51', 'Delivered', 8),
+(269, 105, '2025-10-19', '01:10', 'Complete', 9),
+(270, 88, '2025-10-19', '02:09', 'On Delivery', 9);
 
 -- --------------------------------------------------------
 
@@ -4359,7 +4570,7 @@ INSERT INTO `request_stock` (`request_stock_id`, `request_from`, `request_to`, `
 (85, 12, 13, '2025-08-18', 'Delivered', 8),
 (86, 12, 13, '2025-08-18', 'Delivered', 8),
 (87, 12, 13, '2025-08-18', 'Delivered', 8),
-(88, 12, 13, '2025-08-19', 'On Going', 8),
+(88, 12, 13, '2025-08-19', 'On Delivery', 8),
 (89, 12, 13, '2025-08-21', 'On Going', 8),
 (90, 12, 13, '2025-08-21', 'Delivered', 8),
 (91, 12, 13, '2025-08-21', 'Complete', 8),
@@ -4376,7 +4587,7 @@ INSERT INTO `request_stock` (`request_stock_id`, `request_from`, `request_to`, `
 (102, 12, 13, '2025-09-11', 'Delivered', 8),
 (103, 14, 13, '2025-09-14', 'Complete', 8),
 (104, 12, 13, '2025-09-14', 'Complete', 8),
-(105, 12, 13, '2025-09-14', 'On Delivery', 8),
+(105, 12, 13, '2025-09-14', 'Complete', 8),
 (106, 12, 13, '2025-10-04', 'Delivered', 8),
 (107, 12, 13, '2025-10-04', 'Complete', 8),
 (108, 12, 13, '2025-10-06', 'On Going', 8),
@@ -4620,7 +4831,33 @@ CREATE TABLE `semi_customize_details` (
 
 INSERT INTO `semi_customize_details` (`scd_id`, `customize_sales_id`, `baseProduct_id`, `modifications`, `orig_price`, `adjusted_price`, `qty`, `total`) VALUES
 (4, 6, 47, 'adasdada', 27500.00, 27500.00, 1, 27500.00),
-(5, 10, 47, 'adsada', 27500.00, 25000.00, 1, 25000.00);
+(5, 10, 47, 'adsada', 27500.00, 25000.00, 1, 25000.00),
+(6, 11, 47, 'dsadasda', 27500.00, 25000.00, 1, 25000.00),
+(7, 12, 47, 'ADASDA', 27500.00, 27500.00, 1, 27500.00),
+(8, 14, 63, 'dasdasda', 32300.00, 32400.00, 1, 32400.50);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `semi_customize_products`
+--
+
+CREATE TABLE `semi_customize_products` (
+  `scp_id` int(11) NOT NULL,
+  `cp_id` int(100) NOT NULL,
+  `baseProduct_id` int(100) NOT NULL,
+  `modifications` varchar(255) NOT NULL,
+  `orig_price` decimal(10,2) NOT NULL,
+  `adjusted_price` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `semi_customize_products`
+--
+
+INSERT INTO `semi_customize_products` (`scp_id`, `cp_id`, `baseProduct_id`, `modifications`, `orig_price`, `adjusted_price`) VALUES
+(2, 2, 47, 'dsadasda', 27500.00, 25000.00),
+(5, 6, 47, 'dsadasda', 27500.00, 25000.00);
 
 -- --------------------------------------------------------
 
@@ -4691,7 +4928,8 @@ INSERT INTO `stock_receiving` (`stock_receiving_id`, `transaction_date`, `total_
 (24, '2025-10-06', 5, 'Stock In From Delivery', 8, 12),
 (25, '2025-10-06', 3, 'Stock In From Delivery', 8, 12),
 (26, '2025-10-06', 1, 'Stock In From Delivery', 8, 12),
-(27, '2025-10-07', 2, 'Stock In From Delivery', 9, 13);
+(27, '2025-10-07', 2, 'Stock In From Delivery', 9, 13),
+(28, '2025-10-18', 1, 'Stock In From Delivery', 8, 12);
 
 -- --------------------------------------------------------
 
@@ -4786,7 +5024,8 @@ INSERT INTO `stock_receiving_details` (`srd_id`, `product_id`, `stock_receiving_
 (73, 20, 25, 2),
 (74, 44, 25, 1),
 (75, 47, 26, 1),
-(76, 47, 27, 2);
+(76, 47, 27, 2),
+(77, 47, 28, 1);
 
 -- --------------------------------------------------------
 
@@ -4840,7 +5079,7 @@ INSERT INTO `store_inventory` (`store_inventory_id`, `location_id`, `product_id`
 (41, 13, 72, 0),
 (42, 12, 21, 0),
 (47, 12, 19, 1),
-(48, 12, 47, 0),
+(48, 12, 47, 1),
 (49, 12, 68, 5),
 (53, 12, 63, 0),
 (54, 12, 44, 7),
@@ -5075,7 +5314,8 @@ INSERT INTO `store_inventory_transaction_ledger` (`sir_id`, `location_id`, `type
 (359, 12, 'Sales', 63, 2, 1, 1, '2025-10-07', '18:44', 12),
 (360, 12, 'Sales', 70, 3, 1, 2, '2025-10-07', '23:56', 12),
 (361, 12, 'Sales', 63, 1, 1, 0, '2025-10-09', '21:47', 12),
-(362, 12, 'Sales', 69, 8, 1, 7, '2025-10-09', '21:56', 12);
+(362, 12, 'Sales', 69, 8, 1, 7, '2025-10-09', '21:56', 12),
+(363, 12, 'Stock In', 47, 0, 1, 1, '2025-10-18', '18:51', 8);
 
 -- --------------------------------------------------------
 
@@ -5291,39 +5531,21 @@ ALTER TABLE `customer_sales_details`
   ADD KEY `product_id` (`product_id`);
 
 --
--- Indexes for table `customized_product`
+-- Indexes for table `customize_inventory_ledgerr`
 --
-ALTER TABLE `customized_product`
-  ADD PRIMARY KEY (`customized_id`),
-  ADD KEY `customized_id` (`customized_id`,`customized_req_id`),
-  ADD KEY `customized_req_id` (`customized_req_id`);
-
---
--- Indexes for table `customized_product_pricing`
---
-ALTER TABLE `customized_product_pricing`
-  ADD PRIMARY KEY (`cpp_id`),
-  ADD KEY `cpp_id` (`cpp_id`,`customized_req_id`,`account_id`),
+ALTER TABLE `customize_inventory_ledgerr`
+  ADD PRIMARY KEY (`cil_id`),
+  ADD KEY `cil_id` (`cil_id`,`csi_id`,`cp_id`,`locationd_id`,`account_id`),
+  ADD KEY `csi_id` (`csi_id`),
+  ADD KEY `cp_id` (`cp_id`),
   ADD KEY `account_id` (`account_id`),
-  ADD KEY `customized_req_id` (`customized_req_id`);
+  ADD KEY `locationd_id` (`locationd_id`);
 
 --
--- Indexes for table `customized_product_request`
+-- Indexes for table `customize_products`
 --
-ALTER TABLE `customized_product_request`
-  ADD PRIMARY KEY (`customized_req_id`),
-  ADD KEY `customized_req_id` (`customized_req_id`,`cust_account_id`,`base_product_id`),
-  ADD KEY `cust_account_id` (`cust_account_id`),
-  ADD KEY `base_product_id` (`base_product_id`);
-
---
--- Indexes for table `customized_product_update`
---
-ALTER TABLE `customized_product_update`
-  ADD PRIMARY KEY (`cpu_id`),
-  ADD KEY `cpu_id` (`cpu_id`,`customized_id`,`account_id`),
-  ADD KEY `account_id` (`account_id`),
-  ADD KEY `customized_id` (`customized_id`);
+ALTER TABLE `customize_products`
+  ADD PRIMARY KEY (`cp_id`);
 
 --
 -- Indexes for table `customize_request`
@@ -5354,6 +5576,15 @@ ALTER TABLE `customize_sales`
   ADD KEY `cust_id` (`cust_id`);
 
 --
+-- Indexes for table `customize_store_inventory`
+--
+ALTER TABLE `customize_store_inventory`
+  ADD PRIMARY KEY (`csi_id`),
+  ADD KEY `csi_id` (`csi_id`,`cp_id`,`locationd_id`),
+  ADD KEY `csi_id_2` (`csi_id`,`cp_id`,`locationd_id`),
+  ADD KEY `locationd_id` (`locationd_id`);
+
+--
 -- Indexes for table `delivery_charge`
 --
 ALTER TABLE `delivery_charge`
@@ -5370,6 +5601,17 @@ ALTER TABLE `delivery_details`
   ADD KEY `location_id` (`location_id`),
   ADD KEY `sales_id` (`sales_id`),
   ADD KEY `exchange_id` (`exchange_id`);
+
+--
+-- Indexes for table `deliver_customize`
+--
+ALTER TABLE `deliver_customize`
+  ADD PRIMARY KEY (`deliver_customize_id`),
+  ADD KEY `deliver_customize_id` (`deliver_customize_id`,`customize_request_id`,`deliver_to`,`deliver_from`,`done_by`),
+  ADD KEY `customize_request_id` (`customize_request_id`),
+  ADD KEY `done_by` (`done_by`),
+  ADD KEY `deliver_to` (`deliver_to`),
+  ADD KEY `deliver_from` (`deliver_from`);
 
 --
 -- Indexes for table `deliver_transfer`
@@ -5404,6 +5646,14 @@ ALTER TABLE `full_customize_details`
   ADD PRIMARY KEY (`fcd_id`),
   ADD KEY `fcd_id` (`fcd_id`,`customize_sales_id`),
   ADD KEY `customize_sales_id` (`customize_sales_id`);
+
+--
+-- Indexes for table `full_customize_products`
+--
+ALTER TABLE `full_customize_products`
+  ADD PRIMARY KEY (`fcp_id`),
+  ADD KEY `fcp_id` (`fcp_id`,`cp_id`),
+  ADD KEY `cp_id` (`cp_id`);
 
 --
 -- Indexes for table `installment_payment_record`
@@ -5531,6 +5781,15 @@ ALTER TABLE `semi_customize_details`
   ADD KEY `customize_sales_id` (`customize_sales_id`);
 
 --
+-- Indexes for table `semi_customize_products`
+--
+ALTER TABLE `semi_customize_products`
+  ADD PRIMARY KEY (`scp_id`),
+  ADD KEY `scp_id` (`scp_id`,`cp_id`,`baseProduct_id`),
+  ADD KEY `cp_id` (`cp_id`),
+  ADD KEY `baseProduct_id` (`baseProduct_id`);
+
+--
 -- Indexes for table `stock_adjustment`
 --
 ALTER TABLE `stock_adjustment`
@@ -5652,13 +5911,13 @@ ALTER TABLE `account`
 -- AUTO_INCREMENT for table `activity_log`
 --
 ALTER TABLE `activity_log`
-  MODIFY `activity_log_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2886;
+  MODIFY `activity_log_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3005;
 
 --
 -- AUTO_INCREMENT for table `approved_customize_request`
 --
 ALTER TABLE `approved_customize_request`
-  MODIFY `acr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `acr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `branch`
@@ -5691,46 +5950,40 @@ ALTER TABLE `customer_sales_details`
   MODIFY `c_sale_details` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
--- AUTO_INCREMENT for table `customized_product`
+-- AUTO_INCREMENT for table `customize_inventory_ledgerr`
 --
-ALTER TABLE `customized_product`
-  MODIFY `customized_id` int(50) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `customize_inventory_ledgerr`
+  MODIFY `cil_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
--- AUTO_INCREMENT for table `customized_product_pricing`
+-- AUTO_INCREMENT for table `customize_products`
 --
-ALTER TABLE `customized_product_pricing`
-  MODIFY `cpp_id` int(50) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `customized_product_request`
---
-ALTER TABLE `customized_product_request`
-  MODIFY `customized_req_id` int(50) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `customized_product_update`
---
-ALTER TABLE `customized_product_update`
-  MODIFY `cpu_id` int(50) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `customize_products`
+  MODIFY `cp_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `customize_request`
 --
 ALTER TABLE `customize_request`
-  MODIFY `customize_req_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `customize_req_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `customize_request_report`
 --
 ALTER TABLE `customize_request_report`
-  MODIFY `crr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `crr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `customize_sales`
 --
 ALTER TABLE `customize_sales`
-  MODIFY `customize_sales_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `customize_sales_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
+-- AUTO_INCREMENT for table `customize_store_inventory`
+--
+ALTER TABLE `customize_store_inventory`
+  MODIFY `csi_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `delivery_charge`
@@ -5743,6 +5996,12 @@ ALTER TABLE `delivery_charge`
 --
 ALTER TABLE `delivery_details`
   MODIFY `delivery_id` int(50) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `deliver_customize`
+--
+ALTER TABLE `deliver_customize`
+  MODIFY `deliver_customize_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `deliver_transfer`
@@ -5766,7 +6025,13 @@ ALTER TABLE `exchange_item_details`
 -- AUTO_INCREMENT for table `full_customize_details`
 --
 ALTER TABLE `full_customize_details`
-  MODIFY `fcd_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `fcd_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `full_customize_products`
+--
+ALTER TABLE `full_customize_products`
+  MODIFY `fcp_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `installment_payment_record`
@@ -5790,7 +6055,7 @@ ALTER TABLE `installment_sales`
 -- AUTO_INCREMENT for table `invoice`
 --
 ALTER TABLE `invoice`
-  MODIFY `invoice_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=166;
+  MODIFY `invoice_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=170;
 
 --
 -- AUTO_INCREMENT for table `invoice_details`
@@ -5826,13 +6091,13 @@ ALTER TABLE `request_approved`
 -- AUTO_INCREMENT for table `request_deliver`
 --
 ALTER TABLE `request_deliver`
-  MODIFY `r_deliver_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
+  MODIFY `r_deliver_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
 
 --
 -- AUTO_INCREMENT for table `request_reports`
 --
 ALTER TABLE `request_reports`
-  MODIFY `rr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=267;
+  MODIFY `rr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=271;
 
 --
 -- AUTO_INCREMENT for table `request_stock`
@@ -5856,7 +6121,13 @@ ALTER TABLE `role`
 -- AUTO_INCREMENT for table `semi_customize_details`
 --
 ALTER TABLE `semi_customize_details`
-  MODIFY `scd_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `scd_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `semi_customize_products`
+--
+ALTER TABLE `semi_customize_products`
+  MODIFY `scp_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `stock_adjustment`
@@ -5874,13 +6145,13 @@ ALTER TABLE `stock_adjustment_details`
 -- AUTO_INCREMENT for table `stock_receiving`
 --
 ALTER TABLE `stock_receiving`
-  MODIFY `stock_receiving_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `stock_receiving_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `stock_receiving_details`
 --
 ALTER TABLE `stock_receiving_details`
-  MODIFY `srd_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=77;
+  MODIFY `srd_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=78;
 
 --
 -- AUTO_INCREMENT for table `store_inventory`
@@ -5892,7 +6163,7 @@ ALTER TABLE `store_inventory`
 -- AUTO_INCREMENT for table `store_inventory_transaction_ledger`
 --
 ALTER TABLE `store_inventory_transaction_ledger`
-  MODIFY `sir_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=363;
+  MODIFY `sir_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=364;
 
 --
 -- AUTO_INCREMENT for table `transfer_stock`
@@ -5969,30 +6240,13 @@ ALTER TABLE `customer_sales_details`
   ADD CONSTRAINT `customer_sales_details_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `customized_product`
+-- Constraints for table `customize_inventory_ledgerr`
 --
-ALTER TABLE `customized_product`
-  ADD CONSTRAINT `customized_product_ibfk_1` FOREIGN KEY (`customized_req_id`) REFERENCES `customized_product_request` (`customized_req_id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Constraints for table `customized_product_pricing`
---
-ALTER TABLE `customized_product_pricing`
-  ADD CONSTRAINT `customized_product_pricing_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `account` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `customized_product_pricing_ibfk_2` FOREIGN KEY (`customized_req_id`) REFERENCES `customized_product_request` (`customized_req_id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Constraints for table `customized_product_request`
---
-ALTER TABLE `customized_product_request`
-  ADD CONSTRAINT `customized_product_request_ibfk_2` FOREIGN KEY (`base_product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Constraints for table `customized_product_update`
---
-ALTER TABLE `customized_product_update`
-  ADD CONSTRAINT `customized_product_update_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `account` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `customized_product_update_ibfk_2` FOREIGN KEY (`customized_id`) REFERENCES `customized_product` (`customized_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `customize_inventory_ledgerr`
+  ADD CONSTRAINT `customize_inventory_ledgerr_ibfk_1` FOREIGN KEY (`csi_id`) REFERENCES `customize_store_inventory` (`csi_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `customize_inventory_ledgerr_ibfk_2` FOREIGN KEY (`cp_id`) REFERENCES `customize_products` (`cp_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `customize_inventory_ledgerr_ibfk_3` FOREIGN KEY (`account_id`) REFERENCES `account` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `customize_inventory_ledgerr_ibfk_4` FOREIGN KEY (`locationd_id`) REFERENCES `location` (`location_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `customize_request`
@@ -6015,12 +6269,27 @@ ALTER TABLE `customize_sales`
   ADD CONSTRAINT `customize_sales_ibfk_1` FOREIGN KEY (`cust_id`) REFERENCES `customers` (`cust_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
+-- Constraints for table `customize_store_inventory`
+--
+ALTER TABLE `customize_store_inventory`
+  ADD CONSTRAINT `customize_store_inventory_ibfk_1` FOREIGN KEY (`locationd_id`) REFERENCES `location` (`location_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Constraints for table `delivery_details`
 --
 ALTER TABLE `delivery_details`
   ADD CONSTRAINT `delivery_details_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `account` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `delivery_details_ibfk_2` FOREIGN KEY (`location_id`) REFERENCES `location` (`location_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `delivery_details_ibfk_4` FOREIGN KEY (`exchange_id`) REFERENCES `exchange_item` (`exchange_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `deliver_customize`
+--
+ALTER TABLE `deliver_customize`
+  ADD CONSTRAINT `deliver_customize_ibfk_1` FOREIGN KEY (`customize_request_id`) REFERENCES `customize_request` (`customize_req_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `deliver_customize_ibfk_2` FOREIGN KEY (`done_by`) REFERENCES `account` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `deliver_customize_ibfk_3` FOREIGN KEY (`deliver_to`) REFERENCES `location` (`location_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `deliver_customize_ibfk_4` FOREIGN KEY (`deliver_from`) REFERENCES `location` (`location_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `deliver_transfer`
@@ -6047,6 +6316,12 @@ ALTER TABLE `exchange_item_details`
 --
 ALTER TABLE `full_customize_details`
   ADD CONSTRAINT `full_customize_details_ibfk_1` FOREIGN KEY (`customize_sales_id`) REFERENCES `customize_sales` (`customize_sales_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `full_customize_products`
+--
+ALTER TABLE `full_customize_products`
+  ADD CONSTRAINT `full_customize_products_ibfk_1` FOREIGN KEY (`cp_id`) REFERENCES `customize_products` (`cp_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `installment_payment_record`
@@ -6137,6 +6412,13 @@ ALTER TABLE `request_stock_details`
 ALTER TABLE `semi_customize_details`
   ADD CONSTRAINT `semi_customize_details_ibfk_1` FOREIGN KEY (`customize_sales_id`) REFERENCES `customize_sales` (`customize_sales_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `semi_customize_details_ibfk_2` FOREIGN KEY (`baseProduct_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `semi_customize_products`
+--
+ALTER TABLE `semi_customize_products`
+  ADD CONSTRAINT `semi_customize_products_ibfk_1` FOREIGN KEY (`cp_id`) REFERENCES `customize_products` (`cp_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `semi_customize_products_ibfk_2` FOREIGN KEY (`baseProduct_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `stock_adjustment`
