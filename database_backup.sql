@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 02, 2025 at 05:27 AM
+-- Generation Time: Oct 14, 2025 at 08:58 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -50,16 +50,17 @@ CREATE TABLE `account` (
 --
 
 INSERT INTO `account` (`account_id`, `username`, `user_password`, `fname`, `mname`, `lname`, `role_id`, `email`, `address`, `phone`, `status`, `active_status`, `date_created`, `birth_date`, `location_id`) VALUES
-(7, 'admin2025', 'admin2025', 'Jan Nichols', 'Nguyen', 'Maristela', 1, 'jang.maristela.coc@phinmaed.com', 'Zone 3 canitoan', '09972654952', 'Offline', 'Online', '2025-07-25', '2003-01-22', 12),
-(8, 'inventory2025', 'inventory2025', 'Gray', 'Nguyen', 'Fullbuster', 3, 'janmaristela2003@gmail.com', 'Zone 3 canitoan', '09476976978', 'Offline', 'Offline', '2025-07-25', '0000-00-00', 12),
-(9, 'lyca2025', 'lyca2025', 'Lyca', 'Bahandi', 'Cantilado', 5, 'lyca@gmail.com', 'Carmen Ylaya', '1', 'Offline', 'Online', '2025-07-28', '2002-10-03', 13),
-(10, 'kyu', 'kyuchansue', 'Christian', 'Colipano', 'Butaya', 3, 'christianbutaya23@gmail.com', 'Zone 5, Cagayan de Oro City', '09353216482', 'Offline', 'Offline', '2025-08-01', '2025-11-23', 12),
+(7, 'admin2025', 'admin2025', 'Jan Nichols', 'Nguyen', 'Maristela', 1, 'jang.maristela.coc@phinmaed.com', 'Zone 3 canitoan', '09972654952', 'Offline', 'Offline', '2025-07-25', '2003-01-22', 12),
+(8, 'inventory2025', 'inventory2025', 'Gray', 'Nguyen', 'Fullbuster', 3, 'janmaristela2003@gmail.com', 'Zone 3 canitoan', '09476976978', 'Offline', 'Online', '2025-07-25', '0000-00-00', 12),
+(9, 'lyca2025', 'lyca2025', 'Lyca', 'Bahandi', 'Cantilado', 5, 'lyca@gmail.com', 'Carmen Ylaya', '1', 'Offline', 'Offline', '2025-07-28', '2002-10-03', 13),
+(10, 'kyu', 'kyuchansue', 'Christian', 'Colipano', 'Butaya', 2, 'christianbutaya23@gmail.com', 'Zone 5, Cagayan de Oro City', '09353216482', 'Offline', 'Offline', '2025-08-01', '2025-11-23', 12),
 (11, 'carl', 'carl123', 'Carl', 'Ranisses', 'Hibaya', 3, 'hibayacj8@gmail.com', 'zone-9 caffas, macanhan cagayand de oro city', '09635819495', 'Active', 'Offline', '2025-08-01', '2003-01-21', 13),
-(12, 'reyzyl', 'balaba', 'Reyzyl', 'Alcantara', 'Balaba', 2, 'balaba@gmail.com', 'Mambuaya, cdoc', '0935432737', 'Offline', 'Offline', '2025-08-01', '2025-01-01', 12),
-(14, 'cristopher2025', 'cristopher2025', 'Cristopher', 'S', 'Johansson', 5, 'johansson@gmail.com', 'Carmen', '12', 'Offline', 'Offline', '2025-08-04', '2025-08-04', 13),
+(12, 'reyzyl', 'balaba', 'Reyzyl', 'Alcantara', 'Balaba', 2, 'balaba@gmail.com', 'Mambuaya, cdoc', '0935432737', 'Offline', 'Online', '2025-08-01', '2025-01-01', 12),
+(14, 'cristopher2025', 'cristopher2025', 'Cristopher', 'S', 'Johansson', 2, 'johansson@gmail.com', 'Carmen', '12', 'Offline', 'Online', '2025-08-04', '2025-08-04', 14),
 (15, 'claire2025', 'claire2025', 'Claire Ivy', ' Hemosilla', 'Arcay', 4, 'claire@gmail.com', 'Canitoan', '1', 'Offline', 'Offline', '2025-08-05', '2003-05-03', 12),
 (16, 'saletester1', 'saletester1', 'Sales Clerk', 'T', 'Tester 1', 2, 'tester1@gmail.com', 'tester1', '1', 'Offline', 'Offline', '2025-08-26', '2025-08-26', 14),
-(17, 'inventoryjasaan', 'inventoryjasaan', 'Christian', 'Colipano', 'Butaya', 3, 'christianbutaya@gmail.com', 'zone 5, bonbon cdoc', '09353216482', 'Offline', 'Online', '2025-09-02', '2003-02-11', 14);
+(17, 'inventoryjasaan', 'inventoryjasaan', 'Christian', 'Colipano', 'Butaya', 3, 'christianbutaya@gmail.com', 'zone 5, bonbon cdoc', '09353216482', 'Offline', 'Offline', '2025-09-02', '2003-02-11', 14),
+(18, 'wr2025', 'wr2025', 'testu', 'estu', 'tesst', 5, 'email', 'address', '09', 'Offline', 'Online', '2025-10-06', '2005-03-06', 12);
 
 -- --------------------------------------------------------
 
@@ -2458,7 +2459,538 @@ INSERT INTO `activity_log` (`activity_log_id`, `activity`, `time`, `date`, `acco
 (2374, 'Get the inventory reports of Agora Showroom Main', '08:31', '2025-09-29', 8),
 (2375, 'Log Out', '08:31', '2025-09-29', 8),
 (2376, 'Online', '08:31', '2025-09-29', 9),
-(2377, 'Online', '08:35', '2025-09-29', 9);
+(2377, 'Online', '08:35', '2025-09-29', 9),
+(2378, 'Online', '21:36', '2025-10-02', 7),
+(2379, 'Online', '21:38', '2025-10-02', 12),
+(2380, 'Online', '23:39', '2025-12-02', 12),
+(2381, 'Log Out', '14:55', '2025-10-03', 12),
+(2382, 'Log Out', '14:55', '2025-10-03', 7),
+(2383, 'Online', '14:57', '2025-10-03', 7),
+(2384, 'Online', '14:57', '2025-10-03', 7),
+(2385, 'Online', '14:58', '2025-10-03', 7),
+(2386, 'Get the inventory reports of A.G-18 in null store', '15:03', '2025-10-03', 7),
+(2387, 'Online', '15:26', '2025-10-03', 12),
+(2388, 'Get the inventory reports of all locations', '15:50', '2025-10-03', 7),
+(2389, 'Online', '00:27', '2025-10-04', 7),
+(2390, 'Get the inventory reports of all locations', '09:31', '2025-10-04', 7),
+(2391, 'Log Out', '09:33', '2025-10-04', 7),
+(2392, 'Online', '09:47', '2025-10-04', 7),
+(2393, 'Online', '09:47', '2025-10-04', 7),
+(2394, 'Get the inventory reports of all locations', '09:52', '2025-10-04', 7),
+(2395, 'Get the inventory reports of all locations', '09:55', '2025-10-04', 7),
+(2396, 'Get the inventory reports of A.G-122 in null store', '09:55', '2025-10-04', 7),
+(2397, 'Get the inventory reports of all locations', '09:55', '2025-10-04', 7),
+(2398, 'Get the inventory reports of Agora Showroom Main', '09:56', '2025-10-04', 7),
+(2399, 'Get the inventory reports of Jasaan Showroom', '09:56', '2025-10-04', 7),
+(2400, 'Get the inventory reports of Jasaan Showroom', '09:56', '2025-10-04', 7),
+(2401, 'Get the inventory reports of Warehouse CDO', '09:56', '2025-10-04', 7),
+(2402, 'Get the inventory reports of Jasaan Showroom', '09:56', '2025-10-04', 7),
+(2403, 'Get the inventory reports of Agora Showroom Main', '09:56', '2025-10-04', 7),
+(2404, 'Get the inventory reports of all locations', '09:56', '2025-10-04', 7),
+(2405, 'Get the inventory reports of all locations', '09:59', '2025-10-04', 7),
+(2406, 'Get the inventory reports of all locations', '10:24', '2025-10-04', 7),
+(2407, 'Log Out', '10:26', '2025-10-04', 7),
+(2408, 'Online', '10:26', '2025-10-04', 9),
+(2409, 'Get the inventory reports of Warehouse CDO', '10:26', '2025-10-04', 9),
+(2410, 'Get the inventory reports of Warehouse CDO', '10:26', '2025-10-04', 9),
+(2411, 'Get the inventory reports of Warehouse CDO', '10:26', '2025-10-04', 9),
+(2412, 'Get the inventory reports of Warehouse CDO', '10:26', '2025-10-04', 9),
+(2413, 'Stock In A Product', '10:42', '2025-10-04', 9),
+(2414, 'Get the inventory reports of Warehouse CDO', '10:42', '2025-10-04', 9),
+(2415, 'Get the inventory reports of Warehouse CDO', '10:42', '2025-10-04', 9),
+(2416, 'Get the inventory reports of Warehouse CDO', '10:42', '2025-10-04', 9),
+(2417, 'Get the inventory reports of Warehouse CDO', '10:42', '2025-10-04', 9),
+(2418, 'Get the inventory reports of Warehouse CDO', '10:59', '2025-10-04', 9),
+(2419, 'Get the inventory reports of Warehouse CDO', '10:59', '2025-10-04', 9),
+(2420, 'Get the inventory reports of Warehouse CDO', '10:59', '2025-10-04', 9),
+(2421, 'Get the inventory reports of Warehouse CDO', '10:59', '2025-10-04', 9),
+(2422, 'Get the inventory reports of Warehouse CDO', '10:59', '2025-10-04', 9),
+(2423, 'Get the inventory reports of Warehouse CDO', '10:59', '2025-10-04', 9),
+(2424, 'Get the inventory reports of Warehouse CDO', '10:59', '2025-10-04', 9),
+(2425, 'Get the inventory reports of Warehouse CDO', '10:59', '2025-10-04', 9),
+(2426, 'Get the inventory reports of Warehouse CDO', '11:00', '2025-10-04', 9),
+(2427, 'Get the inventory reports of Warehouse CDO', '11:00', '2025-10-04', 9),
+(2428, 'Get the inventory reports of Warehouse CDO', '11:00', '2025-10-04', 9),
+(2429, 'Get the inventory reports of Warehouse CDO', '11:00', '2025-10-04', 9),
+(2430, 'Online', '11:04', '2025-10-04', 7),
+(2431, 'Get the inventory reports of Warehouse CDO', '11:30', '2025-10-04', 9),
+(2432, 'Get the inventory reports of Warehouse CDO', '11:30', '2025-10-04', 9),
+(2433, 'Get the inventory reports of Warehouse CDO', '11:30', '2025-10-04', 9),
+(2434, 'Get the inventory reports of Warehouse CDO', '11:30', '2025-10-04', 9),
+(2435, 'Online', '14:56', '2025-10-04', 7),
+(2436, 'Online', '14:58', '2025-10-04', 12),
+(2437, 'Online', '15:00', '2025-10-04', 16),
+(2438, 'Processed a customer sale at Jasaan Showroom, Invoice #109', '15:01', '2025-10-04', 16),
+(2439, 'Online', '15:01', '2025-10-04', 12),
+(2440, 'Online', '15:01', '2025-10-04', 12),
+(2441, 'Online', '15:01', '2025-10-04', 12),
+(2442, 'Log Out', '15:02', '2025-10-04', 12),
+(2443, 'Online', '15:02', '2025-10-04', 9),
+(2444, 'Online', '15:02', '2025-10-04', 9),
+(2445, 'Online', '15:03', '2025-10-04', 8),
+(2446, 'Get the inventory reports of Agora Showroom Main', '15:03', '2025-10-04', 8),
+(2447, 'Get the inventory reports of Agora Showroom Main', '15:03', '2025-10-04', 8),
+(2448, 'Get the inventory reports of Agora Showroom Main', '15:03', '2025-10-04', 8),
+(2449, 'Get the inventory reports of Agora Showroom Main', '15:03', '2025-10-04', 8),
+(2450, 'Request Stock Out List', '15:03', '2025-10-04', 8),
+(2451, 'Sent a request from Agora Showroom Main to Warehouse CDO', '15:03', '2025-10-04', 8),
+(2452, 'Accept the request #106', '15:04', '2025-10-04', 9),
+(2453, 'Deliver the request #106', '15:04', '2025-10-04', 9),
+(2454, 'Receive the delivery from request #106', '15:05', '2025-10-04', 8),
+(2455, 'Log Out', '15:52', '2025-10-04', 9),
+(2456, 'Online', '15:53', '2025-10-04', 12),
+(2457, 'Online', '16:04', '2025-10-04', 9),
+(2458, 'Get the inventory reports of A.G-122 in Warehouse CDO store', '16:04', '2025-10-04', 9),
+(2459, 'Get the inventory reports of A.G-122 in Warehouse CDO store', '16:04', '2025-10-04', 9),
+(2460, 'Log Out', '16:09', '2025-10-04', 12),
+(2461, 'Online', '16:10', '2025-10-04', 12),
+(2462, 'Log Out', '16:14', '2025-10-04', 7),
+(2463, 'Log Out', '16:14', '2025-10-04', 12),
+(2464, 'Log Out', '16:14', '2025-10-04', 16),
+(2465, 'Get the inventory reports of Agora Showroom Main', '16:15', '2025-10-04', 8),
+(2466, 'Get the inventory reports of Agora Showroom Main', '16:15', '2025-10-04', 8),
+(2467, 'Get the inventory reports of Agora Showroom Main', '16:15', '2025-10-04', 8),
+(2468, 'Get the inventory reports of Agora Showroom Main', '16:15', '2025-10-04', 8),
+(2469, 'Get the inventory reports of A.G-122 in Agora Showroom Main store', '16:18', '2025-10-04', 8),
+(2470, 'Get the inventory reports of A.G-122 in Agora Showroom Main store', '16:21', '2025-10-04', 8),
+(2471, 'Get the inventory reports of Agora Showroom Main', '16:23', '2025-10-04', 8),
+(2472, 'Get the inventory reports of Agora Showroom Main', '16:23', '2025-10-04', 8),
+(2473, 'Get the inventory reports of Agora Showroom Main', '16:23', '2025-10-04', 8),
+(2474, 'Get the inventory reports of Agora Showroom Main', '16:23', '2025-10-04', 8),
+(2475, 'Get the inventory reports of Agora Showroom Main', '16:23', '2025-10-04', 8),
+(2476, 'Get the inventory reports of Agora Showroom Main', '16:23', '2025-10-04', 8),
+(2477, 'Get the inventory reports of Agora Showroom Main', '16:23', '2025-10-04', 8),
+(2478, 'Get the inventory reports of Agora Showroom Main', '16:23', '2025-10-04', 8),
+(2479, 'Get the inventory reports of Agora Showroom Main', '16:26', '2025-10-04', 8),
+(2480, 'Get the inventory reports of Agora Showroom Main', '16:26', '2025-10-04', 8),
+(2481, 'Get the inventory reports of Agora Showroom Main', '16:26', '2025-10-04', 8),
+(2482, 'Get the inventory reports of Agora Showroom Main', '16:26', '2025-10-04', 8),
+(2483, 'Get the inventory reports of A.G-1 in Agora Showroom Main store', '16:29', '2025-10-04', 8),
+(2484, 'Get the inventory reports of A.G-1 in Agora Showroom Main store', '16:29', '2025-10-04', 8),
+(2485, 'Get the inventory reports of A.G-119 in Agora Showroom Main store', '16:29', '2025-10-04', 8),
+(2486, 'Get the inventory reports of Agora Showroom Main', '16:29', '2025-10-04', 8),
+(2487, 'Get the inventory reports of Agora Showroom Main', '16:29', '2025-10-04', 8),
+(2488, 'Get the inventory reports of Agora Showroom Main', '16:29', '2025-10-04', 8),
+(2489, 'Get the inventory reports of Agora Showroom Main', '16:29', '2025-10-04', 8),
+(2490, 'Get the inventory reports of Agora Showroom Main', '16:30', '2025-10-04', 8),
+(2491, 'Get the inventory reports of Agora Showroom Main', '16:30', '2025-10-04', 8),
+(2492, 'Get the inventory reports of Agora Showroom Main', '16:30', '2025-10-04', 8),
+(2493, 'Get the inventory reports of Agora Showroom Main', '16:30', '2025-10-04', 8),
+(2494, 'Get the inventory reports of Agora Showroom Main', '16:32', '2025-10-04', 8),
+(2495, 'Get the inventory reports of Agora Showroom Main', '16:32', '2025-10-04', 8),
+(2496, 'Get the inventory reports of Agora Showroom Main', '16:32', '2025-10-04', 8),
+(2497, 'Get the inventory reports of Agora Showroom Main', '16:32', '2025-10-04', 8),
+(2498, 'Track the request #72', '16:41', '2025-10-04', 8),
+(2499, 'Track the request #72', '16:41', '2025-10-04', 8),
+(2500, 'Track the request #62', '16:41', '2025-10-04', 8),
+(2501, 'Online', '16:48', '2025-10-04', 7),
+(2502, 'Online', '16:50', '2025-10-04', 7),
+(2503, 'Log Out', '16:51', '2025-10-04', 7),
+(2504, 'Sent a request from Agora Showroom Main to Warehouse CDO', '16:55', '2025-10-04', 8),
+(2505, 'Track the request #62', '16:59', '2025-10-04', 8),
+(2506, 'Track the request #62', '16:59', '2025-10-04', 8),
+(2507, 'Track the request #107', '16:59', '2025-10-04', 8),
+(2508, 'Track the request #107', '16:59', '2025-10-04', 8),
+(2509, 'Track the request #107', '17:00', '2025-10-04', 8),
+(2510, 'Track the request #107', '17:00', '2025-10-04', 8),
+(2511, 'Online', '17:01', '2025-10-04', 7),
+(2512, 'Track the request #74', '17:03', '2025-10-04', 8),
+(2513, 'Track the request #74', '17:03', '2025-10-04', 8),
+(2514, 'Track the request #63', '17:03', '2025-10-04', 8),
+(2515, 'Track the request #63', '17:03', '2025-10-04', 8),
+(2516, 'Get the inventory reports of Agora Showroom Main', '17:03', '2025-10-04', 8),
+(2517, 'Get the inventory reports of Agora Showroom Main', '17:03', '2025-10-04', 8),
+(2518, 'Get the inventory reports of Agora Showroom Main', '17:03', '2025-10-04', 8),
+(2519, 'Get the inventory reports of Agora Showroom Main', '17:03', '2025-10-04', 8),
+(2520, 'Get the inventory reports of Agora Showroom Main', '17:04', '2025-10-04', 8),
+(2521, 'Get the inventory reports of Agora Showroom Main', '17:04', '2025-10-04', 8),
+(2522, 'Get the inventory reports of Agora Showroom Main', '17:04', '2025-10-04', 8),
+(2523, 'Get the inventory reports of Agora Showroom Main', '17:04', '2025-10-04', 8),
+(2524, 'Get the inventory reports of Agora Showroom Main', '17:04', '2025-10-04', 8),
+(2525, 'Get the inventory reports of Agora Showroom Main', '17:04', '2025-10-04', 8),
+(2526, 'Get the inventory reports of Agora Showroom Main', '17:04', '2025-10-04', 8),
+(2527, 'Get the inventory reports of Agora Showroom Main', '17:04', '2025-10-04', 8),
+(2528, 'Online', '17:16', '2025-10-04', 8),
+(2529, 'Get the inventory reports of Agora Showroom Main', '17:16', '2025-10-04', 8),
+(2530, 'Get the inventory reports of Agora Showroom Main', '17:16', '2025-10-04', 8),
+(2531, 'Get the inventory reports of Agora Showroom Main', '17:16', '2025-10-04', 8),
+(2532, 'Get the inventory reports of Agora Showroom Main', '17:16', '2025-10-04', 8),
+(2533, 'Get the inventory reports of Agora Showroom Main', '17:16', '2025-10-04', 8),
+(2534, 'Get the inventory reports of Agora Showroom Main', '17:17', '2025-10-04', 8),
+(2535, 'Get the inventory reports of Agora Showroom Main', '17:17', '2025-10-04', 8),
+(2536, 'Get the inventory reports of Agora Showroom Main', '17:17', '2025-10-04', 8),
+(2537, 'Track the request #104', '17:20', '2025-10-04', 8),
+(2538, 'Track the request #104', '17:20', '2025-10-04', 8),
+(2539, 'Get the inventory reports of Agora Showroom Main', '17:21', '2025-10-04', 8),
+(2540, 'Get the inventory reports of Agora Showroom Main', '17:21', '2025-10-04', 8),
+(2541, 'Get the inventory reports of Agora Showroom Main', '17:21', '2025-10-04', 8),
+(2542, 'Get the inventory reports of Agora Showroom Main', '17:21', '2025-10-04', 8),
+(2543, 'Online', '17:26', '2025-10-04', 9),
+(2544, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2545, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2546, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2547, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2548, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2549, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2550, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2551, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2552, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2553, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2554, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2555, 'Get the inventory reports of Warehouse CDO', '17:26', '2025-10-04', 9),
+(2556, 'Online', '17:29', '2025-10-04', 7),
+(2557, 'Log Out', '17:31', '2025-10-04', 7),
+(2558, 'Mark the request #72 to complete', '17:32', '2025-10-04', 9),
+(2559, 'Mark the request #73 to complete', '17:32', '2025-10-04', 9),
+(2560, 'Track the request #104', '17:33', '2025-10-04', 8),
+(2561, 'Track the request #104', '17:33', '2025-10-04', 8),
+(2562, 'Track the request #107', '17:33', '2025-10-04', 8),
+(2563, 'Track the request #107', '17:33', '2025-10-04', 8),
+(2564, 'Accept the request #107', '17:33', '2025-10-04', 9),
+(2565, 'Track the request #107', '17:33', '2025-10-04', 8),
+(2566, 'Track the request #107', '17:33', '2025-10-04', 8),
+(2567, 'Track the request #107', '17:34', '2025-10-04', 8),
+(2568, 'Track the request #107', '17:34', '2025-10-04', 8),
+(2569, 'Deliver the request #107', '17:34', '2025-10-04', 9),
+(2570, 'Track the request #107', '17:34', '2025-10-04', 8),
+(2571, 'Track the request #107', '17:34', '2025-10-04', 8),
+(2572, 'Track the request #107', '17:34', '2025-10-04', 8),
+(2573, 'Track the request #107', '17:34', '2025-10-04', 8),
+(2574, 'Receive the delivery from request #107', '17:35', '2025-10-04', 8),
+(2575, 'Mark the request #107 to complete', '17:35', '2025-10-04', 9),
+(2576, 'Track the request #107', '17:36', '2025-10-04', 8),
+(2577, 'Track the request #107', '17:36', '2025-10-04', 8),
+(2578, 'Track the request #107', '17:36', '2025-10-04', 8),
+(2579, 'Track the request #107', '17:36', '2025-10-04', 8),
+(2580, 'Track the request #104', '17:36', '2025-10-04', 8),
+(2581, 'Track the request #104', '17:36', '2025-10-04', 8),
+(2582, 'Get the inventory reports of A.G-122 in Agora Showroom Main store', '17:36', '2025-10-04', 8),
+(2583, 'Online', '17:37', '2025-10-04', 7),
+(2584, 'Get the inventory reports of all locations', '17:44', '2025-10-04', 7),
+(2585, 'Online', '22:21', '2025-10-04', 7),
+(2586, 'Online', '22:21', '2025-10-04', 7),
+(2587, 'Get the inventory reports of all locations', '10:31', '2025-10-05', 7),
+(2588, 'Get the inventory reports of Agora Showroom Main', '10:31', '2025-10-05', 7),
+(2589, 'Get the inventory reports of Jasaan Showroom', '10:31', '2025-10-05', 7),
+(2590, 'Get the inventory reports of Warehouse CDO', '10:31', '2025-10-05', 7),
+(2591, 'Get the inventory reports of Agora Showroom Main', '10:31', '2025-10-05', 7),
+(2592, 'Get the inventory reports of all locations', '10:32', '2025-10-05', 7),
+(2593, 'Online', '16:12', '2025-10-05', 12),
+(2594, 'Online', '16:57', '2025-10-05', 12),
+(2595, 'Online', '06:35', '2025-10-06', 8),
+(2596, 'Request Stock Out List', '06:44', '2025-10-06', 8),
+(2597, 'Request Stock Out List', '06:44', '2025-10-06', 8),
+(2598, 'Sent a request from Agora Showroom Main to Warehouse CDO', '06:59', '2025-10-06', 8),
+(2599, 'Get the inventory reports of Agora Showroom Main', '07:00', '2025-10-06', 8),
+(2600, 'Get the inventory reports of Agora Showroom Main', '07:00', '2025-10-06', 8),
+(2601, 'Get the inventory reports of Agora Showroom Main', '07:00', '2025-10-06', 8),
+(2602, 'Get the inventory reports of Agora Showroom Main', '07:00', '2025-10-06', 8),
+(2603, 'Track the request #108', '07:01', '2025-10-06', 8),
+(2604, 'Track the request #108', '07:01', '2025-10-06', 8),
+(2605, 'Track the request #74', '07:01', '2025-10-06', 8),
+(2606, 'Track the request #74', '07:01', '2025-10-06', 8),
+(2607, 'Track the request #88', '07:02', '2025-10-06', 8),
+(2608, 'Track the request #88', '07:02', '2025-10-06', 8),
+(2609, 'Track the request #62', '07:02', '2025-10-06', 8),
+(2610, 'Track the request #62', '07:02', '2025-10-06', 8),
+(2611, 'Track the request #104', '07:04', '2025-10-06', 8),
+(2612, 'Track the request #104', '07:04', '2025-10-06', 8),
+(2613, 'Track the request #62', '07:05', '2025-10-06', 8),
+(2614, 'Track the request #62', '07:05', '2025-10-06', 8),
+(2615, 'Track the request #62', '07:07', '2025-10-06', 8),
+(2616, 'Track the request #62', '07:07', '2025-10-06', 8),
+(2617, 'Track the request #62', '07:07', '2025-10-06', 8),
+(2618, 'Track the request #62', '07:07', '2025-10-06', 8),
+(2619, 'Receive the delivery from request #85', '07:13', '2025-10-06', 8),
+(2620, 'Receive the delivery from request #86', '07:13', '2025-10-06', 8),
+(2621, 'Receive the delivery from request #84', '07:13', '2025-10-06', 8),
+(2622, 'Receive the delivery from request #93', '07:13', '2025-10-06', 8),
+(2623, 'Get the inventory reports of Agora Showroom Main', '07:23', '2025-10-06', 8),
+(2624, 'Get the inventory reports of Agora Showroom Main', '07:23', '2025-10-06', 8),
+(2625, 'Get the inventory reports of Agora Showroom Main', '07:23', '2025-10-06', 8),
+(2626, 'Get the inventory reports of Agora Showroom Main', '07:23', '2025-10-06', 8),
+(2627, 'Get the inventory reports of Agora Showroom Main', '07:28', '2025-10-06', 8),
+(2628, 'Get the inventory reports of Agora Showroom Main', '07:28', '2025-10-06', 8),
+(2629, 'Get the inventory reports of Agora Showroom Main', '07:28', '2025-10-06', 8),
+(2630, 'Get the inventory reports of Agora Showroom Main', '07:28', '2025-10-06', 8),
+(2631, 'Get the inventory reports of Agora Showroom Main', '07:33', '2025-10-06', 8),
+(2632, 'Get the inventory reports of Agora Showroom Main', '07:33', '2025-10-06', 8),
+(2633, 'Get the inventory reports of Agora Showroom Main', '07:33', '2025-10-06', 8),
+(2634, 'Get the inventory reports of Agora Showroom Main', '07:33', '2025-10-06', 8),
+(2635, 'Log Out', '10:40', '2025-10-06', 12),
+(2636, 'Log Out', '10:40', '2025-10-06', 8),
+(2637, 'Log Out', '10:40', '2025-10-06', 7),
+(2638, 'Online', '10:44', '2025-10-06', 9),
+(2639, 'Online', '10:44', '2025-10-06', 8),
+(2640, 'Sent a request from Agora Showroom Main to Warehouse CDO', '10:46', '2025-10-06', 8),
+(2641, 'Accept the request #109', '10:47', '2025-10-06', 9),
+(2642, 'Deliver the request #109', '10:47', '2025-10-06', 9),
+(2643, 'Track the request #88', '10:47', '2025-10-06', 8),
+(2644, 'Track the request #88', '10:47', '2025-10-06', 8),
+(2645, 'Get the inventory reports of Agora Showroom Main', '10:48', '2025-10-06', 8),
+(2646, 'Get the inventory reports of Agora Showroom Main', '10:48', '2025-10-06', 8),
+(2647, 'Get the inventory reports of Agora Showroom Main', '10:48', '2025-10-06', 8),
+(2648, 'Get the inventory reports of Agora Showroom Main', '10:48', '2025-10-06', 8),
+(2649, 'Online', '10:48', '2025-10-06', 7),
+(2650, 'Get the inventory reports of A.G-122 in Agora Showroom Main store', '10:49', '2025-10-06', 8),
+(2651, 'Receive the delivery from request #109', '10:50', '2025-10-06', 8),
+(2652, 'Get the inventory reports of Agora Showroom Main', '10:50', '2025-10-06', 8),
+(2653, 'Get the inventory reports of Agora Showroom Main', '10:50', '2025-10-06', 8),
+(2654, 'Get the inventory reports of Agora Showroom Main', '10:50', '2025-10-06', 8),
+(2655, 'Get the inventory reports of Agora Showroom Main', '10:50', '2025-10-06', 8),
+(2656, 'Log Out', '10:51', '2025-10-06', 8),
+(2657, 'Online', '10:52', '2025-10-06', 8),
+(2658, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2659, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2660, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2661, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2662, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2663, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2664, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2665, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2666, 'Online', '10:53', '2025-10-06', 12),
+(2667, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2668, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2669, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2670, 'Get the inventory reports of Agora Showroom Main', '10:53', '2025-10-06', 8),
+(2671, 'Get the inventory reports of A.G-122 in Agora Showroom Main store', '10:53', '2025-10-06', 8),
+(2672, 'Request Stock Out List', '10:55', '2025-10-06', 8),
+(2673, 'Track the request #62', '10:56', '2025-10-06', 8),
+(2674, 'Track the request #62', '10:56', '2025-10-06', 8),
+(2675, 'Get the inventory reports of A.G-122 in Agora Showroom Main store', '10:57', '2025-10-06', 8),
+(2676, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2677, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2678, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2679, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2680, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2681, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2682, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2683, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2684, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2685, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2686, 'Get the inventory reports of Agora Showroom Main', '10:57', '2025-10-06', 8),
+(2687, 'Get the inventory reports of Agora Showroom Main', '10:58', '2025-10-06', 8),
+(2688, 'Get the inventory reports of Agora Showroom Main', '10:58', '2025-10-06', 8),
+(2689, 'Get the inventory reports of Agora Showroom Main', '10:58', '2025-10-06', 8),
+(2690, 'Get the inventory reports of Agora Showroom Main', '10:58', '2025-10-06', 8),
+(2691, 'Log Out', '10:58', '2025-10-06', 8),
+(2692, 'Online', '10:58', '2025-10-06', 12),
+(2693, 'Online', '11:41', '2025-10-06', 7),
+(2694, 'Log Out', '11:42', '2025-10-06', 12),
+(2695, 'Log Out', '11:44', '2025-10-06', 7),
+(2696, 'Online', '11:45', '2025-10-06', 12),
+(2697, 'Log Out', '11:46', '2025-10-06', 12),
+(2698, 'Online', '11:46', '2025-10-06', 14),
+(2699, 'Online', '11:46', '2025-10-06', 14),
+(2700, 'Online', '11:46', '2025-10-06', 9),
+(2701, 'Online', '11:46', '2025-10-06', 12),
+(2702, 'Online', '11:47', '2025-10-06', 17),
+(2703, 'Processed a walk-in customer sale at Jasaan Showroom, Invoice #116', '11:48', '2025-10-06', 9),
+(2704, 'Processed a customer sale at Agora Showroom Main, Invoice #117', '11:48', '2025-10-06', 12),
+(2705, 'Log Out', '11:48', '2025-10-06', 17),
+(2706, 'Online', '11:49', '2025-10-06', 10),
+(2707, 'Processed a walk-in customer sale at Jasaan Showroom, Invoice #118', '11:49', '2025-10-06', 14),
+(2708, 'Processed a customer sale at Agora Showroom Main, Invoice #119', '11:51', '2025-10-06', 10),
+(2709, 'Processed a customer sale at Agora Showroom Main, Invoice #120', '11:52', '2025-10-06', 10),
+(2710, 'Online', '11:52', '2025-10-06', 12),
+(2711, 'Processed a walk-in customer sale at Agora Showroom Main, Invoice #121', '11:52', '2025-10-06', 10),
+(2712, 'Log Out', '11:57', '2025-10-06', 10),
+(2713, 'Log Out', '11:58', '2025-10-06', 9),
+(2714, 'Log Out', '11:58', '2025-10-06', 14),
+(2715, 'Online', '11:59', '2025-10-06', 14),
+(2716, 'Online', '11:59', '2025-10-06', 9),
+(2717, 'Log Out', '12:00', '2025-10-06', 12),
+(2718, 'Online', '12:00', '2025-10-06', 12),
+(2719, 'Processed a walk-in customer sale at Jasaan Showroom, Invoice #133', '12:02', '2025-10-06', 14),
+(2720, 'Online', '12:03', '2025-10-06', 10),
+(2721, 'Processed a customer sale at Agora Showroom Main, Invoice #137', '12:05', '2025-10-06', 10),
+(2722, 'Log Out', '12:05', '2025-10-06', 9),
+(2723, 'Log Out', '12:05', '2025-10-06', 14),
+(2724, 'Online', '12:05', '2025-10-06', 14),
+(2725, 'Online', '12:06', '2025-10-06', 14),
+(2726, 'Processed an installment sale at Agora Showroom Main, Invoice #141', '12:10', '2025-10-06', 10),
+(2727, 'Log Out', '12:13', '2025-10-06', 14),
+(2728, 'Log Out', '12:14', '2025-10-06', 14),
+(2729, 'Online', '12:14', '2025-10-06', 14),
+(2730, 'Log Out', '12:15', '2025-10-06', 14),
+(2731, 'Online', '12:40', '2025-10-06', 14),
+(2732, 'Online', '12:41', '2025-10-06', 7),
+(2733, 'Online', '12:42', '2025-10-06', 10),
+(2734, 'Log Out', '12:47', '2025-10-06', 10),
+(2735, 'Online', '12:47', '2025-10-06', 9),
+(2736, 'Log Out', '12:48', '2025-10-06', 9),
+(2737, 'Online', '12:48', '2025-10-06', 7),
+(2738, 'Get the inventory reports of all locations', '13:03', '2025-10-06', 7),
+(2739, 'Get the inventory reports of A.G-122 in null store', '13:03', '2025-10-06', 7),
+(2740, 'Get the inventory reports of all locations', '13:05', '2025-10-06', 7),
+(2741, 'Log Out', '13:20', '2025-10-06', 7),
+(2742, 'Online', '13:20', '2025-10-06', 18),
+(2743, 'Online', '13:22', '2025-10-06', 18),
+(2744, 'Get the inventory reports of Agora Showroom Main', '13:26', '2025-10-06', 18),
+(2745, 'Get the inventory reports of Agora Showroom Main', '13:26', '2025-10-06', 18),
+(2746, 'Get the inventory reports of Agora Showroom Main', '13:26', '2025-10-06', 18),
+(2747, 'Get the inventory reports of Agora Showroom Main', '13:26', '2025-10-06', 18),
+(2748, 'Log Out', '19:55', '2025-10-06', 12),
+(2749, 'Online', '19:59', '2025-10-06', 7),
+(2750, 'Online', '21:30', '2025-10-06', 7),
+(2751, 'Log Out', '21:31', '2025-10-06', 7),
+(2752, 'Online', '21:31', '2025-10-06', 8),
+(2753, 'Log Out', '21:31', '2025-10-06', 8),
+(2754, 'Online', '21:31', '2025-10-06', 9),
+(2755, 'Log Out', '21:32', '2025-10-06', 9),
+(2756, 'Online', '21:32', '2025-10-06', 7),
+(2757, 'Log Out', '21:33', '2025-10-06', 7),
+(2758, 'Online', '21:33', '2025-10-06', 9),
+(2759, 'Online', '21:45', '2025-10-06', 8),
+(2760, 'Track the request #62', '21:46', '2025-10-06', 8),
+(2761, 'Track the request #62', '21:46', '2025-10-06', 8),
+(2762, 'Get the inventory reports of A.G-122 in Agora Showroom Main store', '21:47', '2025-10-06', 8),
+(2763, 'Get the inventory reports of A.G-122 in Agora Showroom Main store', '21:47', '2025-10-06', 8),
+(2764, 'Sent a request from Agora Showroom Main to Warehouse CDO', '21:49', '2025-10-06', 8),
+(2765, 'Accept the request #110', '21:49', '2025-10-06', 9),
+(2766, 'Track the request #62', '21:49', '2025-10-06', 8),
+(2767, 'Track the request #62', '21:49', '2025-10-06', 8),
+(2768, 'Deliver the request #110', '21:49', '2025-10-06', 9),
+(2769, 'Receive the delivery from request #110', '21:50', '2025-10-06', 8),
+(2770, 'Get the inventory reports of Agora Showroom Main', '21:50', '2025-10-06', 8),
+(2771, 'Get the inventory reports of Agora Showroom Main', '21:50', '2025-10-06', 8),
+(2772, 'Get the inventory reports of Agora Showroom Main', '21:50', '2025-10-06', 8),
+(2773, 'Get the inventory reports of Agora Showroom Main', '21:50', '2025-10-06', 8),
+(2774, 'Mark the request #110 to complete', '21:51', '2025-10-06', 9),
+(2775, 'Log Out', '21:51', '2025-10-06', 8),
+(2776, 'Online', '21:52', '2025-10-06', 8),
+(2777, 'Track the request #62', '21:52', '2025-10-06', 8),
+(2778, 'Track the request #62', '21:52', '2025-10-06', 8),
+(2779, 'Track the request #84', '21:53', '2025-10-06', 8),
+(2780, 'Track the request #84', '21:53', '2025-10-06', 8),
+(2781, 'Log Out', '22:44', '2025-10-06', 8),
+(2782, 'Accept the request #108', '22:54', '2025-10-06', 9),
+(2783, 'Get the inventory reports of Warehouse CDO', '23:03', '2025-10-06', 9),
+(2784, 'Get the inventory reports of Warehouse CDO', '23:03', '2025-10-06', 9),
+(2785, 'Get the inventory reports of Warehouse CDO', '23:03', '2025-10-06', 9),
+(2786, 'Get the inventory reports of Warehouse CDO', '23:03', '2025-10-06', 9),
+(2787, 'Online', '23:04', '2025-10-06', 12),
+(2788, 'Get the inventory reports of A.G-122 in Warehouse CDO store', '23:04', '2025-10-06', 9),
+(2789, 'Processed a walk-in customer sale at Agora Showroom Main, Invoice #142', '23:06', '2025-10-06', 12),
+(2790, 'Online', '23:51', '2025-10-06', 7),
+(2791, 'Log Out', '23:51', '2025-10-06', 7),
+(2792, 'Online', '00:13', '2025-10-07', 7),
+(2793, 'Log Out', '00:33', '2025-10-07', 7),
+(2794, 'Online', '00:34', '2025-10-07', 7),
+(2795, 'Log Out', '00:34', '2025-10-07', 7),
+(2796, 'Online', '00:36', '2025-10-07', 7),
+(2797, 'Get the inventory reports of A.G-122 in null store', '00:42', '2025-10-07', 7),
+(2798, 'Get the inventory reports of all locations', '00:42', '2025-10-07', 7),
+(2799, 'Get the inventory reports of Jasaan Showroom', '00:42', '2025-10-07', 7),
+(2800, 'Get the inventory reports of Agora Showroom Main', '00:42', '2025-10-07', 7),
+(2801, 'Log Out', '00:48', '2025-10-07', 7),
+(2802, 'Online', '00:48', '2025-10-07', 7),
+(2803, 'Log Out', '01:06', '2025-10-07', 7),
+(2804, 'Online', '07:29', '2025-10-07', 12),
+(2805, 'Log Out', '13:39', '2025-10-07', 12),
+(2806, 'Online', '13:41', '2025-10-07', 7),
+(2807, 'Online', '13:41', '2025-10-07', 7),
+(2808, 'Online', '13:45', '2025-10-07', 7),
+(2809, 'Log Out', '13:45', '2025-10-07', 7),
+(2810, 'Online', '13:50', '2025-10-07', 9),
+(2811, 'Stock In A Product', '13:51', '2025-10-07', 9),
+(2812, 'Get the inventory reports of Warehouse CDO', '13:51', '2025-10-07', 9),
+(2813, 'Get the inventory reports of Warehouse CDO', '13:51', '2025-10-07', 9),
+(2814, 'Get the inventory reports of Warehouse CDO', '13:51', '2025-10-07', 9),
+(2815, 'Get the inventory reports of Warehouse CDO', '13:51', '2025-10-07', 9),
+(2816, 'Accept the request #105', '13:53', '2025-10-07', 9),
+(2817, 'Deliver the request #105', '13:54', '2025-10-07', 9),
+(2818, 'Mark the request #96 to complete', '13:54', '2025-10-07', 9),
+(2819, 'Log Out', '13:54', '2025-10-07', 9),
+(2820, 'Log Out', '14:00', '2025-10-07', 7),
+(2821, 'Online', '14:00', '2025-10-07', 12),
+(2822, 'Online', '15:38', '2025-10-07', 12),
+(2823, 'Processed a customer sale at Agora Showroom Main, Invoice #143', '15:41', '2025-10-07', 12),
+(2824, 'Online', '15:42', '2025-10-07', 12),
+(2825, 'Online', '16:14', '2025-10-07', 12),
+(2826, 'Online', '16:18', '2025-10-07', 12),
+(2827, 'Processed a customer sale at Agora Showroom Main, Invoice #146', '16:21', '2025-10-07', 12),
+(2828, 'Processed a customer sale at Agora Showroom Main, Invoice #147', '16:21', '2025-10-07', 12),
+(2829, 'Online', '16:23', '2025-10-07', 7),
+(2830, 'Log Out', '16:27', '2025-10-07', 7),
+(2831, 'Online', '16:56', '2025-10-07', 12),
+(2832, 'Log Out', '16:59', '2025-10-07', 12),
+(2833, 'Online', '16:59', '2025-10-07', 7),
+(2834, 'Online', '18:30', '2025-10-07', 7),
+(2835, 'Log Out', '18:30', '2025-10-07', 7),
+(2836, 'Online', '18:34', '2025-10-07', 12),
+(2837, 'Log Out', '18:40', '2025-10-07', 12),
+(2838, 'Online', '18:41', '2025-10-07', 12),
+(2839, 'Processed a customer sale at Agora Showroom Main, Invoice #148', '18:44', '2025-10-07', 12),
+(2840, 'Log Out', '18:47', '2025-10-07', 12),
+(2841, 'Online', '23:38', '2025-10-07', 12);
+INSERT INTO `activity_log` (`activity_log_id`, `activity`, `time`, `date`, `account_id`) VALUES
+(2842, 'Log Out', '23:47', '2025-10-07', 12),
+(2843, 'Online', '23:51', '2025-10-07', 7),
+(2844, 'Online', '23:53', '2025-10-07', 7),
+(2845, 'Online', '23:54', '2025-10-07', 12),
+(2846, 'Processed a customer sale at Agora Showroom Main, Invoice #151', '23:56', '2025-10-07', 12),
+(2847, 'Log Out', '00:01', '2025-10-08', 12),
+(2848, 'Online', '00:01', '2025-10-08', 12),
+(2849, 'Online', '00:12', '2025-10-08', 12),
+(2850, 'Log Out', '00:12', '2025-10-08', 12),
+(2851, 'Online', '01:56', '2025-10-08', 7),
+(2852, 'Online', '01:56', '2025-10-08', 7),
+(2853, 'Log Out', '01:57', '2025-10-08', 7),
+(2854, 'Online', '21:06', '2025-10-09', 7),
+(2855, 'Online', '21:06', '2025-10-09', 7),
+(2856, 'Online', '21:23', '2025-10-09', 7),
+(2857, 'Online', '21:25', '2025-10-09', 7),
+(2858, 'Log Out', '21:42', '2025-10-09', 7),
+(2859, 'Online', '21:42', '2025-10-09', 12),
+(2860, 'Processed a customer sale at Agora Showroom Main, Invoice #153', '21:47', '2025-10-09', 12),
+(2861, 'Processed an installment sale at Agora Showroom Main, Invoice #154', '21:56', '2025-10-09', 12),
+(2862, 'Online', '22:54', '2025-10-13', 9),
+(2863, 'Get the inventory reports of Warehouse CDO', '08:38', '2025-10-14', 9),
+(2864, 'Get the inventory reports of Warehouse CDO', '08:38', '2025-10-14', 9),
+(2865, 'Get the inventory reports of Warehouse CDO', '08:38', '2025-10-14', 9),
+(2866, 'Get the inventory reports of Warehouse CDO', '08:38', '2025-10-14', 9),
+(2867, 'Get the inventory reports of Warehouse CDO', '08:38', '2025-10-14', 9),
+(2868, 'Get the inventory reports of Warehouse CDO', '08:38', '2025-10-14', 9),
+(2869, 'Get the inventory reports of Warehouse CDO', '08:38', '2025-10-14', 9),
+(2870, 'Get the inventory reports of Warehouse CDO', '08:38', '2025-10-14', 9),
+(2871, 'Online', '13:18', '2025-10-14', 9),
+(2872, 'Online', '20:48', '2025-10-14', 9),
+(2873, 'Accept the customize request #2', '00:46', '2025-10-15', 9),
+(2874, 'Log Out', '02:23', '2025-10-15', 9),
+(2875, 'Online', '02:23', '2025-10-15', 8),
+(2876, 'Get the inventory reports of Agora Showroom Main', '02:23', '2025-10-15', 8),
+(2877, 'Get the inventory reports of Agora Showroom Main', '02:23', '2025-10-15', 8),
+(2878, 'Get the inventory reports of Agora Showroom Main', '02:23', '2025-10-15', 8),
+(2879, 'Get the inventory reports of Agora Showroom Main', '02:23', '2025-10-15', 8),
+(2880, 'Sent a request from Agora Showroom Main to Warehouse CDO', '02:24', '2025-10-15', 8),
+(2881, 'Request Stock Out List', '02:44', '2025-10-15', 8),
+(2882, 'Sent a request from Agora Showroom Main to Warehouse CDO', '02:45', '2025-10-15', 8),
+(2883, 'Accept the request #112', '02:48', '2025-10-15', 9),
+(2884, 'Accept the request #111', '02:50', '2025-10-15', 9),
+(2885, 'Accept the customize request #4', '02:53', '2025-10-15', 9);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `approved_customize_request`
+--
+
+CREATE TABLE `approved_customize_request` (
+  `acr_id` int(11) NOT NULL,
+  `customize_request_id` int(100) NOT NULL,
+  `aprroved_by` int(100) NOT NULL,
+  `date` date NOT NULL,
+  `time` varchar(10) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `approved_customize_request`
+--
+
+INSERT INTO `approved_customize_request` (`acr_id`, `customize_request_id`, `aprroved_by`, `date`, `time`) VALUES
+(1, 2, 9, '2025-10-15', '00:46'),
+(2, 4, 9, '2025-10-15', '02:53');
 
 -- --------------------------------------------------------
 
@@ -2497,7 +3029,8 @@ CREATE TABLE `category` (
 
 INSERT INTO `category` (`category_id`, `category_name`, `category_description`) VALUES
 (9, 'Furniture', 'Furniture products like sofa, table, bed etc.'),
-(10, 'Supplies', 'Product that is ell like kitchen supplies school supplies and etc.');
+(10, 'Supplies', 'Product that is ell like kitchen supplies school supplies and etc.'),
+(13, 'Sunset', 'wala lang');
 
 -- --------------------------------------------------------
 
@@ -2519,42 +3052,12 @@ CREATE TABLE `customers` (
 
 INSERT INTO `customers` (`cust_id`, `cust_name`, `phone`, `email`, `address`) VALUES
 (1, 'John Renein ', '2', 'johnrenein@gmailcom', 'Canitoan'),
-(2, 'Claire Ivy Arcay', '3', 'claire@gmail.com', 'Canitoan'),
-(3, 'Angelica Engelbrecht', '04', 'angelicasss@gmail.com', 'mabuaya zonerooks\n'),
+(2, 'layca bahandi', '3', 'laks@gmail.com', 'surigao'),
+(3, 'Angelica Engelbrecht', '04', 'angelicasss@gmail.com', 'mambuaya zone 4'),
 (4, 'Neneth Maristela', '09354152202', 'nnmaristela@gmail.com', 'Manila'),
-(5, 'Christian Valle', '09111111111', 'chan@gmail.com', 'Macabalan');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `customer_accounts`
---
-
-CREATE TABLE `customer_accounts` (
-  `cust_account_id` int(50) NOT NULL,
-  `cust_username` varchar(50) NOT NULL,
-  `cust_password` varchar(50) NOT NULL,
-  `fname` varchar(50) NOT NULL,
-  `mname` varchar(50) NOT NULL,
-  `lname` varchar(50) NOT NULL,
-  `email` varchar(50) NOT NULL,
-  `phone` int(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `customer_cart`
---
-
-CREATE TABLE `customer_cart` (
-  `c_cart_id` int(50) NOT NULL,
-  `cust_account_id` int(50) NOT NULL,
-  `product_id` int(50) NOT NULL,
-  `price` int(5) NOT NULL,
-  `qty` int(50) NOT NULL,
-  `session_id` int(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+(5, 'Christian Valle', '09111111111', 'chan@gmail.com', 'Macabalan'),
+(16, 'harold far', '0000000000', 'mmm', 'cagayan'),
+(17, 'marlon', '111', 'hj', 'cGy');
 
 -- --------------------------------------------------------
 
@@ -2590,7 +3093,18 @@ INSERT INTO `customer_sales` (`customer_sales_id`, `invoice_id`, `total_amount`,
 (8, 36, 32300.00, 9690.00, 22610.00, 1, 'cash', 'Paid', 30, 3),
 (9, 38, 32300.00, 0.00, 32300.00, 1, 'cash', 'Paid', 0, 3),
 (10, 39, 57800.00, 17340.00, 40460.00, 2, 'cash', 'Paid', 30, 3),
-(11, 94, 25500.00, 7650.00, 17850.00, 1, 'cash', 'Paid', 30, 5);
+(11, 94, 25500.00, 7650.00, 17850.00, 1, 'cash', 'Paid', 30, 5),
+(12, 109, 41700.00, 0.00, 41700.00, 1, 'cash', 'Paid', 0, 5),
+(14, 117, 57200.00, 11440.00, 45760.00, 2, 'cash', 'Paid', 20, 3),
+(15, 119, 29700.00, 8907.03, 20792.97, 1, 'cash', 'Paid', 30, 3),
+(16, 120, 43700.00, 8740.00, 34960.00, 1, 'cash', 'Paid', 20, 3),
+(17, 137, 77000.00, 15400.00, 61600.00, 2, 'cash', 'Paid', 20, 5),
+(18, 143, 27500.00, 8250.00, 19250.00, 1, 'cash', 'Paid', 30, 4),
+(19, 146, 27500.00, 5500.00, 22000.00, 1, 'cash', 'Paid', 20, 2),
+(20, 147, 27500.00, 5500.00, 22000.00, 1, 'cash', 'Paid', 20, 2),
+(21, 148, 32300.00, 6460.00, 25840.00, 1, 'cash', 'Paid', 20, 16),
+(22, 151, 59900.00, 17970.00, 41930.00, 1, 'cash', 'Paid', 30, 1),
+(23, 153, 32300.00, 0.00, 32300.00, 1, 'cash', 'Paid', 0, 3);
 
 -- --------------------------------------------------------
 
@@ -2623,7 +3137,19 @@ INSERT INTO `customer_sales_details` (`c_sale_details`, `customer_sales_id`, `pr
 (9, 9, 63, 1, 32300.00, 32300.00),
 (10, 10, 63, 1, 32300.00, 32300.00),
 (11, 10, 43, 1, 25500.00, 25500.00),
-(12, 11, 43, 1, 25500.00, 25500.00);
+(12, 11, 43, 1, 25500.00, 25500.00),
+(13, 12, 48, 1, 41700.00, 41700.00),
+(15, 14, 47, 1, 27500.00, 27500.00),
+(16, 14, 21, 1, 29700.00, 29700.00),
+(17, 15, 21, 1, 29700.00, 29700.00),
+(18, 16, 66, 1, 43700.00, 43700.00),
+(19, 17, 52, 2, 38500.00, 77000.00),
+(20, 18, 47, 1, 27500.00, 27500.00),
+(21, 19, 47, 1, 27500.00, 27500.00),
+(22, 20, 47, 1, 27500.00, 27500.00),
+(23, 21, 63, 1, 32300.00, 32300.00),
+(24, 22, 70, 1, 59900.00, 59900.00),
+(25, 23, 63, 1, 32300.00, 32300.00);
 
 -- --------------------------------------------------------
 
@@ -2686,6 +3212,83 @@ CREATE TABLE `customized_product_update` (
   `time` time(6) NOT NULL,
   `account_id` int(50) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `customize_request`
+--
+
+CREATE TABLE `customize_request` (
+  `customize_req_id` int(11) NOT NULL,
+  `customize_sales_id` int(100) NOT NULL,
+  `status` varchar(100) NOT NULL,
+  `date` date NOT NULL,
+  `time` varchar(10) NOT NULL,
+  `req_from` int(11) NOT NULL,
+  `req_to` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `customize_request`
+--
+
+INSERT INTO `customize_request` (`customize_req_id`, `customize_sales_id`, `status`, `date`, `time`, `req_from`, `req_to`) VALUES
+(2, 6, 'On Going', '2025-10-14', '09:28', 12, 13),
+(3, 7, 'Pending', '2025-10-14', '13:23', 12, 13),
+(4, 10, 'On Going', '2025-10-15', '02:47', 12, 13);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `customize_request_report`
+--
+
+CREATE TABLE `customize_request_report` (
+  `crr_id` int(11) NOT NULL,
+  `customize_request_id` int(100) NOT NULL,
+  `status` varchar(100) NOT NULL,
+  `date` date NOT NULL,
+  `time` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `customize_request_report`
+--
+
+INSERT INTO `customize_request_report` (`crr_id`, `customize_request_id`, `status`, `date`, `time`) VALUES
+(1, 2, 'Pending', '2025-10-14', '09:28'),
+(2, 3, 'Pending', '2025-10-14', '13:23'),
+(3, 2, 'On Going', '2025-10-15', '00:46'),
+(4, 4, 'Pending', '2025-10-15', '02:47'),
+(5, 4, 'On Going', '2025-10-15', '02:53');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `customize_sales`
+--
+
+CREATE TABLE `customize_sales` (
+  `customize_sales_id` int(11) NOT NULL,
+  `invoice_id` int(100) NOT NULL,
+  `total_qty` int(10) NOT NULL,
+  `total_price` decimal(10,2) NOT NULL,
+  `down_payment` decimal(10,2) NOT NULL,
+  `balance` decimal(10,2) NOT NULL,
+  `status` varchar(100) NOT NULL,
+  `customize_type` varchar(100) NOT NULL,
+  `cust_id` int(10) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `customize_sales`
+--
+
+INSERT INTO `customize_sales` (`customize_sales_id`, `invoice_id`, `total_qty`, `total_price`, `down_payment`, `balance`, `status`, `customize_type`, `cust_id`) VALUES
+(6, 161, 1, 27500.00, 13750.00, 13750.00, 'Partial', 'Semi-Customized', 3),
+(7, 162, 1, 10000.00, 5000.00, 5000.00, 'Partial', 'Full-Customized', 3),
+(10, 165, 1, 25000.00, 12500.00, 12500.00, 'Partial', 'Semi-Customized', 3);
 
 -- --------------------------------------------------------
 
@@ -2771,14 +3374,25 @@ CREATE TABLE `exchange_item_details` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `guest`
+-- Table structure for table `full_customize_details`
 --
 
-CREATE TABLE `guest` (
-  `session_id` int(50) NOT NULL,
-  `created_at` varchar(50) NOT NULL,
-  `expire_at` varchar(50) NOT NULL
+CREATE TABLE `full_customize_details` (
+  `fcd_id` int(11) NOT NULL,
+  `customize_sales_id` int(10) NOT NULL,
+  `additional_description` varchar(255) NOT NULL,
+  `description` varchar(255) NOT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `qty` int(10) NOT NULL,
+  `total_price` decimal(10,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `full_customize_details`
+--
+
+INSERT INTO `full_customize_details` (`fcd_id`, `customize_sales_id`, `additional_description`, `description`, `price`, `qty`, `total_price`) VALUES
+(2, 7, 'dasdada', 'adas', 10000.00, 1, 10000.00);
 
 -- --------------------------------------------------------
 
@@ -2815,7 +3429,21 @@ INSERT INTO `installment_payment_record` (`ipr_id`, `invoice_id`, `ips_id`, `dat
 (33, 95, 78, '2025-09-26', '10:13'),
 (34, 96, 83, '2025-09-26', '10:14'),
 (35, 103, 65, '2025-09-26', '23:49'),
-(36, 105, 91, '2025-09-29', '08:19');
+(39, 107, 88, '2025-12-02', '23:48'),
+(40, 107, 89, '2025-12-02', '23:48'),
+(41, 107, 90, '2025-12-02', '23:48'),
+(42, 108, 84, '2025-10-04', '14:58'),
+(46, 130, 92, '2025-10-06', '12:01'),
+(47, 131, 93, '2025-10-06', '12:01'),
+(48, 131, 94, '2025-10-06', '12:01'),
+(49, 132, 95, '2025-10-06', '12:01'),
+(50, 132, 96, '2025-10-06', '12:01'),
+(51, 132, 97, '2025-10-06', '12:01'),
+(52, 134, 98, '2025-10-06', '12:02'),
+(53, 134, 99, '2025-10-06', '12:02'),
+(54, 134, 100, '2025-10-06', '12:02'),
+(56, 145, 154, '2025-10-07', '15:45'),
+(57, 150, 160, '2025-10-07', '18:47');
 
 -- --------------------------------------------------------
 
@@ -2857,25 +3485,61 @@ INSERT INTO `installment_payment_sched` (`ips_id`, `installment_id`, `due_date`,
 (81, 16, '2025-12-24', 3, 11333.33, 'Paid'),
 (82, 17, '2025-10-24', 1, 4752.00, 'Paid'),
 (83, 17, '2025-11-24', 2, 4752.00, 'Paid'),
-(84, 17, '2025-12-24', 3, 4752.00, 'UNPAID'),
+(84, 17, '2025-12-24', 3, 4752.00, 'Paid'),
 (85, 17, '2026-01-24', 4, 4752.00, 'UNPAID'),
 (86, 17, '2026-02-24', 5, 4752.00, 'UNPAID'),
 (87, 17, '2026-03-24', 6, 4752.00, 'UNPAID'),
-(88, 18, '2025-09-26', 1, 7333.33, 'UNPAID'),
-(89, 18, '2025-10-26', 2, 7333.33, 'UNPAID'),
-(90, 18, '2025-11-26', 3, 7333.33, 'UNPAID'),
+(88, 18, '2025-09-26', 1, 7333.33, 'Paid'),
+(89, 18, '2025-10-26', 2, 7333.33, 'Paid'),
+(90, 18, '2025-11-26', 3, 7333.33, 'Paid'),
 (91, 19, '2025-10-29', 1, 3856.67, 'Paid'),
-(92, 19, '2025-11-29', 2, 3856.67, 'UNPAID'),
-(93, 19, '2025-12-29', 3, 3856.67, 'UNPAID'),
-(94, 19, '2026-01-29', 4, 3856.67, 'UNPAID'),
-(95, 19, '2026-03-01', 5, 3856.67, 'UNPAID'),
-(96, 19, '2026-03-29', 6, 3856.67, 'UNPAID'),
-(97, 19, '2026-04-29', 7, 3856.67, 'UNPAID'),
-(98, 19, '2026-05-29', 8, 3856.67, 'UNPAID'),
-(99, 19, '2026-06-29', 9, 3856.67, 'UNPAID'),
-(100, 19, '2026-07-29', 10, 3856.67, 'UNPAID'),
+(92, 19, '2025-11-29', 2, 3856.67, 'Paid'),
+(93, 19, '2025-12-29', 3, 3856.67, 'Paid'),
+(94, 19, '2026-01-29', 4, 3856.67, 'Paid'),
+(95, 19, '2026-03-01', 5, 3856.67, 'Paid'),
+(96, 19, '2026-03-29', 6, 3856.67, 'Paid'),
+(97, 19, '2026-04-29', 7, 3856.67, 'Paid'),
+(98, 19, '2026-05-29', 8, 3856.67, 'Paid'),
+(99, 19, '2026-06-29', 9, 3856.67, 'Paid'),
+(100, 19, '2026-07-29', 10, 3856.67, 'Paid'),
 (101, 19, '2026-08-29', 11, 3856.67, 'UNPAID'),
-(102, 19, '2026-09-29', 12, 3856.67, 'UNPAID');
+(102, 19, '2026-09-29', 12, 3856.67, 'UNPAID'),
+(127, 25, '2025-11-06', 1, 3723.00, 'UNPAID'),
+(128, 25, '2025-12-06', 2, 3723.00, 'UNPAID'),
+(129, 25, '2026-01-06', 3, 3723.00, 'UNPAID'),
+(130, 25, '2026-02-06', 4, 3723.00, 'UNPAID'),
+(131, 25, '2026-03-06', 5, 3723.00, 'UNPAID'),
+(132, 25, '2026-04-06', 6, 3723.00, 'UNPAID'),
+(148, 29, '2025-11-06', 1, 13800.00, 'UNPAID'),
+(149, 29, '2025-12-06', 2, 13800.00, 'UNPAID'),
+(150, 29, '2026-01-06', 3, 13800.00, 'UNPAID'),
+(151, 29, '2026-02-06', 4, 13800.00, 'UNPAID'),
+(152, 29, '2026-03-06', 5, 13800.00, 'UNPAID'),
+(153, 29, '2026-04-06', 6, 13800.00, 'UNPAID'),
+(154, 30, '2025-11-07', 1, 4300.00, 'Paid'),
+(155, 30, '2025-12-07', 2, 4300.00, 'UNPAID'),
+(156, 30, '2026-01-07', 3, 4300.00, 'UNPAID'),
+(157, 30, '2026-02-07', 4, 4300.00, 'UNPAID'),
+(158, 30, '2026-03-07', 5, 4300.00, 'UNPAID'),
+(159, 30, '2026-04-07', 6, 4300.00, 'UNPAID'),
+(160, 31, '2025-11-07', 1, 10080.00, 'Paid'),
+(161, 31, '2025-12-07', 2, 10080.00, 'UNPAID'),
+(162, 31, '2026-01-07', 3, 10080.00, 'UNPAID'),
+(163, 31, '2026-02-07', 4, 10080.00, 'UNPAID'),
+(164, 31, '2026-03-07', 5, 10080.00, 'UNPAID'),
+(165, 31, '2026-04-07', 6, 10080.00, 'UNPAID'),
+(166, 32, '2025-11-07', 1, 7245.50, 'UNPAID'),
+(167, 32, '2025-12-07', 2, 7245.50, 'UNPAID'),
+(168, 32, '2026-01-07', 3, 7245.50, 'UNPAID'),
+(169, 32, '2026-02-07', 4, 7245.50, 'UNPAID'),
+(170, 32, '2026-03-07', 5, 7245.50, 'UNPAID'),
+(171, 32, '2026-04-07', 6, 7245.50, 'UNPAID'),
+(172, 33, '2025-11-09', 1, 6900.00, 'UNPAID'),
+(173, 33, '2025-12-09', 2, 6900.00, 'UNPAID'),
+(174, 33, '2026-01-09', 3, 6900.00, 'UNPAID'),
+(175, 33, '2026-02-09', 4, 6900.00, 'UNPAID'),
+(176, 33, '2026-03-09', 5, 6900.00, 'UNPAID'),
+(177, 33, '2026-04-09', 6, 6900.00, 'UNPAID');
 
 -- --------------------------------------------------------
 
@@ -2907,13 +3571,19 @@ CREATE TABLE `installment_sales` (
 --
 
 INSERT INTO `installment_sales` (`installment_sales_id`, `invoice_id`, `product_id`, `dp_amount`, `dp_percentage`, `total_amount`, `interest_percentage`, `interest_amount`, `remaining_bal`, `total_payment`, `payment_plan`, `total_sales_amount`, `balance`, `monthly_payment`, `cust_id`, `status`) VALUES
-(13, 54, 19, 10000.00, 34, 0.00, 0, 0.00, 0.00, 0.00, '6', 0.00, 12000.00, 3000.00, 4, 'On Going'),
+(13, 54, 19, 10000.00, 34, 0.00, 0, 0.00, 0.00, 0.00, '6', 0.00, 6000.00, 3000.00, 4, 'ON GOING'),
 (14, 82, 0, 10000.00, 22, 44500.00, 20, 6900.00, 34500.00, 41400.00, '6', 51400.00, 0.00, 6900.00, 1, 'Complete'),
 (15, 85, 0, 9280.00, 20, 46400.00, 0, 0.00, 37120.00, 37120.00, '3', 46400.00, 0.00, 12373.33, 1, 'Complete'),
 (16, 87, 0, 8500.00, 20, 42500.00, 0, 0.00, 34000.00, 34000.00, '3', 42500.00, 0.00, 11333.33, 3, 'Complete'),
-(17, 88, 0, 5940.00, 20, 29700.00, 20, 4752.00, 23760.00, 28512.00, '6', 34452.00, 19008.00, 4752.00, 3, 'ON GOING'),
-(18, 102, 0, 5500.00, 20, 27500.00, 0, 0.00, 22000.00, 22000.00, '3', 27500.00, 22000.00, 7333.33, 5, 'ON GOING'),
-(19, 104, 0, 8900.00, 20, 44500.00, 30, 10680.00, 35600.00, 46280.00, '12', 55180.00, 42423.37, 3856.67, 2, 'ON GOING');
+(17, 88, 0, 5940.00, 20, 29700.00, 20, 4752.00, 23760.00, 28512.00, '6', 34452.00, 14256.00, 4752.00, 3, 'ON GOING'),
+(18, 102, 0, 5500.00, 20, 27500.00, 0, 0.00, 22000.00, 22000.00, '3', 27500.00, 0.00, 7333.33, 5, 'Complete'),
+(19, 104, 0, 8900.00, 20, 44500.00, 30, 10680.00, 35600.00, 46280.00, '12', 55180.00, 7713.34, 3856.67, 2, 'ON GOING'),
+(25, 129, 0, 5100.00, 20, 25500.00, 10, 1938.00, 20400.00, 22338.00, '6', 27438.00, 22338.00, 3723.00, 3, 'ON GOING'),
+(29, 141, 0, 20000.00, 22, 89000.00, 20, 13800.00, 69000.00, 82800.00, '6', 102800.00, 82800.00, 13800.00, 5, 'ON GOING'),
+(30, 144, 0, 6000.00, 22, 27500.00, 20, 4300.00, 21500.00, 25800.00, '6', 31800.00, 21500.00, 4300.00, 4, 'ON GOING'),
+(31, 149, 0, 10800.00, 20, 54000.00, 40, 17280.00, 43200.00, 60480.00, '6', 71280.00, 50400.00, 10080.00, 16, 'ON GOING'),
+(32, 152, 0, 10000.00, 23, 43700.00, 29, 9773.00, 33700.00, 43473.00, '6', 53473.00, 43473.00, 7245.50, 1, 'ON GOING'),
+(33, 154, 0, 10000.00, 22, 44500.00, 20, 6900.00, 34500.00, 41400.00, '6', 51400.00, 41400.00, 6900.00, 17, 'ON GOING');
 
 -- --------------------------------------------------------
 
@@ -3007,7 +3677,59 @@ INSERT INTO `invoice` (`invoice_id`, `sales_from`, `amount`, `date`, `time`, `lo
 (102, 'Installment Downpayment', 5500.00, '2025-08-26', '20:58', 12, 12),
 (103, 'Installment Payment', 3150.00, '2025-09-26', '23:49', 12, 12),
 (104, 'Installment Downpayment', 8900.00, '2025-09-29', '08:19', 12, 12),
-(105, 'Installment Payment', 3856.67, '2025-09-29', '08:19', 12, 12);
+(107, 'Installment Payment', 23099.99, '2025-12-02', '23:48', 12, 12),
+(108, 'Installment Payment', 4752.00, '2025-10-04', '14:58', 12, 12),
+(109, 'Customer Sales', 41700.00, '2025-10-04', '15:01', 14, 16),
+(112, 'Customize Installment Downpayment', 2400.00, '2025-10-06', '00:52', 12, 12),
+(113, 'Customize Installment Downpayment', 10000.00, '2025-10-06', '01:24', 12, 12),
+(114, 'Customize Sales', 13750.00, '2025-10-06', '08:06', 12, 12),
+(115, 'Customize Sales', 9625.00, '2025-10-06', '08:11', 12, 12),
+(116, 'Walk-In Sales', 53440.00, '2025-10-06', '11:48', 14, 9),
+(117, 'Customer Sales', 45760.00, '2025-10-06', '11:48', 12, 12),
+(118, 'Walk-In Sales', 43400.00, '2025-10-06', '11:49', 14, 14),
+(119, 'Customer Sales', 20792.97, '2025-10-06', '11:51', 12, 10),
+(120, 'Customer Sales', 34960.00, '2025-10-06', '11:52', 12, 10),
+(121, 'Walk-In Sales', 32725.00, '2025-10-06', '11:52', 12, 10),
+(122, 'Customize Sales', 227160.00, '2025-10-06', '11:53', 12, 10),
+(123, 'Customize Installment Downpayment', 10000.00, '2025-10-06', '11:53', 14, 9),
+(124, 'Customize Installment Downpayment', 5940.00, '2025-10-06', '11:53', 12, 10),
+(125, 'Customize Installment Downpayment', 6148.00, '2025-10-06', '11:54', 14, 14),
+(126, 'Installment Payment', 3500.00, '2025-10-06', '11:56', 14, 9),
+(127, 'Installment Payment', 7920.00, '2025-10-06', '11:56', 14, 14),
+(128, 'Installment Payment', 4283.11, '2025-10-06', '11:56', 12, 10),
+(129, 'Customize Installment Downpayment', 5100.00, '2025-10-06', '11:58', 12, 12),
+(130, 'Installment Payment', 3856.67, '2025-10-06', '12:01', 14, 9),
+(131, 'Installment Payment', 7713.34, '2025-10-06', '12:01', 14, 9),
+(132, 'Installment Payment', 11570.01, '2025-10-06', '12:01', 14, 9),
+(133, 'Walk-In Sales', 19807.17, '2025-10-06', '12:02', 14, 14),
+(134, 'Installment Payment', 11570.01, '2025-10-06', '12:02', 14, 9),
+(135, 'Customize Installment Downpayment', 5500.00, '2025-10-06', '12:03', 14, 14),
+(136, 'Installment Payment', 3666.67, '2025-10-06', '12:03', 14, 14),
+(137, 'Customer Sales', 61600.00, '2025-10-06', '12:05', 12, 10),
+(138, 'Customize Sales', 40005.00, '2025-10-06', '12:07', 12, 10),
+(139, 'Customize Installment Downpayment', 5500.00, '2025-10-06', '12:07', 14, 14),
+(140, 'Customize Installment Downpayment', 5940.00, '2025-10-06', '12:08', 12, 10),
+(141, 'Installment Downpayment', 20000.00, '2025-10-06', '12:10', 12, 10),
+(142, 'Walk-In Sales', 22000.00, '2025-10-06', '23:06', 12, 12),
+(143, 'Customer Sales', 19250.00, '2025-10-07', '15:41', 12, 12),
+(144, 'Customize Installment Downpayment', 6000.00, '2025-10-07', '15:43', 12, 12),
+(145, 'Installment Payment', 4300.00, '2025-10-07', '15:45', 12, 12),
+(146, 'Customer Sales', 22000.00, '2025-10-07', '16:21', 12, 12),
+(147, 'Customer Sales', 22000.00, '2025-10-07', '16:21', 12, 12),
+(148, 'Customer Sales', 25840.00, '2025-10-07', '18:44', 12, 12),
+(149, 'Customize Installment Downpayment', 10800.00, '2025-10-07', '18:46', 12, 12),
+(150, 'Installment Payment', 10080.00, '2025-10-07', '18:47', 12, 12),
+(151, 'Customer Sales', 41930.00, '2025-10-07', '23:56', 12, 12),
+(152, 'Customize Installment Downpayment', 10000.00, '2025-10-07', '23:59', 12, 12),
+(153, 'Customer Sales', 32300.00, '2025-10-09', '21:47', 12, 12),
+(154, 'Installment Downpayment', 10000.00, '2025-10-09', '21:56', 12, 12),
+(156, 'Customize Sales', 15000.00, '2025-10-13', '13:27', 12, 12),
+(158, 'Customize Sales', 8000.00, '2025-10-13', '14:10', 12, 12),
+(159, 'Customize Sales', 29700.00, '2025-10-13', '17:19', 12, 12),
+(160, 'Customize Sales', 27500.00, '2025-10-13', '21:55', 12, 12),
+(161, 'Customize Sales', 13750.00, '2025-10-14', '09:28', 12, 12),
+(162, 'Customize Sales', 5000.00, '2025-10-14', '13:23', 12, 12),
+(165, 'Customize Sales', 12500.00, '2025-10-15', '02:47', 12, 12);
 
 -- --------------------------------------------------------
 
@@ -3056,7 +3778,27 @@ INSERT INTO `invoice_details` (`invoice_details_id`, `invoice_id`, `product_id`,
 (27, 88, 21, 1, 29700.00, 29700.00),
 (28, 94, 43, 1, 25500.00, 25500.00),
 (29, 102, 47, 1, 27500.00, 27500.00),
-(30, 104, 69, 1, 44500.00, 44500.00);
+(30, 104, 69, 1, 44500.00, 44500.00),
+(31, 109, 48, 1, 41700.00, 41700.00),
+(32, 116, 20, 2, 33400.00, 66800.00),
+(33, 117, 47, 1, 27500.00, 27500.00),
+(34, 117, 21, 1, 29700.00, 29700.00),
+(35, 118, 63, 1, 32300.00, 32300.00),
+(36, 118, 21, 1, 29700.00, 29700.00),
+(37, 119, 21, 1, 29700.00, 29700.00),
+(38, 120, 66, 1, 43700.00, 43700.00),
+(39, 121, 52, 1, 38500.00, 38500.00),
+(40, 133, 44, 1, 28300.00, 28300.00),
+(41, 137, 52, 2, 38500.00, 77000.00),
+(42, 141, 69, 2, 44500.00, 89000.00),
+(43, 142, 47, 1, 27500.00, 27500.00),
+(44, 143, 47, 1, 27500.00, 27500.00),
+(45, 146, 47, 1, 27500.00, 27500.00),
+(46, 147, 47, 1, 27500.00, 27500.00),
+(47, 148, 63, 1, 32300.00, 32300.00),
+(48, 151, 70, 1, 59900.00, 59900.00),
+(49, 153, 63, 1, 32300.00, 32300.00),
+(50, 154, 69, 1, 44500.00, 44500.00);
 
 -- --------------------------------------------------------
 
@@ -3071,17 +3813,39 @@ CREATE TABLE `location` (
   `phone` varchar(50) NOT NULL,
   `email` varchar(50) NOT NULL,
   `address` varchar(50) NOT NULL,
-  `branch_id` int(50) NOT NULL
+  `branch_id` int(50) NOT NULL,
+  `loc_type_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `location`
 --
 
-INSERT INTO `location` (`location_id`, `location_name`, `contact_person`, `phone`, `email`, `address`, `branch_id`) VALUES
-(12, 'Agora Showroom Main', 'Lyca Cantilado', '09', 'lyba.cantilado.coc@phinmaed.com', 'Ylaya Carmen CDO City', 1),
-(13, 'Warehouse CDO', 'Christian Butaya', '09', 'chco.butaya.coc@phinmaed.com', 'Bonbon CDO City', 1),
-(14, 'Jasaan Showroom', 'tester location', '012345', 'testlocation@gmail.com', 'Jasaan Kahulugan Crossing', 2);
+INSERT INTO `location` (`location_id`, `location_name`, `contact_person`, `phone`, `email`, `address`, `branch_id`, `loc_type_id`) VALUES
+(12, 'Agora Showroom Main', 'Lyca Cantilado', '09', 'lyba.cantilado.coc@phinmaed.com', 'Ylaya Carmen CDO City', 1, 1),
+(13, 'Warehouse CDO', 'Christian Butaya', '09', 'chco.butaya.coc@phinmaed.com', 'Bonbon CDO City', 1, 2),
+(14, 'Jasaan Showroom', 'tester location', '012345', 'testlocation@gmail.com', 'Jasaan Kahulugan Crossing', 2, 3),
+(15, 'Sunset', 'Raullyn', '095599826408', 'rjoy.palma.coc@phinmaed.com', 'Libona near Chapel', 1, 3);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `location_type`
+--
+
+CREATE TABLE `location_type` (
+  `loc_type_id` int(11) NOT NULL,
+  `name` varchar(155) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `location_type`
+--
+
+INSERT INTO `location_type` (`loc_type_id`, `name`) VALUES
+(1, 'Main'),
+(2, 'Warehouse'),
+(3, 'Store');
 
 -- --------------------------------------------------------
 
@@ -3108,9 +3872,9 @@ CREATE TABLE `products` (
 
 INSERT INTO `products` (`product_id`, `product_name`, `category_id`, `description`, `dimensions`, `material`, `color`, `price`, `product_preview_image`, `date_created`) VALUES
 (19, 'A.G-71', 9, 'Checkered L-type', '', '', 'Gray', 29700.00, '/uploads/products/defualt.jpg\r\n', '2025-07-23'),
-(20, 'A.G-42', 9, 'Checkered', '', '', 'Blue', 33400.00, '/uploads/products/defualt.jpg\r\n', '2025-07-23'),
+(20, 'A.G-42', 9, 'Checkered', '', '', 'Blue', 33400.00, '/uploads/products/product_1759768829184.jpeg', '2025-07-23'),
 (21, 'A.G-27', 9, '311 - 1 three seater couch and 2  one seater couch ', '', '', 'Dark Gray', 29700.00, '/uploads/products/product_1759104707087.JPG', '2025-07-29'),
-(43, 'A.G-53', 9, '311 - 1 three seater couch and 2 one seater couch with buttons ', '', '', 'Gray', 25500.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
+(43, 'A.G-53', 9, '311 - 1 three seater couch and 2 one seater couch with buttons ', '', '', 'Gray', 25500.00, '/uploads/products/product_1759570808745.JPG', '2025-07-29'),
 (44, 'A.G-103', 9, 'Cleopatra', '', '', 'Red', 28300.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
 (45, 'A.G-29', 9, 'Hallow', '', '', 'Gray', 28500.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
 (46, 'A.G-96', 9, 'With Buttons 311', '', '', 'Gray', 33800.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
@@ -3120,7 +3884,7 @@ INSERT INTO `products` (`product_id`, `product_name`, `category_id`, `descriptio
 (50, 'A.G-46', 9, 'High End Sofa With Buttons', '', '', 'Black', 46400.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
 (51, 'A.G-132', 9, 'standard KGI/Cream With Buttons', '', '', 'Brown', 38900.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
 (52, 'A.G-143', 9, 'Checkered Standard With Buttons', '', '', 'Gray', 38500.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
-(63, 'A.G-141', 9, '311 - 1 three seater couch and 2 one seater couch, off white ', '', '', 'White', 32300.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
+(63, 'A.G-141', 9, '311 - 1 three seater couch and 2 one seater couch, off white ', '', '', 'White', 32300.00, '/uploads/products/product_1759570836826.JPG', '2025-07-29'),
 (64, 'A.G-140', 9, 'Small U-type', '', '', 'Blue', 45000.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
 (65, 'A.G-1', 9, 'Standard', '', '', 'Gray ', 38900.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
 (66, 'A.G-152', 9, 'L-type High End', '', '', 'Gray', 43700.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
@@ -3130,7 +3894,8 @@ INSERT INTO `products` (`product_id`, `product_name`, `category_id`, `descriptio
 (70, 'A.G-119', 9, 'L-type ', '', '', 'Brown', 59900.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
 (71, 'A.G-52', 9, 'L-type', '', '', 'Red', 35300.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
 (72, 'A.G-49', 9, 'L-type With Buttons ', '', '', 'Brown', 35400.00, '/uploads/products/defualt.jpg\r\n', '2025-07-29'),
-(74, 'ad', 9, 'dada', 'ad', 'dsada', 'dad', 1.00, '/uploads/products/defualt.jpg\r\n', '2025-09-21');
+(74, 'ad', 9, 'dada', 'ad', 'dsada', 'dad', 1.00, '/uploads/products/defualt.jpg\r\n', '2025-09-21'),
+(75, 'Sunset', 9, 'great violet chair eme', '6meters', 'oak wood', 'violet', 49.00, '/uploads/products/product_1759768748548.png', '2025-10-07');
 
 -- --------------------------------------------------------
 
@@ -3201,7 +3966,15 @@ INSERT INTO `request_approved` (`request_approved_id`, `request_stock_id`, `appr
 (103, 100, 9, '2025-09-03'),
 (104, 102, 9, '2025-09-11'),
 (105, 103, 9, '2025-09-14'),
-(106, 104, 9, '2025-09-14');
+(106, 104, 9, '2025-09-14'),
+(107, 106, 9, '2025-10-04'),
+(108, 107, 9, '2025-10-04'),
+(109, 109, 9, '2025-10-06'),
+(110, 110, 9, '2025-10-06'),
+(111, 108, 9, '2025-10-06'),
+(112, 105, 9, '2025-10-07'),
+(113, 112, 9, '2025-10-15'),
+(114, 111, 9, '2025-10-15');
 
 -- --------------------------------------------------------
 
@@ -3234,8 +4007,8 @@ INSERT INTO `request_deliver` (`r_deliver_id`, `request_stock_id`, `date`, `deli
 (16, 69, '2025-08-13', 'Complete', 15),
 (17, 70, '2025-08-13', 'Complete', 15),
 (18, 71, '2025-08-13', 'Complete', 15),
-(19, 72, '2025-08-13', 'Delivered', 15),
-(20, 73, '2025-08-13', 'Delivered', 15),
+(19, 72, '2025-08-13', 'Complete', 15),
+(20, 73, '2025-08-13', 'Complete', 15),
 (21, 75, '2025-08-13', 'Complete', 15),
 (22, 63, '2025-08-13', 'Delivered', 15),
 (23, 62, '2025-08-13', 'Delivered', 15),
@@ -3250,19 +4023,24 @@ INSERT INTO `request_deliver` (`r_deliver_id`, `request_stock_id`, `date`, `deli
 (33, 94, '2025-08-21', 'Complete', 15),
 (34, 81, '2025-08-23', 'Complete', 15),
 (35, 90, '2025-08-23', 'Delivered', 15),
-(36, 96, '2025-08-23', 'Delivered', 15),
+(36, 96, '2025-08-23', 'Complete', 15),
 (37, 74, '2025-08-27', 'Delivered', 15),
 (38, 87, '2025-08-27', 'Delivered', 15),
 (39, 97, '2025-08-27', 'Delivered', 15),
-(40, 86, '2025-08-27', 'On Delivery', 15),
-(41, 84, '2025-09-02', 'On Delivery', 15),
-(42, 85, '2025-09-02', 'On Delivery', 15),
+(40, 86, '2025-08-27', 'Delivered', 15),
+(41, 84, '2025-09-02', 'Delivered', 15),
+(42, 85, '2025-09-02', 'Delivered', 15),
 (43, 98, '2025-09-02', 'Complete', 15),
 (44, 99, '2025-09-02', 'Complete', 15),
-(45, 93, '2025-09-02', 'On Delivery', 15),
+(45, 93, '2025-09-02', 'Delivered', 15),
 (46, 102, '2025-09-11', 'Delivered', 15),
 (47, 103, '2025-09-14', 'Complete', 15),
-(48, 104, '2025-09-14', 'Complete', 15);
+(48, 104, '2025-09-14', 'Complete', 15),
+(49, 106, '2025-10-04', 'Delivered', 15),
+(50, 107, '2025-10-04', 'Complete', 15),
+(51, 109, '2025-10-06', 'Delivered', 15),
+(52, 110, '2025-10-06', 'Complete', 15),
+(53, 105, '2025-10-07', 'On Delivery', 15);
 
 -- --------------------------------------------------------
 
@@ -3497,7 +4275,40 @@ INSERT INTO `request_reports` (`rr_id`, `request_stock_id`, `date`, `time`, `sta
 (230, 104, '2025-09-14', '01:16', 'On Delivery', 9),
 (231, 104, '2025-09-14', '01:17', 'Delivered', 8),
 (232, 104, '2025-09-14', '01:17', 'Complete', 9),
-(233, 82, '2025-09-22', '17:51', 'Complete', 9);
+(233, 82, '2025-09-22', '17:51', 'Complete', 9),
+(234, 106, '2025-10-04', '15:03', 'Request Sent', 8),
+(235, 106, '2025-10-04', '15:04', 'On Going', 9),
+(236, 106, '2025-10-04', '15:04', 'On Delivery', 9),
+(237, 106, '2025-10-04', '15:05', 'Delivered', 8),
+(238, 107, '2025-10-04', '16:55', 'Request Sent', 8),
+(239, 72, '2025-10-04', '17:32', 'Complete', 9),
+(240, 73, '2025-10-04', '17:32', 'Complete', 9),
+(241, 107, '2025-10-04', '17:33', 'On Going', 9),
+(242, 107, '2025-10-04', '17:34', 'On Delivery', 9),
+(243, 107, '2025-10-04', '17:35', 'Delivered', 8),
+(244, 107, '2025-10-04', '17:35', 'Complete', 9),
+(245, 108, '2025-10-06', '06:59', 'Request Sent', 8),
+(246, 85, '2025-10-06', '07:13', 'Delivered', 8),
+(247, 86, '2025-10-06', '07:13', 'Delivered', 8),
+(248, 84, '2025-10-06', '07:13', 'Delivered', 8),
+(249, 93, '2025-10-06', '07:13', 'Delivered', 8),
+(250, 109, '2025-10-06', '10:46', 'Request Sent', 8),
+(251, 109, '2025-10-06', '10:47', 'On Going', 9),
+(252, 109, '2025-10-06', '10:47', 'On Delivery', 9),
+(253, 109, '2025-10-06', '10:50', 'Delivered', 8),
+(254, 110, '2025-10-06', '21:49', 'Request Sent', 8),
+(255, 110, '2025-10-06', '21:49', 'On Going', 9),
+(256, 110, '2025-10-06', '21:49', 'On Delivery', 9),
+(257, 110, '2025-10-06', '21:50', 'Delivered', 8),
+(258, 110, '2025-10-06', '21:51', 'Complete', 9),
+(259, 108, '2025-10-06', '22:54', 'On Going', 9),
+(260, 105, '2025-10-07', '13:53', 'On Going', 9),
+(261, 105, '2025-10-07', '13:54', 'On Delivery', 9),
+(262, 96, '2025-10-07', '13:54', 'Complete', 9),
+(263, 111, '2025-10-15', '02:24', 'Request Sent', 8),
+(264, 112, '2025-10-15', '02:45', 'Request Sent', 8),
+(265, 112, '2025-10-15', '02:47', 'On Going', 9),
+(266, 111, '2025-10-15', '02:50', 'On Going', 9);
 
 -- --------------------------------------------------------
 
@@ -3533,8 +4344,8 @@ INSERT INTO `request_stock` (`request_stock_id`, `request_from`, `request_to`, `
 (69, 12, 13, '2025-08-13', 'Complete', 10),
 (70, 12, 13, '2025-08-13', 'Complete', 10),
 (71, 12, 13, '2025-08-13', 'Complete', 10),
-(72, 12, 13, '2025-08-13', 'Delivered', 10),
-(73, 12, 13, '2025-08-13', 'Delivered', 10),
+(72, 12, 13, '2025-08-13', 'Complete', 10),
+(73, 12, 13, '2025-08-13', 'Complete', 10),
 (74, 12, 13, '2025-08-13', 'Delivered', 10),
 (75, 12, 13, '2025-08-13', 'Complete', 8),
 (77, 12, 13, '2025-08-14', 'Complete', 8),
@@ -3544,19 +4355,19 @@ INSERT INTO `request_stock` (`request_stock_id`, `request_from`, `request_to`, `
 (81, 12, 13, '2025-08-14', 'Complete', 8),
 (82, 12, 13, '2025-08-15', 'Complete', 8),
 (83, 12, 13, '2025-08-18', 'Complete', 8),
-(84, 12, 13, '2025-08-18', 'On Delivery', 8),
-(85, 12, 13, '2025-08-18', 'On Delivery', 8),
-(86, 12, 13, '2025-08-18', 'On Delivery', 8),
+(84, 12, 13, '2025-08-18', 'Delivered', 8),
+(85, 12, 13, '2025-08-18', 'Delivered', 8),
+(86, 12, 13, '2025-08-18', 'Delivered', 8),
 (87, 12, 13, '2025-08-18', 'Delivered', 8),
 (88, 12, 13, '2025-08-19', 'On Going', 8),
 (89, 12, 13, '2025-08-21', 'On Going', 8),
 (90, 12, 13, '2025-08-21', 'Delivered', 8),
 (91, 12, 13, '2025-08-21', 'Complete', 8),
 (92, 12, 13, '2025-08-21', 'Complete', 8),
-(93, 12, 13, '2025-08-21', 'On Delivery', 8),
+(93, 12, 13, '2025-08-21', 'Delivered', 8),
 (94, 12, 13, '2025-08-21', 'Complete', 8),
 (95, 12, 13, '2025-08-21', 'On Going', 8),
-(96, 12, 13, '2025-08-23', 'Delivered', 8),
+(96, 12, 13, '2025-08-23', 'Complete', 8),
 (97, 12, 13, '2025-08-27', 'Delivered', 8),
 (98, 14, 13, '2025-09-02', 'Complete', 8),
 (99, 14, 13, '2025-09-02', 'Complete', 17),
@@ -3565,7 +4376,14 @@ INSERT INTO `request_stock` (`request_stock_id`, `request_from`, `request_to`, `
 (102, 12, 13, '2025-09-11', 'Delivered', 8),
 (103, 14, 13, '2025-09-14', 'Complete', 8),
 (104, 12, 13, '2025-09-14', 'Complete', 8),
-(105, 12, 13, '2025-09-14', 'Pending', 8);
+(105, 12, 13, '2025-09-14', 'On Delivery', 8),
+(106, 12, 13, '2025-10-04', 'Delivered', 8),
+(107, 12, 13, '2025-10-04', 'Complete', 8),
+(108, 12, 13, '2025-10-06', 'On Going', 8),
+(109, 12, 13, '2025-10-06', 'Delivered', 8),
+(110, 12, 13, '2025-10-06', 'Complete', 8),
+(111, 12, 13, '2025-10-15', 'On Going', 8),
+(112, 12, 13, '2025-10-15', 'On Going', 8);
 
 -- --------------------------------------------------------
 
@@ -3730,7 +4548,32 @@ INSERT INTO `request_stock_details` (`request_stock__details_id`, `request__stoc
 (246, 104, 68, 2),
 (247, 104, 50, 2),
 (248, 104, 72, 2),
-(249, 105, 47, 1);
+(249, 105, 47, 1),
+(250, 106, 47, 1),
+(251, 106, 21, 1),
+(252, 107, 47, 1),
+(253, 108, 47, 3),
+(254, 108, 44, 2),
+(255, 108, 20, 1),
+(256, 109, 20, 2),
+(257, 109, 44, 1),
+(258, 110, 47, 1),
+(259, 111, 47, 1),
+(260, 111, 21, 1),
+(261, 111, 43, 1),
+(262, 111, 20, 1),
+(263, 111, 19, 1),
+(264, 111, 68, 1),
+(265, 111, 52, 1),
+(266, 111, 44, 1),
+(267, 111, 69, 1),
+(268, 111, 45, 1),
+(269, 112, 72, 2),
+(270, 112, 64, 1),
+(271, 112, 65, 1),
+(272, 112, 51, 1),
+(273, 112, 46, 1),
+(274, 112, 71, 1);
 
 -- --------------------------------------------------------
 
@@ -3753,6 +4596,31 @@ INSERT INTO `role` (`role_id`, `role_name`) VALUES
 (3, 'Inventory Manager'),
 (4, 'Driver'),
 (5, 'Warehouse Representative');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `semi_customize_details`
+--
+
+CREATE TABLE `semi_customize_details` (
+  `scd_id` int(11) NOT NULL,
+  `customize_sales_id` int(10) NOT NULL,
+  `baseProduct_id` int(10) NOT NULL,
+  `modifications` varchar(255) NOT NULL,
+  `orig_price` decimal(10,2) NOT NULL,
+  `adjusted_price` decimal(10,2) NOT NULL,
+  `qty` int(10) NOT NULL,
+  `total` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `semi_customize_details`
+--
+
+INSERT INTO `semi_customize_details` (`scd_id`, `customize_sales_id`, `baseProduct_id`, `modifications`, `orig_price`, `adjusted_price`, `qty`, `total`) VALUES
+(4, 6, 47, 'adasdada', 27500.00, 27500.00, 1, 27500.00),
+(5, 10, 47, 'adsada', 27500.00, 25000.00, 1, 25000.00);
 
 -- --------------------------------------------------------
 
@@ -3813,7 +4681,17 @@ INSERT INTO `stock_receiving` (`stock_receiving_id`, `transaction_date`, `total_
 (14, '2025-09-11', 7, 'Stock In From Delivery', 8, 12),
 (15, '2025-09-14', 6, 'Stock In From Delivery', 8, 14),
 (16, '2025-09-14', 6, 'Stock In From Delivery', 8, 14),
-(17, '2025-09-14', 6, 'Stock In From Delivery', 8, 12);
+(17, '2025-09-14', 6, 'Stock In From Delivery', 8, 12),
+(18, '2025-10-04', 1, 'Stock In From Delivery', 9, 13),
+(19, '2025-10-04', 2, 'Stock In From Delivery', 8, 12),
+(20, '2025-10-04', 1, 'Stock In From Delivery', 8, 12),
+(21, '2025-10-06', 6, 'Stock In From Delivery', 8, 12),
+(22, '2025-10-06', 4, 'Stock In From Delivery', 8, 12),
+(23, '2025-10-06', 3, 'Stock In From Delivery', 8, 12),
+(24, '2025-10-06', 5, 'Stock In From Delivery', 8, 12),
+(25, '2025-10-06', 3, 'Stock In From Delivery', 8, 12),
+(26, '2025-10-06', 1, 'Stock In From Delivery', 8, 12),
+(27, '2025-10-07', 2, 'Stock In From Delivery', 9, 13);
 
 -- --------------------------------------------------------
 
@@ -3890,7 +4768,25 @@ INSERT INTO `stock_receiving_details` (`srd_id`, `product_id`, `stock_receiving_
 (55, 63, 16, 1),
 (56, 50, 17, 2),
 (57, 68, 17, 2),
-(58, 72, 17, 2);
+(58, 72, 17, 2),
+(59, 65, 18, 1),
+(60, 21, 19, 1),
+(61, 47, 19, 1),
+(62, 47, 20, 1),
+(63, 52, 21, 6),
+(64, 68, 22, 2),
+(65, 69, 22, 2),
+(66, 44, 23, 1),
+(67, 70, 23, 2),
+(68, 21, 24, 1),
+(69, 43, 24, 1),
+(70, 47, 24, 1),
+(71, 52, 24, 1),
+(72, 63, 24, 1),
+(73, 20, 25, 2),
+(74, 44, 25, 1),
+(75, 47, 26, 1),
+(76, 47, 27, 2);
 
 -- --------------------------------------------------------
 
@@ -3911,14 +4807,14 @@ CREATE TABLE `store_inventory` (
 
 INSERT INTO `store_inventory` (`store_inventory_id`, `location_id`, `product_id`, `qty`) VALUES
 (7, 12, 48, 13),
-(8, 12, 20, 1),
-(9, 12, 70, 1),
-(10, 12, 69, 8),
+(8, 12, 20, 3),
+(9, 12, 70, 2),
+(10, 12, 69, 7),
 (13, 12, 50, 12),
 (14, 12, 51, 7),
-(15, 12, 52, 5),
-(16, 12, 43, 1),
-(17, 12, 66, 2),
+(15, 12, 52, 9),
+(16, 12, 43, 2),
+(17, 12, 66, 1),
 (19, 13, 19, 1),
 (20, 13, 20, 1),
 (21, 13, 21, 1),
@@ -3926,7 +4822,7 @@ INSERT INTO `store_inventory` (`store_inventory_id`, `location_id`, `product_id`
 (23, 13, 44, 11),
 (24, 13, 45, 2),
 (25, 13, 46, 2),
-(26, 13, 47, 5),
+(26, 13, 47, 7),
 (27, 13, 48, 0),
 (28, 13, 49, 0),
 (29, 13, 50, 1),
@@ -3934,7 +4830,7 @@ INSERT INTO `store_inventory` (`store_inventory_id`, `location_id`, `product_id`
 (31, 13, 52, 1),
 (32, 13, 63, 1),
 (33, 13, 64, 2),
-(34, 13, 65, 7),
+(34, 13, 65, 8),
 (35, 13, 66, 0),
 (36, 13, 67, 3),
 (37, 13, 68, 1),
@@ -3945,9 +4841,9 @@ INSERT INTO `store_inventory` (`store_inventory_id`, `location_id`, `product_id`
 (42, 12, 21, 0),
 (47, 12, 19, 1),
 (48, 12, 47, 0),
-(49, 12, 68, 3),
-(53, 12, 63, 1),
-(54, 12, 44, 5),
+(49, 12, 68, 5),
+(53, 12, 63, 0),
+(54, 12, 44, 7),
 (58, 12, 65, 2),
 (59, 12, 45, 2),
 (60, 12, 46, 9),
@@ -3959,13 +4855,13 @@ INSERT INTO `store_inventory` (`store_inventory_id`, `location_id`, `product_id`
 (66, 14, 46, 1),
 (67, 14, 51, 1),
 (68, 14, 65, 1),
-(69, 14, 44, 1),
-(70, 14, 48, 5),
-(71, 14, 20, 2),
-(72, 14, 21, 1),
+(69, 14, 44, 0),
+(70, 14, 48, 4),
+(71, 14, 20, 0),
+(72, 14, 21, 0),
 (73, 14, 43, 0),
 (74, 14, 47, 0),
-(75, 14, 63, 1);
+(75, 14, 63, 0);
 
 -- --------------------------------------------------------
 
@@ -3991,21 +4887,6 @@ CREATE TABLE `store_inventory_transaction_ledger` (
 --
 
 INSERT INTO `store_inventory_transaction_ledger` (`sir_id`, `location_id`, `type`, `product_id`, `past_balance`, `qty`, `current_balance`, `date`, `time`, `account_id`) VALUES
-(1, 13, 'Transfer', 20, 1, 1, 0, '2025-08-02', '00:39:', 9),
-(2, 13, 'Transfer', 51, 2, 1, 1, '2025-08-02', '00:39:', 9),
-(3, 13, 'Transfer', 69, 1, 1, 0, '2025-08-02', '00:39:', 9),
-(4, 13, 'Transfer', 65, 1, 1, 0, '2025-08-02', '00:48:', 9),
-(5, 13, 'Transfer', 65, 1, 1, 0, '2025-08-02', '00:48:', 9),
-(6, 13, 'Transfer', 49, 3, 1, 2, '2025-08-03', '21:35:', 9),
-(14, 13, 'Transfer', 49, 2, 1, 1, '2025-08-03', '22:20:', 9),
-(15, 13, 'Transfer', 49, 2, 1, 1, '2025-08-03', '22:20:', 9),
-(16, 13, 'Transfer', 49, 1, 1, 0, '2025-08-03', '22:22:', 9),
-(17, 13, 'Transfer', 19, 3, 1, 2, '2025-08-03', '22:30:', 9),
-(18, 13, 'Transfer', 46, 1, 1, 0, '2025-08-03', '22:53:', 9),
-(19, 13, 'Transfer', 19, 2, 1, 1, '2025-08-03', '23:05:', 9),
-(21, 13, 'Transfer', 21, 1, 1, 0, '2025-08-03', '23:08:', 9),
-(22, 13, 'Transfer', 47, 3, 1, 2, '2025-08-05', '07:30:', 9),
-(23, 13, 'Transfer', 70, 1, 1, 0, '2025-08-05', '07:33:', 9),
 (25, 13, 'Transfer Out', 51, 1, 1, 0, '2025-08-05', '09:50:', 9),
 (35, 13, 'Transfer Out', 20, 3, 1, 2, '2025-08-05', '11:17:', 9),
 (36, 13, 'Transfer Out', 43, 2, 1, 1, '2025-08-05', '11:17:', 9),
@@ -4156,7 +5037,45 @@ INSERT INTO `store_inventory_transaction_ledger` (`sir_id`, `location_id`, `type
 (321, 12, 'Sales', 21, 1, 1, 0, '2025-09-24', '13:10', 12),
 (322, 14, 'Sales', 43, 1, 1, 0, '2025-09-25', '13:17', 16),
 (323, 12, 'Sales', 47, 1, 1, 0, '2025-08-26', '20:58', 12),
-(324, 12, 'Sales', 69, 9, 1, 8, '2025-09-29', '08:19', 12);
+(324, 12, 'Sales', 69, 9, 1, 8, '2025-09-29', '08:19', 12),
+(325, 13, 'Stock In', 65, 7, 1, 8, '2025-10-04', '10:42', 9),
+(326, 14, 'Sales', 48, 5, 1, 4, '2025-10-04', '15:01', 16),
+(327, 12, 'Stock In', 21, 0, 1, 1, '2025-10-04', '15:05', 8),
+(328, 12, 'Stock In', 47, 0, 1, 1, '2025-10-04', '15:05', 8),
+(329, 12, 'Stock In', 47, 1, 1, 2, '2025-10-04', '17:35', 8),
+(330, 12, 'Stock In', 52, 5, 6, 11, '2025-10-06', '07:13', 8),
+(331, 12, 'Stock In', 68, 3, 2, 5, '2025-10-06', '07:13', 8),
+(332, 12, 'Stock In', 69, 8, 2, 10, '2025-10-06', '07:13', 8),
+(333, 12, 'Stock In', 44, 5, 1, 6, '2025-10-06', '07:13', 8),
+(334, 12, 'Stock In', 70, 1, 2, 3, '2025-10-06', '07:13', 8),
+(335, 12, 'Stock In', 21, 1, 1, 2, '2025-10-06', '07:13', 8),
+(336, 12, 'Stock In', 43, 1, 1, 2, '2025-10-06', '07:13', 8),
+(337, 12, 'Stock In', 47, 2, 1, 3, '2025-10-06', '07:13', 8),
+(338, 12, 'Stock In', 52, 11, 1, 12, '2025-10-06', '07:13', 8),
+(339, 12, 'Stock In', 63, 1, 1, 2, '2025-10-06', '07:13', 8),
+(340, 12, 'Stock In', 20, 1, 2, 3, '2025-10-06', '10:50', 8),
+(341, 12, 'Stock In', 44, 6, 1, 7, '2025-10-06', '10:50', 8),
+(342, 14, 'Sales', 20, 2, 2, 0, '2025-10-06', '11:48', 9),
+(343, 12, 'Sales', 47, 3, 1, 2, '2025-10-06', '11:48', 12),
+(344, 12, 'Sales', 21, 2, 1, 1, '2025-10-06', '11:48', 12),
+(345, 14, 'Sales', 63, 1, 1, 0, '2025-10-06', '11:49', 14),
+(346, 14, 'Sales', 21, 1, 1, 0, '2025-10-06', '11:49', 14),
+(347, 12, 'Sales', 21, 1, 1, 0, '2025-10-06', '11:51', 10),
+(348, 12, 'Sales', 66, 2, 1, 1, '2025-10-06', '11:52', 10),
+(349, 12, 'Sales', 52, 12, 1, 11, '2025-10-06', '11:52', 10),
+(350, 14, 'Sales', 44, 1, 1, 0, '2025-10-06', '12:02', 14),
+(351, 12, 'Sales', 52, 11, 2, 9, '2025-10-06', '12:05', 10),
+(352, 12, 'Sales', 69, 10, 2, 8, '2025-10-06', '12:10', 10),
+(353, 12, 'Stock In', 47, 2, 1, 3, '2025-10-06', '21:50', 8),
+(354, 12, 'Sales', 47, 3, 1, 2, '2025-10-06', '23:06', 12),
+(355, 13, 'Stock In', 47, 5, 2, 7, '2025-10-07', '13:51', 9),
+(356, 12, 'Sales', 47, 2, 1, 1, '2025-10-07', '15:41', 12),
+(357, 12, 'Sales', 47, 1, 1, 0, '2025-10-07', '16:21', 12),
+(358, 12, 'Sales', 47, 1, 1, 0, '2025-10-07', '16:21', 12),
+(359, 12, 'Sales', 63, 2, 1, 1, '2025-10-07', '18:44', 12),
+(360, 12, 'Sales', 70, 3, 1, 2, '2025-10-07', '23:56', 12),
+(361, 12, 'Sales', 63, 1, 1, 0, '2025-10-09', '21:47', 12),
+(362, 12, 'Sales', 69, 8, 1, 7, '2025-10-09', '21:56', 12);
 
 -- --------------------------------------------------------
 
@@ -4251,7 +5170,12 @@ INSERT INTO `walk_in_sales` (`wis_id`, `invoice_id`, `total_amount`, `discount`,
 (15, 31, 29700.00, 8910.00, 30, 20790.00, 1, 'cash', 'Paid'),
 (17, 33, 55000.00, 16500.00, 30, 38500.00, 2, 'cash', 'Paid'),
 (18, 37, 57800.00, 17340.00, 30, 40460.00, 2, 'cash', 'Paid'),
-(19, 40, 25500.00, 7650.00, 30, 17850.00, 1, 'cash', 'Paid');
+(19, 40, 25500.00, 7650.00, 30, 17850.00, 1, 'cash', 'Paid'),
+(20, 116, 66800.00, 13360.00, 20, 53440.00, 2, 'cash', 'Paid'),
+(21, 118, 62000.00, 18600.00, 30, 43400.00, 2, 'cash', 'Paid'),
+(22, 121, 38500.00, 5775.00, 15, 32725.00, 1, 'cash', 'Paid'),
+(23, 133, 28300.00, 8492.83, 30, 19807.17, 1, 'cash', 'Paid'),
+(24, 142, 27500.00, 5500.00, 20, 22000.00, 1, 'cash', 'Paid');
 
 -- --------------------------------------------------------
 
@@ -4289,7 +5213,13 @@ INSERT INTO `walk_in_sales_details` (`walk_in_sale_details`, `wis_id`, `product_
 (16, 17, 47, 2, 27500.00, 55000.00),
 (17, 18, 43, 1, 25500.00, 25500.00),
 (18, 18, 63, 1, 32300.00, 32300.00),
-(19, 19, 43, 1, 25500.00, 25500.00);
+(19, 19, 43, 1, 25500.00, 25500.00),
+(20, 20, 20, 2, 33400.00, 66800.00),
+(21, 21, 63, 1, 32300.00, 32300.00),
+(22, 21, 21, 1, 29700.00, 29700.00),
+(23, 22, 52, 1, 38500.00, 38500.00),
+(24, 23, 44, 1, 28300.00, 28300.00),
+(25, 24, 47, 1, 27500.00, 27500.00);
 
 --
 -- Indexes for dumped tables
@@ -4313,6 +5243,14 @@ ALTER TABLE `activity_log`
   ADD KEY `account_id` (`account_id`);
 
 --
+-- Indexes for table `approved_customize_request`
+--
+ALTER TABLE `approved_customize_request`
+  ADD PRIMARY KEY (`acr_id`),
+  ADD KEY `customize_request_id` (`customize_request_id`,`aprroved_by`),
+  ADD KEY `aprroved_by` (`aprroved_by`);
+
+--
 -- Indexes for table `branch`
 --
 ALTER TABLE `branch`
@@ -4332,23 +5270,6 @@ ALTER TABLE `category`
 ALTER TABLE `customers`
   ADD PRIMARY KEY (`cust_id`),
   ADD KEY `cust_id` (`cust_id`);
-
---
--- Indexes for table `customer_accounts`
---
-ALTER TABLE `customer_accounts`
-  ADD PRIMARY KEY (`cust_account_id`),
-  ADD KEY `cust_account_id` (`cust_account_id`);
-
---
--- Indexes for table `customer_cart`
---
-ALTER TABLE `customer_cart`
-  ADD PRIMARY KEY (`c_cart_id`),
-  ADD KEY `c_cart_id` (`c_cart_id`,`cust_account_id`,`product_id`,`session_id`),
-  ADD KEY `cust_account_id` (`cust_account_id`),
-  ADD KEY `product_id` (`product_id`),
-  ADD KEY `session_id` (`session_id`);
 
 --
 -- Indexes for table `customer_sales`
@@ -4405,6 +5326,34 @@ ALTER TABLE `customized_product_update`
   ADD KEY `customized_id` (`customized_id`);
 
 --
+-- Indexes for table `customize_request`
+--
+ALTER TABLE `customize_request`
+  ADD PRIMARY KEY (`customize_req_id`),
+  ADD KEY `customize_req_id` (`customize_req_id`,`customize_sales_id`,`req_from`,`req_to`),
+  ADD KEY `customize_sales_id` (`customize_sales_id`),
+  ADD KEY `req_from` (`req_from`),
+  ADD KEY `req_to` (`req_to`);
+
+--
+-- Indexes for table `customize_request_report`
+--
+ALTER TABLE `customize_request_report`
+  ADD PRIMARY KEY (`crr_id`),
+  ADD KEY `crr_id` (`crr_id`,`customize_request_id`),
+  ADD KEY `customize_request_id` (`customize_request_id`);
+
+--
+-- Indexes for table `customize_sales`
+--
+ALTER TABLE `customize_sales`
+  ADD PRIMARY KEY (`customize_sales_id`),
+  ADD KEY `invoice_id` (`invoice_id`,`cust_id`),
+  ADD KEY `customize_sales_id` (`customize_sales_id`,`invoice_id`,`cust_id`),
+  ADD KEY `customize_sales_id_2` (`customize_sales_id`,`invoice_id`,`cust_id`),
+  ADD KEY `cust_id` (`cust_id`);
+
+--
 -- Indexes for table `delivery_charge`
 --
 ALTER TABLE `delivery_charge`
@@ -4449,11 +5398,12 @@ ALTER TABLE `exchange_item_details`
   ADD KEY `exchange_id` (`exchange_id`);
 
 --
--- Indexes for table `guest`
+-- Indexes for table `full_customize_details`
 --
-ALTER TABLE `guest`
-  ADD PRIMARY KEY (`session_id`),
-  ADD KEY `session_id` (`session_id`);
+ALTER TABLE `full_customize_details`
+  ADD PRIMARY KEY (`fcd_id`),
+  ADD KEY `fcd_id` (`fcd_id`,`customize_sales_id`),
+  ADD KEY `customize_sales_id` (`customize_sales_id`);
 
 --
 -- Indexes for table `installment_payment_record`
@@ -4504,7 +5454,15 @@ ALTER TABLE `invoice_details`
 ALTER TABLE `location`
   ADD PRIMARY KEY (`location_id`),
   ADD KEY `location_id` (`location_id`,`branch_id`),
-  ADD KEY `branch_id` (`branch_id`);
+  ADD KEY `branch_id` (`branch_id`),
+  ADD KEY `loc_type_id` (`loc_type_id`);
+
+--
+-- Indexes for table `location_type`
+--
+ALTER TABLE `location_type`
+  ADD PRIMARY KEY (`loc_type_id`),
+  ADD KEY `loc_type_id` (`loc_type_id`);
 
 --
 -- Indexes for table `products`
@@ -4561,6 +5519,16 @@ ALTER TABLE `request_stock_details`
 ALTER TABLE `role`
   ADD PRIMARY KEY (`role_id`),
   ADD KEY `role_id` (`role_id`);
+
+--
+-- Indexes for table `semi_customize_details`
+--
+ALTER TABLE `semi_customize_details`
+  ADD PRIMARY KEY (`scd_id`),
+  ADD KEY `customer_sales_id` (`customize_sales_id`,`baseProduct_id`),
+  ADD KEY `scd_id` (`scd_id`,`customize_sales_id`,`baseProduct_id`),
+  ADD KEY `baseProduct_id` (`baseProduct_id`),
+  ADD KEY `customize_sales_id` (`customize_sales_id`);
 
 --
 -- Indexes for table `stock_adjustment`
@@ -4678,13 +5646,19 @@ ALTER TABLE `walk_in_sales_details`
 -- AUTO_INCREMENT for table `account`
 --
 ALTER TABLE `account`
-  MODIFY `account_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `account_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `activity_log`
 --
 ALTER TABLE `activity_log`
-  MODIFY `activity_log_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2378;
+  MODIFY `activity_log_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2886;
+
+--
+-- AUTO_INCREMENT for table `approved_customize_request`
+--
+ALTER TABLE `approved_customize_request`
+  MODIFY `acr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `branch`
@@ -4696,37 +5670,25 @@ ALTER TABLE `branch`
 -- AUTO_INCREMENT for table `category`
 --
 ALTER TABLE `category`
-  MODIFY `category_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `category_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `customers`
 --
 ALTER TABLE `customers`
-  MODIFY `cust_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
---
--- AUTO_INCREMENT for table `customer_accounts`
---
-ALTER TABLE `customer_accounts`
-  MODIFY `cust_account_id` int(50) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `customer_cart`
---
-ALTER TABLE `customer_cart`
-  MODIFY `c_cart_id` int(50) NOT NULL AUTO_INCREMENT;
+  MODIFY `cust_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `customer_sales`
 --
 ALTER TABLE `customer_sales`
-  MODIFY `customer_sales_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `customer_sales_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT for table `customer_sales_details`
 --
 ALTER TABLE `customer_sales_details`
-  MODIFY `c_sale_details` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `c_sale_details` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT for table `customized_product`
@@ -4751,6 +5713,24 @@ ALTER TABLE `customized_product_request`
 --
 ALTER TABLE `customized_product_update`
   MODIFY `cpu_id` int(50) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `customize_request`
+--
+ALTER TABLE `customize_request`
+  MODIFY `customize_req_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `customize_request_report`
+--
+ALTER TABLE `customize_request_report`
+  MODIFY `crr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `customize_sales`
+--
+ALTER TABLE `customize_sales`
+  MODIFY `customize_sales_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `delivery_charge`
@@ -4783,88 +5763,100 @@ ALTER TABLE `exchange_item_details`
   MODIFY `exchange_details_id` int(50) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `guest`
+-- AUTO_INCREMENT for table `full_customize_details`
 --
-ALTER TABLE `guest`
-  MODIFY `session_id` int(50) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `full_customize_details`
+  MODIFY `fcd_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `installment_payment_record`
 --
 ALTER TABLE `installment_payment_record`
-  MODIFY `ipr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `ipr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
 
 --
 -- AUTO_INCREMENT for table `installment_payment_sched`
 --
 ALTER TABLE `installment_payment_sched`
-  MODIFY `ips_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=103;
+  MODIFY `ips_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=178;
 
 --
 -- AUTO_INCREMENT for table `installment_sales`
 --
 ALTER TABLE `installment_sales`
-  MODIFY `installment_sales_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `installment_sales_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `invoice`
 --
 ALTER TABLE `invoice`
-  MODIFY `invoice_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
+  MODIFY `invoice_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=166;
 
 --
 -- AUTO_INCREMENT for table `invoice_details`
 --
 ALTER TABLE `invoice_details`
-  MODIFY `invoice_details_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `invoice_details_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
 
 --
 -- AUTO_INCREMENT for table `location`
 --
 ALTER TABLE `location`
-  MODIFY `location_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `location_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+
+--
+-- AUTO_INCREMENT for table `location_type`
+--
+ALTER TABLE `location_type`
+  MODIFY `loc_type_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
-  MODIFY `product_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=75;
+  MODIFY `product_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=76;
 
 --
 -- AUTO_INCREMENT for table `request_approved`
 --
 ALTER TABLE `request_approved`
-  MODIFY `request_approved_id` int(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=107;
+  MODIFY `request_approved_id` int(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=115;
 
 --
 -- AUTO_INCREMENT for table `request_deliver`
 --
 ALTER TABLE `request_deliver`
-  MODIFY `r_deliver_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `r_deliver_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
 
 --
 -- AUTO_INCREMENT for table `request_reports`
 --
 ALTER TABLE `request_reports`
-  MODIFY `rr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=234;
+  MODIFY `rr_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=267;
 
 --
 -- AUTO_INCREMENT for table `request_stock`
 --
 ALTER TABLE `request_stock`
-  MODIFY `request_stock_id` int(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
+  MODIFY `request_stock_id` int(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=113;
 
 --
 -- AUTO_INCREMENT for table `request_stock_details`
 --
 ALTER TABLE `request_stock_details`
-  MODIFY `request_stock__details_id` int(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=250;
+  MODIFY `request_stock__details_id` int(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=275;
 
 --
 -- AUTO_INCREMENT for table `role`
 --
 ALTER TABLE `role`
   MODIFY `role_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `semi_customize_details`
+--
+ALTER TABLE `semi_customize_details`
+  MODIFY `scd_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `stock_adjustment`
@@ -4882,13 +5874,13 @@ ALTER TABLE `stock_adjustment_details`
 -- AUTO_INCREMENT for table `stock_receiving`
 --
 ALTER TABLE `stock_receiving`
-  MODIFY `stock_receiving_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `stock_receiving_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- AUTO_INCREMENT for table `stock_receiving_details`
 --
 ALTER TABLE `stock_receiving_details`
-  MODIFY `srd_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=59;
+  MODIFY `srd_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=77;
 
 --
 -- AUTO_INCREMENT for table `store_inventory`
@@ -4900,7 +5892,7 @@ ALTER TABLE `store_inventory`
 -- AUTO_INCREMENT for table `store_inventory_transaction_ledger`
 --
 ALTER TABLE `store_inventory_transaction_ledger`
-  MODIFY `sir_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=325;
+  MODIFY `sir_id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=363;
 
 --
 -- AUTO_INCREMENT for table `transfer_stock`
@@ -4930,13 +5922,13 @@ ALTER TABLE `unavailable_products`
 -- AUTO_INCREMENT for table `walk_in_sales`
 --
 ALTER TABLE `walk_in_sales`
-  MODIFY `wis_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `wis_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `walk_in_sales_details`
 --
 ALTER TABLE `walk_in_sales_details`
-  MODIFY `walk_in_sale_details` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `walk_in_sale_details` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- Constraints for dumped tables
@@ -4956,12 +5948,11 @@ ALTER TABLE `activity_log`
   ADD CONSTRAINT `activity_log_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `account` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `customer_cart`
+-- Constraints for table `approved_customize_request`
 --
-ALTER TABLE `customer_cart`
-  ADD CONSTRAINT `customer_cart_ibfk_1` FOREIGN KEY (`cust_account_id`) REFERENCES `customer_accounts` (`cust_account_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `customer_cart_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `customer_cart_ibfk_3` FOREIGN KEY (`session_id`) REFERENCES `guest` (`session_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `approved_customize_request`
+  ADD CONSTRAINT `approved_customize_request_ibfk_1` FOREIGN KEY (`customize_request_id`) REFERENCES `customize_request` (`customize_req_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `approved_customize_request_ibfk_2` FOREIGN KEY (`aprroved_by`) REFERENCES `account` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `customer_sales`
@@ -4994,7 +5985,6 @@ ALTER TABLE `customized_product_pricing`
 -- Constraints for table `customized_product_request`
 --
 ALTER TABLE `customized_product_request`
-  ADD CONSTRAINT `customized_product_request_ibfk_1` FOREIGN KEY (`cust_account_id`) REFERENCES `customer_accounts` (`cust_account_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `customized_product_request_ibfk_2` FOREIGN KEY (`base_product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
@@ -5003,6 +5993,26 @@ ALTER TABLE `customized_product_request`
 ALTER TABLE `customized_product_update`
   ADD CONSTRAINT `customized_product_update_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `account` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `customized_product_update_ibfk_2` FOREIGN KEY (`customized_id`) REFERENCES `customized_product` (`customized_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `customize_request`
+--
+ALTER TABLE `customize_request`
+  ADD CONSTRAINT `customize_request_ibfk_1` FOREIGN KEY (`customize_sales_id`) REFERENCES `customize_sales` (`customize_sales_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `customize_request_ibfk_2` FOREIGN KEY (`req_from`) REFERENCES `location` (`location_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `customize_request_ibfk_3` FOREIGN KEY (`req_to`) REFERENCES `location` (`location_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `customize_request_report`
+--
+ALTER TABLE `customize_request_report`
+  ADD CONSTRAINT `customize_request_report_ibfk_1` FOREIGN KEY (`customize_request_id`) REFERENCES `customize_request` (`customize_req_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `customize_sales`
+--
+ALTER TABLE `customize_sales`
+  ADD CONSTRAINT `customize_sales_ibfk_1` FOREIGN KEY (`cust_id`) REFERENCES `customers` (`cust_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `delivery_details`
@@ -5033,6 +6043,12 @@ ALTER TABLE `exchange_item_details`
   ADD CONSTRAINT `exchange_item_details_ibfk_1` FOREIGN KEY (`exchange_id`) REFERENCES `exchange_item` (`exchange_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
+-- Constraints for table `full_customize_details`
+--
+ALTER TABLE `full_customize_details`
+  ADD CONSTRAINT `full_customize_details_ibfk_1` FOREIGN KEY (`customize_sales_id`) REFERENCES `customize_sales` (`customize_sales_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Constraints for table `installment_payment_record`
 --
 ALTER TABLE `installment_payment_record`
@@ -5049,8 +6065,8 @@ ALTER TABLE `installment_payment_sched`
 -- Constraints for table `installment_sales`
 --
 ALTER TABLE `installment_sales`
-  ADD CONSTRAINT `installment_sales_ibfk_1` FOREIGN KEY (`cust_id`) REFERENCES `customers` (`cust_id`),
-  ADD CONSTRAINT `installment_sales_ibfk_2` FOREIGN KEY (`invoice_id`) REFERENCES `invoice` (`invoice_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `installment_sales_ibfk_2` FOREIGN KEY (`invoice_id`) REFERENCES `invoice` (`invoice_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `installment_sales_ibfk_3` FOREIGN KEY (`cust_id`) REFERENCES `customers` (`cust_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `invoice`
@@ -5070,7 +6086,8 @@ ALTER TABLE `invoice_details`
 -- Constraints for table `location`
 --
 ALTER TABLE `location`
-  ADD CONSTRAINT `location_ibfk_1` FOREIGN KEY (`branch_id`) REFERENCES `branch` (`branch_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `location_ibfk_1` FOREIGN KEY (`branch_id`) REFERENCES `branch` (`branch_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `location_ibfk_2` FOREIGN KEY (`loc_type_id`) REFERENCES `location_type` (`loc_type_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `products`
@@ -5113,6 +6130,13 @@ ALTER TABLE `request_stock`
 ALTER TABLE `request_stock_details`
   ADD CONSTRAINT `request_stock_details_ibfk_1` FOREIGN KEY (`request__stock_id`) REFERENCES `request_stock` (`request_stock_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `request_stock_details_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `semi_customize_details`
+--
+ALTER TABLE `semi_customize_details`
+  ADD CONSTRAINT `semi_customize_details_ibfk_1` FOREIGN KEY (`customize_sales_id`) REFERENCES `customize_sales` (`customize_sales_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `semi_customize_details_ibfk_2` FOREIGN KEY (`baseProduct_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `stock_adjustment`
