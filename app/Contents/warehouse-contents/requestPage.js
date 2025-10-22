@@ -195,7 +195,7 @@ const CombinedRequests = () => {
             const response = await axios.get(url, {
                 params: { json: JSON.stringify(ID), operation: "GetRequestD" }
             });
-            console.log(respomse.data);
+            console.log(response.data);
             const data = response.data[0];
             setS_ReqBy(`${data.fname} ${data.mname} ${data.lname}`);
             setS_ReqID(data.request_stock_id);
