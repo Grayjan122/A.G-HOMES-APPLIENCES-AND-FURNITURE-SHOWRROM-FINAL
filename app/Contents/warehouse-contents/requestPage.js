@@ -801,7 +801,7 @@ const CombinedRequests = () => {
             </Modal>
 
             {/* Main Page */}
-            <div className='customer-main'>
+            <div className='dash-main'>
                 <div className='customer-header'>
                     <h1 className='h-customer'>ALL REQUESTS</h1>
                 </div>

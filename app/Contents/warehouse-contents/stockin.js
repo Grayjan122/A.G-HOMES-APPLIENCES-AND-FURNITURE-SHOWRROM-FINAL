@@ -785,7 +785,7 @@ const StockInWR = () => {
                 </Modal.Footer>
             </Modal>
 
-            <div className='customer-main'>
+            <div className='dash-main'>
                 <div className='customer-header'>
                     <h1 className='h-customer'>STOCK IN</h1>
                 </div>

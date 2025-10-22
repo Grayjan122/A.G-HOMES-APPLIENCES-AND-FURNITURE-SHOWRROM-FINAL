@@ -22,8 +22,8 @@
     height: calc(100vh - 120px);
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
     background-color: #F1F4E0;
-    margin-top: 100px;
-    margin-left: 250px;
+    margin-top: 0px;
+    margin-left: 0px;
     overflow-y: auto;
     padding: 20px;
     border-radius: 5px;
@@ -390,4 +390,42 @@ td {
 
 .close-btn-cust:hover {
     color: red;
+}
+
+@media (max-width: 1024px) {
+    .customer-main{
+         width: calc(100vw);
+    height: calc(100vh - 120px);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+    background-color: #F1F4E0;
+    margin-top: 0px;
+    margin-left: 0px;
+    overflow-y: scroll;
+    padding: 20px;
+    border-radius: 5px;
+    border-radius: 12px;
+    }
+    .add-cust-bttn{
+        height: 60px;
+    }
+
+}
+
+@media (max-width: 768px) {
+    .customer-main{
+         /* width: 1260px; */
+    width: calc(100vw);
+    height: calc(100vh - 120px);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+    background-color: #F1F4E0;
+    margin-top: 0;
+    margin-left: 0px;
+    overflow-y: scroll;
+    padding: 20px;
+    border-radius: 5px;
+    border-radius: 12px;
+    }
+    .add-cust-bttn{
+        height: 60px;
+    }
 }

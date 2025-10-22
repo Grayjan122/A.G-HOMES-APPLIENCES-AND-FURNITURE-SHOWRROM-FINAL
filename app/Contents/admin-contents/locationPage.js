@@ -153,9 +153,13 @@ const Location = () => {
       !locAddress.trim() ||
       !locBranchID.trim()
     ) {
-      setMessage('Please fill all the needed details!');
-      setModalTitle('Alert ⚠️');
-      setShow(true);
+     
+       showAlertError({
+          icon: "warning",
+          title: "Location Details Incomplete!",
+          text: 'Please fill all the required details!',
+          button: 'Try Again'
+        });
       return;
     }
 
@@ -505,7 +509,7 @@ const Location = () => {
           </div>
           <div>
             <button 
-              className='add-pro-bttn' 
+              className='add-cust-bttn' 
               onClick={() => triggerModal('addLocation', '0')}
             >
               ADD LOCATION+

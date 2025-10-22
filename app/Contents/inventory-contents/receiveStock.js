@@ -556,7 +556,7 @@ const ReceiveStockIM = () => {
                         </div>
                     </div>
 
-                    <div className='tableContainer1' style={{ height: '30vh', overflowY: 'auto' }}>
+                    <div className='tableContainer' style={{ height: '30vh', overflowY: 'auto' }}>
                         <table className='table'>
                             <thead>
                                 <tr>
@@ -582,7 +582,7 @@ const ReceiveStockIM = () => {
                                         </td> */}
                                         <td className='td-name'>{p.product_name}</td>
                                         <td className='td-name'>{p.description}</td>
-                                        <td>{p.qty}</td>
+                                        <td style={{textAlign: 'center'}}>{p.qty}</td>
                                         {/* <td>{Availability(p.product_id)}</td> */}
                                     </tr>
                                 ))}
@@ -688,14 +688,13 @@ const ReceiveStockIM = () => {
                                 key={i}
                                 onClick={() => {
                                     triggerModal('viewRequestDetails', p.request_stock_id);
-
                                 }}
                             >
                                 <div className="cardContent">
-                                    <div>
+                                    <div className="cardDetails">
                                         <div className="cardRow">
-                                            <span className="cardLabel" style={{ fontSize: '30px' }}>REQUEST ID:</span>
-                                            <span className="cardValue" style={{ fontSize: '30px', fontWeight: 'bold' }}>{p.request_stock_id}</span>
+                                            <span className="cardLabel">REQUEST ID:</span>
+                                            <span className="cardValue" style={{ fontWeight: 'bold', fontSize: '18px' }}>{p.request_stock_id}</span>
                                         </div>
                                         <div className="cardRow">
                                             <span className="cardLabel">DELIVERY FROM:</span>
@@ -716,14 +715,13 @@ const ReceiveStockIM = () => {
                                                             : p.request_status === 'Approved'
                                                                 ? 'green'
                                                                 : 'black',
+                                                    fontWeight: 'bold'
                                                 }}
                                             >
                                                 {p.request_status}
                                             </span>
                                         </div>
                                     </div>
-
-
 
                                     <div className="statusIcon">
                                         {p.request_status === 'Pending' && <span>⟳</span>}

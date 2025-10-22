@@ -26,6 +26,7 @@ const SidebarInventory = () => {
   const [activePage, setActivePage] = useState('dashboard');
   const [expandedParent, setExpandedParent] = useState(null);
   const [user_id, setUser_id] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
 
@@ -132,6 +133,14 @@ const SidebarInventory = () => {
     }
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
   const renderContent = () => {
     for (const page of pages) {
       if (page.key === activePage) return page.component;
@@ -163,12 +172,24 @@ const SidebarInventory = () => {
 
   return (
     <>
+      {/* Hamburger Menu Button for Mobile */}
+      <button className="hamburger-menu" onClick={toggleSidebar} aria-label="Toggle Menu" hidden={isSidebarOpen}>
+        <span className={`hamburger-line ${isSidebarOpen ? 'open' : ''}`}></span>
+        <span className={`hamburger-line ${isSidebarOpen ? 'open' : ''}`}></span>
+        <span className={`hamburger-line ${isSidebarOpen ? 'open' : ''}`}></span>
+      </button>
 
+      {/* Overlay for mobile when sidebar is open */}
+      {isSidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar}></div>}
 
-      <aside className="sidebar1">
-        <h2 className="sidebar-title" >INVENTORY PAGE</h2>
+      <aside className={`sidebar1 ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+        <div className="sidebar-header">
+          <h2 className="sidebar-title">INVENTORY PAGE</h2>
+          {/* <button className="close-sidebar" onClick={closeSidebar} aria-label="Close Menu">
+            ✕
+          </button> */}
+        </div>
         <p className='line'>_________________</p>
-        {/* <p>{user_id}</p> */}
         <nav className="sidebar-nav">
           {pages.map((page) => (
             <div key={page.key}>
@@ -177,9 +198,10 @@ const SidebarInventory = () => {
                 onClick={() => {
                   sessionStorage.setItem('once', "false");
                   toggleExpand(page.key, !!page.children, page.component);
-
-                }
-                }
+                  if (!page.children) {
+                    closeSidebar();
+                  }
+                }}
               >
                 <Image src={page.icon} width={40} height={40} alt={page.label} />
                 {page.label}
@@ -195,7 +217,7 @@ const SidebarInventory = () => {
                       onClick={() => {
                         setActivePage(child.key);
                         sessionStorage.setItem('once', "false");
-
+                        closeSidebar();
                       }}
                     >
                       &nbsp;&nbsp;

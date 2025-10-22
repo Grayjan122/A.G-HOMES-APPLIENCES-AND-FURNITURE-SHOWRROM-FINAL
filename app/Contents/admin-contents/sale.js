@@ -471,7 +471,7 @@ const SaleAdmin = () => {
                 <div className='customer-header'>
                     <h1 className='h-customer'>SALES MANAGEMENT</h1>
                     <div>
-                        <button className='add-pro-bttn' onClick={() => setShowReportModal(true)}>Generate Sales Report</button>
+                        <button className='add-cust-bttn' onClick={() => setShowReportModal(true)}>Generate Sales Report</button>
                     </div>
                 </div>
 

@@ -472,7 +472,7 @@ const DeliveryWR = () => {
                 </Modal.Footer>
             </Modal>
 
-            <div className='customer-main' style={{overflowY: 'auto'}}>
+            <div className='dash-main' style={{overflowY: 'auto'}}>
                 <div className='customer-header'>
                     <h1 className='h-customer'>DELIVERY MANAGEMENT</h1>
                 </div>

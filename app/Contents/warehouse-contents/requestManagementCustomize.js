@@ -676,9 +676,9 @@ const RequestManagementCustomizeWR = () => {
                 </Modal.Footer>
             </Modal>
 
-            <div className='customer-main' style={{ overflowY: 'auto', padding: '20px' }}>
+            <div className='dash-main' style={{ overflowY: 'auto', padding: '20px' }}>
                 <div style={{ marginBottom: '20px' }}>
-                    <h1>REQUEST MANAGEMENT</h1>
+                    <h1>REQUESTss MANAGEMENT</h1>
                 </div>
 
                 {/* Filters */}

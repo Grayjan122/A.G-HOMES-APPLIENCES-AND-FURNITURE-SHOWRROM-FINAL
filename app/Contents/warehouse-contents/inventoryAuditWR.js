@@ -213,7 +213,7 @@ const InventoryLedgerWR = () => {
                 {message}
             </Alert>
 
-            <div className='customer-main'>
+            <div className='dash-main'>
                 <div className='customer-header'>
                     <h1 className='h-customer'>WAREHOUSE LEDGER</h1>
                 </div>

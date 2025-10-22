@@ -19,6 +19,7 @@ const SidebarSaleClerk = () => {
   const [activePage, setActivePage] = useState('dashboard');
   const [expandedParent, setExpandedParent] = useState(null);
   const [user_id, setUser_id] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // ✅ Get user_id and check if there's a stored active page
   useEffect(() => {
@@ -128,6 +129,14 @@ const SidebarSaleClerk = () => {
     }
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
   // 🧭 render selected content
   const renderContent = () => {
     for (const page of pages) {
@@ -167,15 +176,35 @@ const SidebarSaleClerk = () => {
   return (
     <>
       <div className="container-layout">
-        <aside className="sidebar1">
-          <h2 className="sidebar-title">SALES CLERK</h2>
+        {/* Hamburger Menu Button for Mobile */}
+        <button className="hamburger-menu" onClick={toggleSidebar} aria-label="Toggle Menu" hidden={isSidebarOpen}>
+          <span className={`hamburger-line ${isSidebarOpen ? 'open' : ''}`}></span>
+          <span className={`hamburger-line ${isSidebarOpen ? 'open' : ''}`}></span>
+          <span className={`hamburger-line ${isSidebarOpen ? 'open' : ''}`}></span>
+        </button>
+
+        {/* Overlay for mobile when sidebar is open */}
+        {isSidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar}></div>}
+
+        <aside className={`sidebar1 ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+          <div className="sidebar-header">
+            <h2 className="sidebar-title">SALES CLERK</h2>
+            {/* <button className="close-sidebar" onClick={closeSidebar} aria-label="Close Menu">
+              ✕
+            </button> */}
+          </div>
           <p className="line">_________________</p>
           <nav className="sidebar-nav">
             {pages.map((page) => (
               <div key={page.key}>
                 <p
                   className={`sidebar-item ${isParentActive(page) ? 'active' : ''}`}
-                  onClick={() => toggleExpand(page.key, page.children && page.children.length > 0)}
+                  onClick={() => {
+                    toggleExpand(page.key, page.children && page.children.length > 0);
+                    if (!page.children || page.children.length === 0) {
+                      closeSidebar();
+                    }
+                  }}
                 >
                   <Image src={page.icon} width={40} height={40} alt={page.label} />
                   {page.label}
@@ -187,7 +216,10 @@ const SidebarSaleClerk = () => {
                       <p
                         key={child.key}
                         className={`sidebar-child-item ${activePage === child.key ? 'active' : ''}`}
-                        onClick={() => handlePageChange(child.key)}
+                        onClick={() => {
+                          handlePageChange(child.key);
+                          closeSidebar();
+                        }}
                       >
                         &nbsp;&nbsp;
                         <Image src={'/assets/images/arrow.png'} alt="arrow" height={40} width={40} />

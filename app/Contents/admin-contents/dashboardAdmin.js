@@ -688,7 +688,8 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                             {/* Enhanced X-axis labels */}
                             <div style={{
                                 display: 'flex',
-                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                gap: '8px',
                                 marginTop: '16px',
                                 paddingLeft: '8px',
                                 paddingRight: '8px',
@@ -2262,8 +2263,17 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                     <h5 className="card-title">{title}</h5>
                     <div className="row align-items-center">
                         <div className="col-md-6">
-                            <div style={{ position: 'relative', textAlign: 'center' }}>
-                                <svg width="200" height="200" style={{ transform: 'rotate(-90deg)' }}>
+                            <div style={{ position: 'relative', textAlign: 'center', padding: '20px 10px', minHeight: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <svg 
+                                    viewBox="0 0 200 200" 
+                                    style={{ 
+                                        width: '100%', 
+                                        height: 'auto', 
+                                        maxWidth: '200px',
+                                        transform: 'rotate(-90deg)',
+                                        overflow: 'visible'
+                                    }}
+                                >
                                     {slices.map((slice, index) => (
                                         <path
                                             key={index}
@@ -2285,7 +2295,8 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                     top: '50%',
                                     left: '50%',
                                     transform: 'translate(-50%, -50%)',
-                                    textAlign: 'center'
+                                    textAlign: 'center',
+                                    pointerEvents: 'none'
                                 }}>
                                     <div style={{ fontSize: '12px', color: '#6c757d', fontWeight: 'bold' }}>Total</div>
                                     <div style={{ fontSize: '14px', color: '#495057', fontWeight: 'bold' }}>

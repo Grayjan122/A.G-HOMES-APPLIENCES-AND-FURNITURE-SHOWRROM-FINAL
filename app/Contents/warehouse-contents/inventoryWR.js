@@ -355,7 +355,7 @@ const InventoryWR = () => {
                 </Modal.Footer>
             </Modal>
 
-            <div className='customer-main'>
+            <div className='dash-main'>
                 <div className='customer-header'>
                     <h1 className='h-customer'>INVENTORY MANAGEMENT</h1>
                 </div>

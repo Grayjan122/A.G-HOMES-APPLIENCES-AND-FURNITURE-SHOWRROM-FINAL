@@ -937,7 +937,7 @@ const ProductsAdmin = () => {
                         <h1 className='h-customer'>PRODUCT MANAGEMENT</h1>
                     </div>
                     <div>
-                        <button className='add-pro-bttn' onClick={(e) => triggerModal('addProduct', '0', e)}>ADD PRODUCT+</button>
+                        <button className='add-cust-bttn' onClick={(e) => triggerModal('addProduct', '0', e)}>ADD PRODUCT+</button>
                     </div>
                 </div>
 

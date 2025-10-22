@@ -120,6 +120,7 @@
     /* max-height: 80%; */
     /* height: 540px; */
     overflow-y: auto;
+    overflow-x: auto;
     border-radius: 6px;
     margin-top: 20px;
     /* background-color: #f9f9d8; */

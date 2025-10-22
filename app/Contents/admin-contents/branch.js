@@ -128,9 +128,15 @@ const BranchAdmin = () => {
 
   const addBranch = async () => {
     if (!branchName.trim()) {
-      setMessage('Please fill in branch name!');
-      setModalTitle('Alert ⚠️');
-      setShow(true);
+      // setMessage('Please fill in branch name!');
+      // setModalTitle('Alert ⚠️');
+      // setShow(true);
+      showAlertError({
+        icon: "warning",
+        title: "Branch Details Incomplete!",
+        text: 'Please fill all the required details!',
+        button: 'Try Again'
+      });
       return;
     }
 
@@ -354,7 +360,7 @@ const BranchAdmin = () => {
             <h1 className='h-customer'>BRANCH MANAGEMENT</h1>
           </div>
           <div>
-            <button className='add-pro-bttn' onClick={() => triggerModal('addBranch', '0')}>
+            <button className='add-cust-bttn' onClick={() => triggerModal('addBranch', '0')}>
               ADD BRANCH+
             </button>
           </div>
@@ -767,7 +773,7 @@ const BranchAdmin = () => {
                   color: '#28a745',
                   marginBottom: '5px'
                 }}>
-                  {filteredBranches.filter(branch => 
+                  {filteredBranches.filter(branch =>
                     countLocationsByBranch(branch.branch_id) > 0
                   ).length}
                 </div>
@@ -787,7 +793,7 @@ const BranchAdmin = () => {
                   color: '#ffc107',
                   marginBottom: '5px'
                 }}>
-                  {filteredBranches.filter(branch => 
+                  {filteredBranches.filter(branch =>
                     countLocationsByBranch(branch.branch_id) === 0
                   ).length}
                 </div>
@@ -823,7 +829,7 @@ const BranchAdmin = () => {
 
         {/* Branch Pagination */}
         {totalPagesBranches > 1 && currentBranchItems && currentBranchItems.length > 0 && (
-          <div style={{ 
+          <div style={{
             display: 'flex',
             justifyContent: 'center',
             marginTop: '20px'

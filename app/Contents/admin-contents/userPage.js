@@ -262,9 +262,13 @@ const User = () => {
             !role_.trim() ||
             !location_.trim()
         ) {
-            setMessage('Please fill in all fields.');
-            setModalTitle('Alert ⚠️');
-            setShow(true);
+            
+            showAlertError({
+                icon: "warning",
+                title: "Incomplete Account Details!",
+                text: 'Please fill all the required details!',
+                button: 'Try Again'
+            });
             return;
         }
 
@@ -297,7 +301,7 @@ const User = () => {
                 GetUser();
                 resetForm();
                 close_modal();
-               
+
                 AlertSucces(
                     "New user is successfully added!",
                     "success",

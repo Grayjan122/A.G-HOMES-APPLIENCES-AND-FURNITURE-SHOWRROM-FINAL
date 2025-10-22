@@ -891,7 +891,7 @@ const UnifiedRequestManagement = () => {
             </Modal>
 
             {/* Main Content */}
-            <div className='customer-main' style={{ overflow: 'auto' }}>
+            <div className='dash-main' style={{ overflow: 'auto' }}>
                 <div style={{ marginBottom: '20px' }}>
                     <h1>REQUEST MANAGEMENT</h1>
                 </div>

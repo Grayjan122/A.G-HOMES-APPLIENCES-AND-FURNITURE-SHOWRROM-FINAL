@@ -10,8 +10,8 @@
   height: calc(100vh - 120px);
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
   background-color: #F1F4E0;
-  margin-top: 100px;
-  margin-left: 250px;
+  margin-top: 0px;
+  margin-left: 0px;
   overflow-y: scroll;
   padding: 20px;
   border-radius: 5px;
@@ -116,42 +116,317 @@
 
 
 
+/* Tablet and below */
 @media (max-width: 1024px) {
-
   .dash-main {
-    /* width: 1260px; */
     width: calc(100vw);
     height: calc(100vh - 120px);
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
     background-color: #F1F4E0;
-    margin-top: 170px;
+    margin-top: 0px;
     margin-left: 0px;
     overflow-y: scroll;
-    padding: 20px;
-    border-radius: 5px;
+    padding: 15px;
     border-radius: 12px;
-    /* margin-bottom: 20%; */
+  }
 
+  .h-dashboard {
+    font-size: 32px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
 
+  .row {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .col-md-6,
+  .col-md-4,
+  .col-md-3,
+  .col-md-8 {
+    padding-left: 8px;
+    padding-right: 8px;
   }
 }
 
+/* Mobile devices */
 @media (max-width: 768px) {
   .dash-main {
-    /* width: 1260px; */
-    width: calc(100vw);
-    height: calc(100vh - 120px);
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
-    background-color: #F1F4E0;
-    margin-top: 170px;
+    width: 100vw;
+    height: auto;
+    min-height: calc(100vh - 80px);
+    margin-top: 0px;
     margin-left: 0px;
-    overflow-y: scroll;
-    padding: 20px;
-    border-radius: 5px;
-    border-radius: 12px;
-    /* margin-bottom: 20%; */
-
-
+    padding: 10px;
+    border-radius: 0;
   }
 
+  .h-dashboard {
+    font-size: 28px;
+    text-align: center;
+    margin-bottom: 15px;
+  }
+
+  /* SVG charts responsive */
+  svg {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+  }
+
+  /* Chart text readable */
+  svg text {
+    font-size: 11px !important;
+    font-weight: 500 !important;
+  }
+
+  /* Y-axis stays on left */
+  .card-body > div[style*="display: flex"] > div[style*="width: 80px"],
+  .card-body > div[style*="display: flex"] > div[style*="width: 70px"],
+  .card-body > div[style*="display: flex"] > div[style*="width: 90px"],
+  .card-body > div[style*="display: flex"] > div[style*="width: 100px"] {
+    width: 60px !important;
+    padding-right: 6px !important;
+    order: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Chart comes after Y-axis */
+  .card-body > div[style*="display: flex"] > div[style*="textAlign: center"],
+  .card-body > div[style*="display: flex"] > div[style*="flex: 1"] {
+    order: 1 !important;
+  }
+
+  /* Y-axis text */
+  .card-body > div[style*="display: flex"] > div[style*="width"] small {
+    font-size: 10px !important;
+    font-weight: 500 !important;
+  }
+
+  /* Prevent chart clipping - but contain within cards */
+  .card-body svg {
+    overflow: visible !important;
+    padding: 8px !important;
+  }
+
+  .card.shadow {
+    overflow: hidden !important;
+  }
+
+  .card-body {
+    overflow: hidden !important;
+  }
+
+  /* Bar chart fixes */
+  .card-body > div[style*="height: 420px"] {
+    height: auto !important;
+    min-height: 300px !important;
+    overflow: visible !important;
+  }
+
+  .card-body > div > div > div[style*="maxWidth: 60px"] {
+    max-width: 45px !important;
+  }
+
+  /* Yearly chart specific */
+  .card-body > div[style*="display: flex"][style*="gap"] {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .card-body > div[style*="display: flex"] > div[style*="flexDirection: column"][style*="height: 240px"] {
+    width: 45px !important;
+    order: 1 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .card-body > div[style*="display: flex"] > div[style*="textAlign: center"][style*="flex: 1"] {
+    order: 2 !important;
+    overflow: hidden !important;
+    padding: 5px !important;
+  }
+
+  .card-body > div[style*="display: flex"] svg[viewBox*="360 240"] {
+    padding: 15px 8px !important;
+  }
+
+  /* Total Sales by Location - Pie Charts */
+  .card-body svg[viewBox="0 0 200 200"] {
+    max-width: 160px !important;
+  }
+
+  .card-body > div > div[style*="minHeight: 240px"] {
+    min-height: 200px !important;
+    padding: 15px 8px !important;
+  }
+
+  /* Weekly Sales Trend - Bar Chart */
+  .card-body > div[style*="height: 420px"] > div[style*="width: 90px"] {
+    width: 50px !important;
+    padding-right: 6px !important;
+  }
+
+  .card-body > div[style*="height: 420px"] > div[style*="width: 90px"] small {
+    font-size: 9px !important;
+  }
+
+  .card-body > div[style*="height: 420px"] > div > div {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .card-body > div[style*="height: 420px"] > div > div[style*="display: flex"] > div {
+    font-size: 11px !important;
+  }
+
+  /* Bar max width on mobile */
+  .card-body > div > div > div[style*="maxWidth: 60px"] {
+    max-width: 35px !important;
+  }
+
+  /* Monthly Sales by Location - Legend text */
+  .card-body .row .col-md-6 > div {
+    font-size: 11px !important;
+  }
+
+  .card-body .row .col-md-6 small {
+    font-size: 10px !important;
+  }
+
+  /* Chart titles */
+  .card-title {
+    font-size: 15px !important;
+  }
+
+  /* Pie chart center values */
+  .card-body svg + div[style*="position: absolute"] {
+    font-size: 12px !important;
+  }
+
+  .card-body svg + div[style*="position: absolute"] > div {
+    font-size: 10px !important;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+  .dash-main {
+    padding: 8px;
+  }
+
+  .h-dashboard {
+    font-size: 24px;
+    margin-bottom: 12px;
+  }
+
+  svg text {
+    font-size: 9px !important;
+  }
+
+  .card-body > div[style*="display: flex"] > div[style*="width: 80px"],
+  .card-body > div[style*="display: flex"] > div[style*="width: 70px"],
+  .card-body > div[style*="display: flex"] > div[style*="width: 90px"],
+  .card-body > div[style*="display: flex"] > div[style*="width: 100px"] {
+    width: 45px !important;
+    padding-right: 4px !important;
+  }
+
+  .card-body svg {
+    padding: 10px !important;
+  }
+
+  /* Pie charts smaller on small mobile */
+  .card-body svg[viewBox="0 0 200 200"] {
+    max-width: 140px !important;
+  }
+
+  .card-body > div > div[style*="minHeight: 240px"] {
+    min-height: 180px !important;
+    padding: 10px 5px !important;
+  }
+
+  /* Weekly bar chart more compact */
+  .card-body > div[style*="height: 420px"] {
+    min-height: 250px !important;
+  }
+
+  .card-body > div[style*="height: 420px"] > div[style*="width: 90px"] {
+    width: 40px !important;
+  }
+
+  .card-body > div[style*="height: 420px"] > div[style*="width: 90px"] small {
+    font-size: 8px !important;
+  }
+
+  .card-body > div > div > div[style*="maxWidth: 60px"] {
+    max-width: 28px !important;
+  }
+
+  /* Chart titles smaller */
+  .card-title {
+    font-size: 13px !important;
+  }
+
+  /* Pie chart legends */
+  .card-body .row .col-md-6 > div {
+    font-size: 10px !important;
+  }
+
+  .card-body .row .col-md-6 small {
+    font-size: 9px !important;
+  }
+
+  /* X-axis labels for weekly chart */
+  .card-body > div[style*="height: 420px"] > div > div[style*="display: flex"] > div {
+    font-size: 10px !important;
+  }
+
+  .card-body > div[style*="height: 420px"] > div > div[style*="display: flex"] > div > div {
+    font-size: 8px !important;
+  }
+}
+
+/* Additional overflow and layout fixes */
+.card-body {
+  overflow-x: hidden;
+}
+
+.card.shadow,
+.card {
+  overflow: hidden;
+}
+
+.card-body .row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .card-body .row .col-md-6,
+  .card-body .row .col-md-4,
+  .card-body .row .col-md-3,
+  .card-body .row .col-md-8 {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  /* Stack chart columns on mobile */
+  .row.mb-4 > .col-md-6 {
+    margin-bottom: 15px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .card-body .row .col-md-6,
+  .card-body .row .col-md-4,
+  .card-body .row .col-md-3,
+  .card-body .row .col-md-8 {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .card-body {
+    padding: 12px !important;
+  }
 }

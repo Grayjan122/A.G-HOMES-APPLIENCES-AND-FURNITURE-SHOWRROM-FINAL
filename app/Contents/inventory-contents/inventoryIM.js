@@ -366,7 +366,7 @@ const InventoryIM = () => {
                 </Modal.Footer>
             </Modal>
 
-            <div className='customer-main'>
+            <div className='dash-main'>
                 <div className='customer-header' style={{ marginBottom: '30px' }}>
                     <h1 className='h-customer' style={{ 
                         color: 'black',

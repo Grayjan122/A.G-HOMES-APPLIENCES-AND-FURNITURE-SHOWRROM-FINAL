@@ -130,9 +130,13 @@ const CategoryAdmin = () => {
         e.preventDefault();
 
         if (!category_name?.trim() || !category_description?.trim()) {
-            setMessage('Please fill all the required details!');
-            setModalTitle('Alert ⚠️');
-            setShow(true);
+           
+            showAlertError({
+                icon: "warning",
+                title: "Fill in required details!",
+                text: 'Please fill all the required details!',
+                button: 'Try Again'
+            });
             return;
         }
 
@@ -178,7 +182,7 @@ const CategoryAdmin = () => {
         const url = baseURL + 'products.php';
 
         const categoryID = { categoryID: category_id };
-        
+
         try {
             const response = await axios.get(url, {
                 params: {
@@ -388,8 +392,8 @@ const CategoryAdmin = () => {
                         <h1 className='h-customer'>CATEGORY MANAGEMENT</h1>
                     </div>
                     <div>
-                        <button 
-                            className='add-pro-bttn' 
+                        <button
+                            className='add-cust-bttn'
                             onClick={(e) => triggerModal('addCategory', '0', e)}
                         >
                             ADD CATEGORY+

@@ -1812,7 +1812,7 @@ const RequestStockIM = () => {
 
                         <Col md={9}>
                             {/* RIGHT COLUMN CONTENT - Updated with inline controls */}
-                            <div className='tableContainer1' style={{ height: '52vh', overflow: 'hidden' }}>
+                            <div className='tableContainer1' style={{ height: '52vh', overflowX: 'auto' }}>
                                 {currentRequestItems && currentRequestItems.length > 0 ? (
                                     <table className='table'>
                                         <thead>
