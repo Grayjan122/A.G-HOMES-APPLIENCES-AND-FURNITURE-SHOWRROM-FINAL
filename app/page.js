@@ -38,8 +38,8 @@ export default function LoginPage() {
   const router = useRouter();
 
   // Base URL configuration
-  // const BASE_URL = 'https://ag-home.site/backend/';
-   const BASE_URL = 'http://localhost/capstone-api/api/';
+  const BASE_URL = 'https://ag-home.site/backend/';
+   // const BASE_URL = 'http://localhost/capstone-api/api/';
 
   // Add debug log
   const addDebugLog = (message, data = null) => {
