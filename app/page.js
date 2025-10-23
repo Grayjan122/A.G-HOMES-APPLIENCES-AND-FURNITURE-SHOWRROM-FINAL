@@ -52,8 +52,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   // Base URL configuration
-<<<<<<< HEAD
-  const BASE_URL = 'https://ag-home.site/backend/api';
+  const BASE_URL = 'https://ag-home.site/backend/api/';
   // const BASE_URL = 'http://localhost/capstone-api/api/';
 
   // Check if we're in the browser (client-side)
@@ -62,10 +61,6 @@ export default function LoginPage() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
-=======
-  const BASE_URL = 'https://ag-home.site/backend/';
-   // const BASE_URL = 'http://localhost/capstone-api/api/';
->>>>>>> 0fcf03d519a80da8f70b917dc0a5588d289e4ff9
 
   // Add debug log
   const addDebugLog = (message, data = null) => {
@@ -1526,4 +1521,4 @@ export default function LoginPage() {
       {showDebugPanel && <DebugPanel />}
     </>
   );
-}
+};

@@ -226,7 +226,6 @@ const CombinedRequests = () => {
             const response = await axios.get(url, {
                 params: { json: JSON.stringify(ID), operation: "GetRequestD" }
             });
-<<<<<<< HEAD
             
             console.log("GetStockRequestD response:", response.data);
             
@@ -236,9 +235,6 @@ const CombinedRequests = () => {
                 return;
             }
 
-=======
-            console.log(response.data);
->>>>>>> 0fcf03d519a80da8f70b917dc0a5588d289e4ff9
             const data = response.data[0];
             
             // Validate data exists

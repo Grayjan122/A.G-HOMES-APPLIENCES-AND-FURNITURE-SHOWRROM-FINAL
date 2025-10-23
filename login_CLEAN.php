@@ -57,7 +57,7 @@ class User {
             }
             
             if ($passwordMatch) {
-                // ⭐ CHECK ACCOUNT STATUS BEFORE ALLOWING LOGIN ⭐
+                // CHECK ACCOUNT STATUS BEFORE ALLOWING LOGIN
                 $accountStatus = $user['status'];
                 error_log("Account status: " . $accountStatus);
                 
