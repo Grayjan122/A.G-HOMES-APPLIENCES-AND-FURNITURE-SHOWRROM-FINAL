@@ -1,12 +1,12 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import '../css/login.css';
 import { showAlertError } from '../Components/SweetAlert/error';
 import { AlertSucces } from '../Components/SweetAlert/success';
 
-export default function SetupAccountPage() {
+function SetupAccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [token, setToken] = useState('');
@@ -25,7 +25,7 @@ export default function SetupAccountPage() {
   const [tokenValid, setTokenValid] = useState(true);
 
 
-  const BASE_URL = 'https://ag-home.site/backend/api';
+  const BASE_URL = 'https://ag-home.site/backend/api/';
   // const BASE_URL = 'http://localhost/capstone-api/api/';
 
   useEffect(() => {
@@ -414,6 +414,20 @@ export default function SetupAccountPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SetupAccountPage() {
+  return (
+    <Suspense fallback={
+      <div className='login-main' style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    }>
+      <SetupAccountContent />
+    </Suspense>
   );
 }
 
