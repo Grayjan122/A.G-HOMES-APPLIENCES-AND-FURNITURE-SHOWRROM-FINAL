@@ -52,8 +52,8 @@ export default function LoginPage() {
   const router = useRouter();
 
   // Base URL configuration
-  const BASE_URL = 'https://ag-home.site/backend/api/';
-  // const BASE_URL = 'http://localhost/capstone-api/api/';
+  // const BASE_URL = 'https://ag-home.site/backend/api/';
+  const BASE_URL = 'http://localhost/capstone-api/api/';
 
   // Check if we're in the browser (client-side)
   const [isMounted, setIsMounted] = useState(false);

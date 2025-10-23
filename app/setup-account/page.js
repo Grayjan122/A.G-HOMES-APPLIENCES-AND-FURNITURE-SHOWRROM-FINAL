@@ -25,8 +25,8 @@ function SetupAccountContent() {
   const [tokenValid, setTokenValid] = useState(true);
 
 
-  const BASE_URL = 'https://ag-home.site/backend/api/';
-  // const BASE_URL = 'http://localhost/capstone-api/api/';
+  // const BASE_URL = 'https://ag-home.site/backend/api/';
+  const BASE_URL = 'http://localhost/capstone-api/api/';
 
   useEffect(() => {
     const tokenParam = searchParams.get('token');
