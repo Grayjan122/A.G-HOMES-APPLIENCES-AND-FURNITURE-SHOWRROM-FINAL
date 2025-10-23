@@ -1,0 +1,112 @@
+========================================
+SIMPLE COPY-PASTE FIX FOR DEACTIVE LOGIN
+========================================
+
+STEP 1: Open this file
+------------------------
+C:\xampp\htdocs\capstone-api\api\login.php
+
+
+STEP 2: Find this section (should be around line 40-80)
+--------------------------------------------------------
+Look for code that looks like this:
+
+    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    if (count($data) > 0) {
+        $updateSql = "UPDATE users SET active_status = 'Online' WHERE account_id = :id";
+        $updateStmt = $this->pdo->prepare($updateSql);
+        $updateStmt->bindParam(':id', $data[0]['account_id']);
+        $updateStmt->execute();
+    }
+    
+    return $data;
+
+
+STEP 3: REPLACE the entire section above with this NEW CODE
+------------------------------------------------------------
+COPY EVERYTHING BETWEEN THE LINES BELOW:
+
+========== START COPYING HERE ==========
+
+    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // CHECK ACCOUNT STATUS BEFORE ALLOWING LOGIN
+    if (count($data) > 0) {
+        $accountStatus = $data[0]['status'];
+        
+        // Block deactivated accounts
+        if ($accountStatus === 'Deactive') {
+            return [
+                'error' => 'account_deactivated',
+                'message' => 'This user no longer has access to the system. Please contact your administrator for more information.'
+            ];
+        }
+        
+        // Block suspended accounts
+        if ($accountStatus === 'Suspended') {
+            return [
+                'error' => 'account_suspended',
+                'message' => 'Your account has been temporarily suspended. Please contact your administrator for assistance.'
+            ];
+        }
+        
+        // Only allow Active users to login
+        if ($accountStatus === 'Active') {
+            $updateSql = "UPDATE users SET active_status = 'Online' WHERE account_id = :id";
+            $updateStmt = $this->pdo->prepare($updateSql);
+            $updateStmt->bindParam(':id', $data[0]['account_id']);
+            $updateStmt->execute();
+        }
+    }
+    
+    return $data;
+
+========== STOP COPYING HERE ==========
+
+
+STEP 4: Save the file
+---------------------
+Press Ctrl+S to save login.php
+
+
+STEP 5: Test it
+---------------
+1. Go to User Management
+2. Edit a user and set status to "Deactive"
+3. Try to log in with that user
+4. You should see: "This user no longer has access to the system"
+5. Change the user back to "Active"
+6. Log in should work now
+
+
+THAT'S IT! ✅
+=============
+
+The deactivated accounts will now be blocked!
+
+
+TROUBLESHOOTING:
+================
+
+Can't find the code?
+--------------------
+Search for this text in login.php:
+   active_status = 'Online'
+
+That will take you to the right place.
+
+
+Still not working?
+------------------
+Make sure:
+1. You saved the file (Ctrl+S)
+2. XAMPP Apache is running
+3. The user's status in database is exactly "Deactive" (not "Deactivated" or "Inactive")
+4. Clear your browser cache and try again
+
+
+Need more help?
+---------------
+Share a screenshot of your login.php file around the login function.
+

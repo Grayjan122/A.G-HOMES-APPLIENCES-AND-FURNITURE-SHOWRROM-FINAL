@@ -1,0 +1,440 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║              AUTO LOGOUT - FLOW DIAGRAM & SCENARIOS                  ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+
+SCENARIO 1: ACTIVE USER (NORMAL USAGE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────┐
+│   User Logs In  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  Timer Starts: 1 Hour       │
+│  Warning At: 59 Minutes     │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  User Activity Detected:    │
+│  • Mouse movement           │
+│  • Clicks                   │
+│  • Keyboard typing          │
+│  • Scrolling                │
+│  • Touch events             │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  Timer RESETS → 1 Hour      │
+└────────┬────────────────────┘
+         │
+         └─────► User continues working (loop back to activity detection)
+
+
+SCENARIO 2: INACTIVE USER (AUTO LOGOUT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────┐
+│   User Logs In  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  Timer Starts: 1 Hour       │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  No Activity Detected       │
+│  User: Away from computer   │
+│  Time: 59 minutes passed    │
+└────────┬────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────┐
+│   ⚠️  WARNING MODAL APPEARS          │
+│                                      │
+│   "You have been inactive!"          │
+│                                      │
+│   Countdown: 60 seconds              │
+│                                      │
+│   [Stay Logged In] [Logout Now]      │
+└────────┬─────────────────────────────┘
+         │
+         ▼ (No response from user)
+         │
+┌─────────────────────────────┐
+│  Countdown: 60s → 0s        │
+│  User: Still no response    │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  🔴 AUTO LOGOUT TRIGGERED   │
+│                             │
+│  1. Call Backend API        │
+│     → Set user "Offline"    │
+│                             │
+│  2. Create Audit Log        │
+│     → "Auto Logout -        │
+│        Inactivity Timeout"  │
+│                             │
+│  3. Clear sessionStorage    │
+│                             │
+│  4. Redirect to Login Page  │
+└─────────────────────────────┘
+
+
+SCENARIO 3: USER EXTENDS SESSION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────┐
+│   User Logs In  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  No Activity: 59 Minutes    │
+└────────┬────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────┐
+│   ⚠️  WARNING MODAL APPEARS          │
+│                                      │
+│   Countdown: 60 seconds              │
+│                                      │
+│   [Stay Logged In] [Logout Now]      │
+└────────┬─────────────────────────────┘
+         │
+         ▼ (User returns and clicks button)
+         │
+┌─────────────────────────────┐
+│  User Clicks:               │
+│  ✓ "Stay Logged In"         │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  ✅ SESSION EXTENDED         │
+│                             │
+│  1. Close warning modal     │
+│  2. Reset timer → 1 hour    │
+│  3. Clear countdown         │
+│  4. Resume normal tracking  │
+└────────┬────────────────────┘
+         │
+         └─────► User continues working
+
+
+SCENARIO 4: BROWSER/TAB CLOSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────┐
+│   User Logs In  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  User Working Normally      │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  User Action:               │
+│  • Closes browser           │
+│  • Closes tab               │
+│  • Navigates away           │
+│  • Browser crashes          │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  🔴 beforeunload TRIGGERED  │
+│                             │
+│  1. Call Backend API        │
+│     → Set user "Offline"    │
+│                             │
+│  2. Set flag in storage     │
+│     → "uncleanExit"         │
+└─────────────────────────────┘
+
+
+SCENARIO 5: TAB HIDDEN FOR TOO LONG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────┐
+│   User Logs In  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  User Working in Tab        │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  User Switches to:          │
+│  • Different tab            │
+│  • Different window         │
+│  • Minimizes browser        │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  visibilitychange Event     │
+│  → document.hidden = true   │
+│                             │
+│  Record Time:               │
+│  sessionStorage.setItem(    │
+│    'tabHiddenTime',         │
+│    Date.now()               │
+│  )                          │
+└────────┬────────────────────┘
+         │
+         ▼ (More than 1 hour passes)
+         │
+┌─────────────────────────────┐
+│  User Returns to Tab        │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  visibilitychange Event     │
+│  → document.hidden = false  │
+│                             │
+│  Calculate Hidden Duration: │
+│  hiddenTime = now - saved   │
+│                             │
+│  Check: hiddenTime > 1 hour?│
+└────────┬────────────────────┘
+         │
+         ▼ YES
+         │
+┌─────────────────────────────┐
+│  🔴 AUTO LOGOUT TRIGGERED   │
+│                             │
+│  Reason: "Auto Logout -     │
+│           Browser Inactive" │
+│                             │
+│  1. Set user offline        │
+│  2. Create audit log        │
+│  3. Clear session           │
+│  4. Redirect to login       │
+└─────────────────────────────┘
+
+
+SCENARIO 6: USER MANUALLY LOGS OUT FROM WARNING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────┐
+│   User Logs In  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  No Activity: 59 Minutes    │
+└────────┬────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────┐
+│   ⚠️  WARNING MODAL APPEARS          │
+│                                      │
+│   [Stay Logged In] [Logout Now]      │
+└────────┬─────────────────────────────┘
+         │
+         ▼ (User decides to logout)
+         │
+┌─────────────────────────────┐
+│  User Clicks:               │
+│  ✗ "Logout Now"             │
+└────────┬────────────────────┘
+         │
+         ▼
+┌─────────────────────────────┐
+│  🔴 MANUAL LOGOUT           │
+│                             │
+│  Reason: "Manual Logout -   │
+│           From Warning"     │
+│                             │
+│  1. Set user offline        │
+│  2. Create audit log        │
+│  3. Clear session           │
+│  4. Redirect to login       │
+└─────────────────────────────┘
+
+
+TIMER VISUALIZATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Timeline:
+├─────────────────────────────────────────────────────────┬───────┤
+0min                                                    59min   60min
+                                                          ▲       ▲
+                                                     Warning  Logout
+                                                     Appears
+
+
+With Activity:
+├──────┬─────────┬─────────┬──────────┬─────────────────────────────►
+0min   10min    20min     30min      40min                    Infinite
+       │         │         │          │                       (Active)
+       └─► Timer resets on each activity
+
+
+Warning Phase:
+59min                                                             60min
+  ├────────────────────────────────────────────────────────────────┤
+  │                                                                │
+  │  ⚠️  Warning Modal Displayed                                   │
+  │  Countdown: 60s → 59s → 58s → ... → 3s → 2s → 1s → 0s        │
+  │                                                                │
+  │  Color: Orange (60-11s) → Red (10-0s)                         │
+  │                                                                │
+  └────────────────────────────────────────────────────────────────┘
+                                                                   ▼
+                                                              AUTO LOGOUT
+
+
+ACTIVITY DETECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Events Tracked:
+┌─────────────────────────────────────────────────────┐
+│  Event             │  Description                   │
+├────────────────────┼────────────────────────────────┤
+│  mousedown         │  Mouse button pressed          │
+│  mousemove         │  Mouse cursor moved            │
+│  keypress          │  Keyboard key pressed          │
+│  scroll            │  Page scrolled                 │
+│  touchstart        │  Touch screen touched          │
+│  click             │  Element clicked               │
+└────────────────────┴────────────────────────────────┘
+
+Throttling:
+  Each event is throttled to 1 second to prevent
+  excessive timer resets and improve performance.
+
+
+BACKEND API CALLS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Set User Offline:
+   ┌──────────────────────────────────────────┐
+   │ Endpoint: login.php                      │
+   │ Operation: actStatus                     │
+   │ Params: {                                │
+   │   userID: "123",                         │
+   │   state: "Offline"                       │
+   │ }                                        │
+   └──────────────────────────────────────────┘
+
+2. Create Audit Log:
+   ┌──────────────────────────────────────────┐
+   │ Endpoint: audit-log.php                  │
+   │ Operation: Logs                          │
+   │ Params: {                                │
+   │   accID: "123",                          │
+   │   activity: "Auto Logout - Inactivity"   │
+   │ }                                        │
+   └──────────────────────────────────────────┘
+
+
+STATE MANAGEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+React States:
+  showWarning        boolean    Show/hide warning modal
+  countdown          number     Countdown timer (60 → 0)
+
+Refs:
+  inactivityTimerRef    Timer ID for main 1-hour timeout
+  warningTimerRef       Timer ID for 59-minute warning trigger
+  countdownIntervalRef  Interval ID for countdown ticker
+  lastActivityRef       Timestamp of last user activity
+
+SessionStorage:
+  tabHiddenTime      Timestamp when tab was hidden
+  uncleanExit        Flag for browser crashes
+  user_id            Current user ID
+  baseURL            API base URL
+
+
+TIMING CONSTANTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌──────────────────────┬──────────────┬─────────────────┐
+│ Constant             │ Value (ms)   │ Human Readable  │
+├──────────────────────┼──────────────┼─────────────────┤
+│ INACTIVITY_TIMEOUT   │ 3,600,000    │ 1 hour          │
+│ WARNING_TIME         │ 60,000       │ 1 minute        │
+│ TIME_BEFORE_WARNING  │ 3,540,000    │ 59 minutes      │
+│ THROTTLE_TIME        │ 1,000        │ 1 second        │
+└──────────────────────┴──────────────┴─────────────────┘
+
+
+COMPONENT LIFECYCLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mount:
+  ↓
+  1. Add event listeners (mouse, keyboard, etc.)
+  2. Add beforeunload listener
+  3. Add visibilitychange listener
+  4. Start inactivity timer
+  5. Check for unclean exit flag
+  ↓
+
+Active:
+  ↓
+  1. Track user activity
+  2. Reset timer on activity (throttled)
+  3. Monitor tab visibility
+  4. Wait for timeout or warning
+  ↓
+
+Warning:
+  ↓
+  1. Show warning modal
+  2. Start countdown interval
+  3. Wait for user action or timeout
+  ↓
+
+Cleanup/Unmount:
+  ↓
+  1. Remove event listeners
+  2. Clear all timers
+  3. Clear all intervals
+  4. Set user offline (if browser closing)
+
+
+ERROR HANDLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Graceful Degradation:
+  ┌─────────────────────────────────────────────┐
+  │ If Backend API Fails:                       │
+  │   → Log error to console                    │
+  │   → Continue with logout anyway             │
+  │   → User still redirected to login          │
+  │   → No user-facing error shown              │
+  └─────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────┐
+  │ If sessionStorage Empty:                    │
+  │   → Skip API calls                          │
+  │   → Still clear and redirect                │
+  │   → Prevent null/undefined errors           │
+  └─────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                         END OF FLOW DIAGRAMS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+

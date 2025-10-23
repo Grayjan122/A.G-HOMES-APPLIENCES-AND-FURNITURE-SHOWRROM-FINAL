@@ -188,15 +188,62 @@ const CombinedRequests = () => {
     const GetStockRequestD = async (req_id) => {
         const LocationID = parseInt(sessionStorage.getItem('location_id'));
         const baseURL = sessionStorage.getItem('baseURL');
+        
+        // Validate baseURL and location_id
+        if (!baseURL) {
+            console.error("baseURL is not set in sessionStorage");
+            showAlertError({
+                icon: "error",
+                title: "Configuration Error",
+                text: "Base URL is not configured. Please log in again.",
+                button: 'Okay'
+            });
+            return;
+        }
+
+        if (!LocationID || isNaN(LocationID)) {
+            console.error("Invalid location_id:", LocationID);
+            showAlertError({
+                icon: "error",
+                title: "Configuration Error",
+                text: "Location ID is invalid. Please log in again.",
+                button: 'Okay'
+            });
+            return;
+        }
+
         const url = baseURL + 'requestStock.php';
         const ID = { reqID: req_id, locID: LocationID };
+
+        console.log("GetStockRequestD called with:", {
+            reqID: req_id,
+            locID: LocationID,
+            baseURL: baseURL,
+            fullURL: url
+        });
 
         try {
             const response = await axios.get(url, {
                 params: { json: JSON.stringify(ID), operation: "GetRequestD" }
             });
+            
+            console.log("GetStockRequestD response:", response.data);
+            
+            // Check if response has data
+            if (!response.data || response.data.length === 0) {
+                console.error("No data returned from GetRequestD");
+                return;
+            }
+
             const data = response.data[0];
-            setS_ReqBy(`${data.fname} ${data.mname} ${data.lname}`);
+            
+            // Validate data exists
+            if (!data) {
+                console.error("Invalid data structure from GetRequestD");
+                return;
+            }
+
+            setS_ReqBy(`${data.fname || ''} ${data.mname || ''} ${data.lname || ''}`.trim());
             setS_ReqID(data.request_stock_id);
             setS_ReqDate(data.date);
             setS_ReqFrom(data.reqFrom);
@@ -211,6 +258,9 @@ const CombinedRequests = () => {
             }
         } catch (error) {
             console.error("Error fetching stock request metadata:", error);
+            console.error("Request ID:", req_id);
+            console.error("Location ID:", LocationID);
+            console.error("Error details:", error.response?.data || error.message);
         }
     };
 
@@ -302,6 +352,24 @@ const CombinedRequests = () => {
         setAvailProducts(available);
     }, [stockRequestDetails, currentStoreInventory]);
 
+    const createNotification = async (notificationData) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'notifications.php';
+        
+        try {
+            // Format data for PHP backend (using FormData for POST)
+            const formData = new FormData();
+            formData.append('operation', 'CreateNotification');
+            formData.append('json', JSON.stringify(notificationData));
+
+            const response = await axios.post(url, formData);
+            console.log('Notification sent successfully:', response.data);
+        } catch (error) {
+            console.error('Error sending notification:', error);
+            console.error('Error details:', error.response?.data || error.message);
+        }
+    };
+
     const ApproveStockRequest = async () => {
         const accountID = sessionStorage.getItem('user_id');
         const updates = [];
@@ -352,6 +420,18 @@ const CombinedRequests = () => {
                 GetStockRequest();
                 setShowStockModal(false);
                 Logs(accountID, 'Accept the request #' + s_reqID);
+
+                // Send notification to the requesting location (Inventory Manager role)
+                await createNotification({
+                    type: 'stock_request',
+                    title: 'Stock Request Approved',
+                    message: `Your stock request #${s_reqID} has been approved by ${s_reqFrom} and is now on production.`,
+                    locationId: reqFromId, // Send to requesting location
+                    targetRole: 'Inventory Manager',
+                    productId: null,
+                    customerId: null,
+                    referenceId: s_reqID
+                });
             } else {
                 showAlertError({
                     icon: "error",
@@ -477,6 +557,18 @@ const CombinedRequests = () => {
                 GetFullDetails();
                 setShowCustomizeModal(false);
                 Logs(accountID, 'Accept the customize request #' + c_reqID);
+
+                // Send notification to the requesting location (Sales Clerk role)
+                await createNotification({
+                    type: 'customize_request',
+                    title: 'Customize Request Approved',
+                    message: `Your customize request #${c_reqID} has been approved by ${c_reqFrom} and is now on production.`,
+                    locationId: c_reqFromId, // Send to requesting location
+                    targetRole: 'Sales Clerk',
+                    productId: null,
+                    customerId: null,
+                    referenceId: c_reqID
+                });
             } else {
                 showAlertError({
                     icon: "error",
@@ -838,9 +930,9 @@ const CombinedRequests = () => {
                                             </span>
                                         </div>
 
-                                        <div className="cardRow">
-                                            <span className="cardLabel" style={{ fontSize: '30px' }}>{req.type === 'stock' ? 'REQUEST ID:' : 'CUSTOMIZE REQUEST ID:'}</span>
-                                            <span className="cardValue" style={{ fontSize: '30px', fontWeight: 'bold' }}>{req.id}</span>
+                                        <div className="cardRow" style={{ maxWidth: '100%' }}>
+                                            <span className="cardLabel" style={{ fontSize: '18px' }}>{req.type === 'stock' ? 'REQUEST ID:' : 'CUSTOMIZE REQUEST ID:'}</span>
+                                            <span className="cardValue" style={{ fontSize: '18px', fontWeight: 'bold' }}>{req.id}</span>
                                         </div>
 
                                         {req.type === 'stock' ? (

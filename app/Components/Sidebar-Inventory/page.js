@@ -21,22 +21,37 @@ import TrackRequestIM from '@/app/Contents/inventory-contents/trackRequest';
 import RequestStockIM from '@/app/Contents/inventory-contents/requestStockIM';
 import ReceiveStockIM from '@/app/Contents/inventory-contents/receiveStock';
 import InventoryLedgerIM from '@/app/Contents/inventory-contents/inventoryAudit';
+import ProfileSetting from '@/app/Components/profileSetting/userProfilePage';
 
 const SidebarInventory = () => {
   const [activePage, setActivePage] = useState('dashboard');
   const [expandedParent, setExpandedParent] = useState(null);
   const [user_id, setUser_id] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-    setActivePage('dashboard');
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isMounted) return;
+
     setUser_id(sessionStorage.getItem('user_id'));
     document.title = 'Jan';
 
     const user_id = sessionStorage.getItem("user_id");
     if (!user_id) {
       return;
+    }
+
+    // Check if there's a stored activePage (for Profile navigation)
+    const storedPage = sessionStorage.getItem('activePage');
+    if (storedPage) {
+      setActivePage(storedPage);
+      sessionStorage.removeItem('activePage'); // Clear after use
+    } else {
+      setActivePage('dashboard');
     }
 
     // const Toast = Swal.mixin({
@@ -58,7 +73,7 @@ const SidebarInventory = () => {
 
 
 
-  }, []);
+  }, [isMounted]);
 
   const yawa = () => {
     document.title = 'Jan Page'
@@ -115,7 +130,13 @@ const SidebarInventory = () => {
         },
       ],
     },
-
+    {
+      key: 'profileSetting',
+      label: 'Profile Setting',
+      icon: '/assets/images/customer.png',
+      component: <ProfileSetting />,
+      children: []
+    }
 
   ];
 

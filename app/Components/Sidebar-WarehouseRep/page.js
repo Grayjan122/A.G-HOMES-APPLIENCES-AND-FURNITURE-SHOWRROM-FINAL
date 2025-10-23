@@ -19,21 +19,36 @@ import CombinedRequests from '@/app/Contents/warehouse-contents/requestPage';
 import RequestManagementCustomizeWR from '@/app/Contents/warehouse-contents/requestManagementCustomize';
 import UnifiedRequestManagement from '@/app/Contents/warehouse-contents/combineRequestManagement';
 import DeliveryCustomizeWR from '@/app/Contents/warehouse-contents/customizeDelivery';
+import ProfileSetting from '@/app/Components/profileSetting/userProfilePage';
 
 const SidebarWarehouseRep = () => {
   const [activePage, setActivePage] = useState('dashboard');
   const [expandedParent, setExpandedParent] = useState(null);
   const [locName, setLocName] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isMounted) return;
+
     const user_id = sessionStorage.getItem("user_id");
 
     if (!user_id){
       return;
     }
     setLocName(sessionStorage.getItem('location_name'));
-  });
+
+    // Check if there's a stored activePage (for Profile navigation)
+    const storedPage = sessionStorage.getItem('activePage');
+    if (storedPage) {
+      setActivePage(storedPage);
+      sessionStorage.removeItem('activePage'); // Clear after use
+    }
+  }, [isMounted]);
 
   const pages = [
     {
@@ -116,18 +131,25 @@ const SidebarWarehouseRep = () => {
        
     //   ],
     // },
-    {
-      key: 'delivery',
-      label: 'Delivery',
-      icon: '/assets/images/delivery-removebg-preview.png',
-      component: <DeliveryWR />,
-    },
+    // {
+    //   key: 'delivery',
+    //   label: 'Delivery',
+    //   icon: '/assets/images/delivery-removebg-preview.png',
+    //   component: <DeliveryWR />,
+    // },
      {
       key: 'deliverycustomize',
-      label: 'Delivery Customize',
+      label: 'Delivery',
       icon: '/assets/images/delivery-removebg-preview.png',
       component: <DeliveryCustomizeWR />,
     },
+    {
+      key: 'profileSetting',
+      label: 'Profile Setting',
+      icon: '/assets/images/customer.png',
+      component: <ProfileSetting />,
+      children: []
+    }
   ];
 
   // Helper function to check if a parent should be active

@@ -35,14 +35,37 @@ export default function LoginPage() {
   const [modalBody, setModalBody] = useState('');
   const [borderColor, setBorderColor] = useState('');
 
+  // Forgot Password states
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [enteredCode, setEnteredCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetStep, setResetStep] = useState(1); // 1: Enter email, 2: Enter code, 3: New password
+  const [accountId, setAccountId] = useState(null);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
   const router = useRouter();
 
   // Base URL configuration
-  // const BASE_URL = 'https://ag-home.site/backend/';
-   const BASE_URL = 'http://localhost/capstone-api/api/';
+  const BASE_URL = 'https://ag-home.site/backend/api';
+  // const BASE_URL = 'http://localhost/capstone-api/api/';
+
+  // Check if we're in the browser (client-side)
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Add debug log
   const addDebugLog = (message, data = null) => {
+    if (typeof window === 'undefined') return; // Don't log on server
+    
     const timestamp = new Date().toLocaleTimeString();
     const logEntry = {
       time: timestamp,
@@ -77,7 +100,9 @@ export default function LoginPage() {
         addDebugLog('Response data:', response.data);
       }
 
-      sessionStorage.setItem('baseURL', BASE_URL);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('baseURL', BASE_URL);
+      }
       return true;
 
     } catch (error) {
@@ -89,18 +114,28 @@ export default function LoginPage() {
       });
 
       // Set the URL anyway for further testing
-      sessionStorage.setItem('baseURL', BASE_URL);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('baseURL', BASE_URL);
+      }
       return false;
     }
   };
 
   useEffect(() => {
+    // Only run on client-side
+    if (typeof window === 'undefined') return;
+
     const init = async () => {
+      setIsMounted(true);
       sessionStorage.clear();
       await testConnection();
-      const input = document.getElementById('email');
-      input?.focus();
       generateRandomNumbers();
+      
+      // Focus input after a short delay to ensure DOM is ready
+      setTimeout(() => {
+        const input = document.getElementById('email');
+        input?.focus();
+      }, 100);
     };
 
     init();
@@ -167,7 +202,7 @@ export default function LoginPage() {
   };
 
   const Logs = async (accID, acct) => {
-    const baseURL = sessionStorage.getItem('baseURL') || BASE_URL;
+    const baseURL = (typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null) || BASE_URL;
     const url = baseURL + 'audit-log.php';
 
     const Details = {
@@ -201,7 +236,7 @@ export default function LoginPage() {
   };
 
   const OnlineState = async (accID) => {
-    const baseURL = sessionStorage.getItem('baseURL') || BASE_URL;
+    const baseURL = (typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null) || BASE_URL;
     const url = baseURL + 'login.php';
 
     const Details = {
@@ -226,11 +261,25 @@ export default function LoginPage() {
         data: response.data
       });
 
+      // Check if successful
+      if (response.status === 200) {
+        console.log('✅ User status set to Online successfully');
+        addDebugLog('✅ User status set to Online successfully');
+      } else {
+        console.error('❌ Failed to set user status to Online. Status:', response.status);
+        addDebugLog('❌ Failed to set user status. Response:', response.data);
+      }
+
+      return response.data;
+
     } catch (error) {
+      console.error('❌ Online state error:', error);
       addDebugLog('Online state error:', {
         message: error.message,
         response: error.response?.data
       });
+      // Don't throw - allow login to continue even if status update fails
+      return null;
     }
   };
 
@@ -264,8 +313,10 @@ export default function LoginPage() {
         return;
       }
 
-      sessionStorage.setItem('loginSuccess', 'true');
-      const baseURL = sessionStorage.getItem('baseURL') || BASE_URL;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('loginSuccess', 'true');
+      }
+      const baseURL = (typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null) || BASE_URL;
       const url = baseURL + 'login.php';
       const LogCredentials = {
         username: email.trim(),
@@ -367,6 +418,35 @@ export default function LoginPage() {
       if (response.status === 200) {
         addDebugLog('✅ Server responded with 200 OK');
 
+        // Check if response is an error (account in use, deactivated, or suspended)
+        if (response.data && response.data.error) {
+          addDebugLog('❌ Login blocked:', response.data.error);
+          
+          let title = 'Login Failed';
+          let icon = 'warning';
+          
+          if (response.data.error === 'account_in_use') {
+            title = 'Account In Use ⚠️';
+            icon = 'warning';
+          } else if (response.data.error === 'account_deactivated') {
+            title = 'Access Denied';
+            icon = 'error';
+          } else if (response.data.error === 'account_suspended') {
+            title = 'Account Suspended';
+            icon = 'warning';
+          }
+          
+          showAlertError({
+            icon: icon,
+            title: title,
+            text: response.data.message || 'Unable to login at this time.',
+            button: 'OK'
+          });
+          setIsLoading(false);
+          generateRandomNumbers();
+          return;
+        }
+
         if (response.data && response.data.length > 0) {
           const userData = response.data[0];
           addDebugLog('User data received:', {
@@ -374,22 +454,55 @@ export default function LoginPage() {
             password: undefined // Don't log password
           });
 
-          // Store user data
-          sessionStorage.setItem('user_id', userData.account_id);
-          sessionStorage.setItem('location_id', userData.location_id);
-          sessionStorage.setItem('user_fname', userData.fname);
-          sessionStorage.setItem('user_role', userData.role_name);
-          sessionStorage.setItem('fullname', `${userData.fname} ${userData.mname || ''} ${userData.lname}`.trim());
-
-          if (userData.location_name) {
-            sessionStorage.setItem('location_name', userData.location_name);
+          // Check if account is deactivated or suspended
+          if (userData.status === 'Deactive') {
+            addDebugLog('❌ Account is deactivated');
+            showAlertError({
+              icon: "error",
+              title: "Access Denied",
+              text: 'This user no longer has access to the system. Please contact your administrator for more information.',
+              button: 'OK'
+            });
+            setIsLoading(false);
+            generateRandomNumbers();
+            return;
+          }
+          
+          if (userData.status === 'Suspended') {
+            addDebugLog('❌ Account is suspended');
+            showAlertError({
+              icon: "warning",
+              title: "Account Suspended",
+              text: 'Your account has been temporarily suspended. Please contact your administrator for assistance.',
+              button: 'OK'
+            });
+            setIsLoading(false);
+            generateRandomNumbers();
+            return;
           }
 
-          // Update online status
-          await OnlineState(userData.account_id);
+          // Store user data
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('user_id', userData.account_id);
+            sessionStorage.setItem('location_id', userData.location_id);
+            sessionStorage.setItem('user_fname', userData.fname);
+            sessionStorage.setItem('user_role', userData.role_name);
+            sessionStorage.setItem('fullname', `${userData.fname} ${userData.mname || ''} ${userData.lname}`.trim());
 
-          // Log the activity
-          await Logs(userData.account_id, 'Online');
+            if (userData.location_name) {
+              sessionStorage.setItem('location_name', userData.location_name);
+            }
+          }
+
+          // Note: active_status is now updated automatically by the backend login function
+          // No need to call OnlineState() here anymore
+          
+          // Log the activity (non-blocking - don't stop login if it fails)
+          try {
+            await Logs(userData.account_id, 'Online');
+          } catch (err) {
+            console.warn('Failed to create audit log, but continuing login:', err);
+          }
 
           // Route based on role
           const roleRoutes = {
@@ -453,6 +566,211 @@ export default function LoginPage() {
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !isLoading) {
       login(e);
+    }
+  };
+
+  // Password validation function
+  const validatePassword = (password) => {
+    const minLength = password.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    return minLength && hasUpperCase && hasNumber && hasSpecialChar;
+  };
+
+  const getPasswordStrength = (password) => {
+    const checks = {
+      minLength: password.length >= 8,
+      hasUpperCase: /[A-Z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    };
+    
+    return checks;
+  };
+
+  // Forgot Password Functions
+  const handleForgotPasswordClick = () => {
+    setShowForgotPassword(true);
+    setResetStep(1);
+    setForgotEmail('');
+    setEnteredCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+  };
+
+  const closeForgotPassword = () => {
+    setShowForgotPassword(false);
+    setResetStep(1);
+    setForgotEmail('');
+    setVerificationCode('');
+    setEnteredCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setAccountId(null);
+    setPasswordError('');
+  };
+
+  const sendVerificationCode = async () => {
+    if (!forgotEmail.trim()) {
+      showAlertError({
+        icon: "error",
+        title: "Email Required",
+        text: 'Please enter your email address',
+        button: 'OK'
+      });
+      return;
+    }
+
+    setIsSendingCode(true);
+
+    try {
+      const baseURL = (typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null) || BASE_URL;
+      const url = baseURL + 'forgot-password.php';
+
+      console.log('🔍 Checking email:', forgotEmail.trim());
+      console.log('📡 API URL:', url);
+      console.log('📦 Sending data:', { email: forgotEmail.trim() });
+
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify({ email: forgotEmail.trim() }),
+          operation: "checkEmail"
+        },
+        timeout: 15000
+      });
+
+      console.log('📥 Server response:', response.data);
+
+      if (response.data && response.data.exists) {
+        setAccountId(response.data.account_id);
+
+        // Generate 6-digit code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        setVerificationCode(code);
+
+        // Send email with code
+        const emailResponse = await axios.get(url, {
+          params: {
+            json: JSON.stringify({
+              email: forgotEmail.trim(),
+              code: code,
+              name: response.data.fname
+            }),
+            operation: "sendCode"
+          },
+          timeout: 15000
+        });
+
+        if (emailResponse.data.success) {
+          setResetStep(2);
+          showAlertError({
+            icon: "success",
+            title: "Code Sent!",
+            text: `A verification code has been sent to ${forgotEmail}`,
+            button: 'OK'
+          });
+        } else {
+          throw new Error('Failed to send email');
+        }
+      } else {
+        // console.error('❌ Email not found. Response:', response.data);
+        showAlertError({
+          icon: "error",
+          title: "Email Not Found",
+          text: response.data?.error || 'This email address is not registered in our system',
+          button: 'OK'
+        });
+      }
+    } catch (error) {
+      // console.error('❌ Error sending verification code:', error);
+      // console.error('Error details:', error.response?.data);
+      showAlertError({
+        icon: "error",
+        title: "Error",
+        text: 'Failed to send verification code. Please try again.',
+        button: 'OK'
+      });
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const verifyCode = () => {
+    if (enteredCode.trim() === verificationCode) {
+      setResetStep(3);
+    } else {
+      showAlertError({
+        icon: "error",
+        title: "Invalid Code",
+        text: 'The verification code you entered is incorrect',
+        button: 'Try Again'
+      });
+    }
+  };
+
+  const resetPassword = async () => {
+    setPasswordError('');
+
+    // Validate password strength
+    if (!validatePassword(newPassword)) {
+      setPasswordError('Password must have 8+ characters, 1 uppercase, 1 number, and 1 special character.');
+      showAlertError({
+        icon: "error",
+        title: "Weak Password",
+        text: 'Password must have 8+ characters, 1 uppercase, 1 number, and 1 special character.',
+        button: 'OK'
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords don't match.");
+      showAlertError({
+        icon: "error",
+        title: "Passwords Don't Match",
+        text: 'Please make sure both passwords match',
+        button: 'OK'
+      });
+      return;
+    }
+
+    try {
+      const baseURL = (typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null) || BASE_URL;
+      const url = baseURL + 'forgot-password.php';
+
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify({
+            account_id: accountId,
+            new_password: newPassword
+          }),
+          operation: "resetPassword"
+        },
+        timeout: 15000
+      });
+
+      if (response.data.success) {
+        showAlertError({
+          icon: "success",
+          title: "Password Reset!",
+          text: 'Your password has been successfully reset. You can now login with your new password.',
+          button: 'OK'
+        });
+        closeForgotPassword();
+      } else {
+        throw new Error('Failed to reset password');
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      showAlertError({
+        icon: "error",
+        title: "Error",
+        text: 'Failed to reset password. Please try again.',
+        button: 'OK'
+      });
     }
   };
 
@@ -525,6 +843,21 @@ export default function LoginPage() {
       </div>
     </div>
   );
+
+  // Prevent hydration mismatch by only rendering after mount
+  if (!isMounted) {
+    return (
+      <div className='main_div' style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      }}>
+        <div style={{ color: '#fff', fontSize: '18px' }}>Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -670,12 +1003,519 @@ export default function LoginPage() {
             >
               {isLoading ? 'Logging in...' : 'Login'}
             </button>
+
+            {/* Forgot Password Link */}
+            <div style={{
+              marginTop: '15px',
+              textAlign: 'center'
+            }}>
+              <button
+                type="button"
+                onClick={handleForgotPasswordClick}
+                disabled={isLoading}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#007bff',
+                  textDecoration: 'underline',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  opacity: isLoading ? 0.5 : 1
+                }}
+              >
+                Forgot Password?
+              </button>
+            </div>
           </form>
         </div>
 
         {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
         {success && <p style={{ color: 'green', marginTop: '10px' }}>{success}</p>}
       </div>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        show={showForgotPassword}
+        onHide={closeForgotPassword}
+        centered
+        backdrop="static"
+        className="forgot-password-modal"
+        style={{
+          '--bs-modal-width': '90%',
+          '--bs-modal-max-width': '500px'
+        }}
+      >
+        <Modal.Header closeButton style={{
+          padding: '15px 20px',
+          borderBottom: '2px solid #667eea',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white'
+        }}>
+          <Modal.Title style={{
+            fontSize: 'clamp(18px, 5vw, 24px)',
+            fontWeight: '700',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}>
+            {resetStep === 1 && <><span>🔐</span> Verify Email</>}
+            {resetStep === 2 && <><span>📧</span> Enter Verification Code</>}
+            {resetStep === 3 && <><span>🔑</span> Reset Password</>}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{
+          padding: '20px',
+          maxHeight: '70vh',
+          overflowY: 'auto'
+        }}>
+          {/* Progress Indicator */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            marginBottom: '30px',
+            position: 'relative'
+          }}>
+            <div style={{ 
+              width: '100%', 
+              height: '3px', 
+              background: '#e9ecef', 
+              position: 'absolute',
+              top: '15px',
+              left: 0,
+              zIndex: 0
+            }}></div>
+            <div style={{ 
+              width: resetStep === 1 ? '0%' : resetStep === 2 ? '50%' : '100%',
+              height: '3px', 
+              background: 'linear-gradient(90deg, #667eea, #764ba2)', 
+              position: 'absolute',
+              top: '15px',
+              left: 0,
+              zIndex: 1,
+              transition: 'width 0.3s ease'
+            }}></div>
+            {[1, 2, 3].map((step) => (
+              <div key={step} style={{ 
+                width: '35px', 
+                height: '35px', 
+                borderRadius: '50%',
+                background: resetStep >= step ? 'linear-gradient(135deg, #667eea, #764ba2)' : '#e9ecef',
+                color: resetStep >= step ? 'white' : '#6c757d',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                fontSize: 'clamp(14px, 3.5vw, 16px)',
+                zIndex: 2,
+                position: 'relative',
+                transition: 'all 0.3s ease',
+                boxShadow: resetStep >= step ? '0 2px 8px rgba(102, 126, 234, 0.3)' : 'none'
+              }}>
+                {step}
+              </div>
+            ))}
+          </div>
+
+          {/* Password Error Alert */}
+          {passwordError && (
+            <Alert variant="danger" style={{
+              fontSize: 'clamp(12px, 3vw, 13px)',
+              padding: '10px',
+              marginBottom: '15px',
+              borderRadius: '8px'
+            }}>
+              {passwordError}
+            </Alert>
+          )}
+
+          {/* Step 1: Enter Email */}
+          {resetStep === 1 && (
+            <div>
+              <div style={{ 
+                padding: '15px', 
+                backgroundColor: '#f0f4ff', 
+                borderRadius: '10px',
+                marginBottom: '20px',
+                borderLeft: '4px solid #667eea'
+              }}>
+                <p style={{ 
+                  margin: 0, 
+                  color: '#495057', 
+                  fontSize: 'clamp(13px, 3.5vw, 14px)' 
+                }}>
+                  <strong>📧 Email Verification Required</strong><br/>
+                  <span style={{ fontSize: 'clamp(12px, 3vw, 13px)' }}>
+                    We'll send a 6-digit verification code to your email address
+                  </span>
+                </p>
+              </div>
+              <Form.Group>
+                <Form.Label style={{
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  fontWeight: '600',
+                  marginBottom: '8px'
+                }}>
+                  📧 Email Address
+                </Form.Label>
+                <Form.Control
+                  type="email"
+                  placeholder="Enter your registered email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  disabled={isSendingCode}
+                  style={{
+                    fontSize: 'clamp(13px, 3.5vw, 15px)',
+                    padding: '10px 12px',
+                    border: '2px solid #e9ecef',
+                    borderRadius: '10px',
+                    transition: 'border-color 0.3s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                  onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                />
+              </Form.Group>
+            </div>
+          )}
+
+          {/* Step 2: Enter Verification Code */}
+          {resetStep === 2 && (
+            <div>
+              <div style={{ 
+                padding: '15px', 
+                backgroundColor: '#e8f5e9', 
+                borderRadius: '10px',
+                marginBottom: '20px',
+                borderLeft: '4px solid #4caf50',
+                textAlign: 'center'
+              }}>
+                <p style={{ margin: 0, color: '#2e7d32', fontSize: 'clamp(13px, 3.5vw, 14px)' }}>
+                  <strong>✉️ Code Sent!</strong><br/>
+                  <span style={{ fontSize: 'clamp(12px, 3vw, 13px)' }}>
+                    Check your inbox at <strong>{forgotEmail}</strong>
+                  </span>
+                </p>
+              </div>
+              <Form.Group>
+                <Form.Label style={{
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  fontWeight: '600',
+                  marginBottom: '8px',
+                  textAlign: 'center',
+                  display: 'block'
+                }}>
+                  🔢 Enter Verification Code
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder="• • • • • •"
+                  value={enteredCode}
+                  onChange={(e) => setEnteredCode(e.target.value)}
+                  maxLength={6}
+                  style={{
+                    fontSize: 'clamp(16px, 4vw, 18px)',
+                    padding: '12px',
+                    textAlign: 'center',
+                    letterSpacing: '5px',
+                    fontWeight: 'bold',
+                    border: '2px solid #667eea',
+                    borderRadius: '10px'
+                  }}
+                />
+              </Form.Group>
+              <div style={{
+                marginTop: '15px',
+                padding: '12px',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px',
+                textAlign: 'center'
+              }}>
+                <small style={{ color: '#6c757d', fontSize: 'clamp(11px, 3vw, 12px)' }}>
+                  Didn't receive the code?{' '}
+                  <span
+                    onClick={() => {
+                      setResetStep(1);
+                      setEnteredCode('');
+                    }}
+                    style={{
+                      color: '#667eea',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    🔄 Resend Code
+                  </span>
+                </small>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Enter New Password */}
+          {resetStep === 3 && (
+            <div>
+              <div style={{ 
+                padding: '15px', 
+                backgroundColor: '#e8f5e9', 
+                borderRadius: '10px',
+                marginBottom: '20px',
+                borderLeft: '4px solid #4caf50',
+                textAlign: 'center'
+              }}>
+                <p style={{ 
+                  margin: 0, 
+                  color: '#2e7d32', 
+                  fontSize: 'clamp(14px, 3.5vw, 16px)',
+                  fontWeight: '600'
+                }}>
+                  ✅ Email Verified Successfully!<br/>
+                  <span style={{ fontSize: 'clamp(12px, 3vw, 14px)', fontWeight: 'normal' }}>
+                    Now create your new password
+                  </span>
+                </p>
+              </div>
+
+              <Form.Group style={{ marginBottom: '15px' }}>
+                <Form.Label style={{
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  fontWeight: '500',
+                  marginBottom: '8px'
+                }}>
+                  New Password
+                </Form.Label>
+                <div style={{ position: 'relative' }}>
+                  <Form.Control
+                    type={showNewPassword ? "text" : "password"}
+                    placeholder="Enter new password"
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setPasswordError('');
+                    }}
+                    style={{
+                      paddingRight: '45px',
+                      fontSize: 'clamp(13px, 3.5vw, 15px)',
+                      padding: '10px 45px 10px 12px',
+                      borderColor: passwordError ? '#dc3545' : '#ced4da'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '5px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '5px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {showNewPassword ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                </div>
+              </Form.Group>
+
+              {/* Password Requirements Checklist */}
+              {newPassword && (
+                <div style={{
+                  backgroundColor: '#f8f9fa',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  marginBottom: '15px',
+                  border: '1px solid #e9ecef'
+                }}>
+                  <p style={{
+                    fontSize: 'clamp(11px, 3vw, 12px)',
+                    fontWeight: '600',
+                    marginBottom: '8px',
+                    color: '#495057'
+                  }}>
+                    Password Requirements:
+                  </p>
+                  <div style={{ fontSize: 'clamp(11px, 2.8vw, 12px)' }}>
+                    <div style={{
+                      color: getPasswordStrength(newPassword).minLength ? '#28a745' : '#dc3545',
+                      marginBottom: '4px'
+                    }}>
+                      {getPasswordStrength(newPassword).minLength ? '✓' : '✗'} At least 8 characters
+                    </div>
+                    <div style={{
+                      color: getPasswordStrength(newPassword).hasUpperCase ? '#28a745' : '#dc3545',
+                      marginBottom: '4px'
+                    }}>
+                      {getPasswordStrength(newPassword).hasUpperCase ? '✓' : '✗'} At least 1 uppercase letter
+                    </div>
+                    <div style={{
+                      color: getPasswordStrength(newPassword).hasNumber ? '#28a745' : '#dc3545',
+                      marginBottom: '4px'
+                    }}>
+                      {getPasswordStrength(newPassword).hasNumber ? '✓' : '✗'} At least 1 number
+                    </div>
+                    <div style={{
+                      color: getPasswordStrength(newPassword).hasSpecialChar ? '#28a745' : '#dc3545'
+                    }}>
+                      {getPasswordStrength(newPassword).hasSpecialChar ? '✓' : '✗'} At least 1 special character (!@#$%^&*...)
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Form.Group>
+                <Form.Label style={{
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  fontWeight: '500',
+                  marginBottom: '8px'
+                }}>
+                  Confirm Password
+                </Form.Label>
+                <div style={{ position: 'relative' }}>
+                  <Form.Control
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setPasswordError('');
+                    }}
+                    style={{
+                      paddingRight: '45px',
+                      fontSize: 'clamp(13px, 3.5vw, 15px)',
+                      padding: '10px 45px 10px 12px',
+                      borderColor: passwordError ? '#dc3545' : '#ced4da'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '5px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '5px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                </div>
+              </Form.Group>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer style={{
+          padding: '15px 20px',
+          borderTop: '2px solid #e9ecef',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '10px',
+          justifyContent: 'flex-end'
+        }}>
+          {resetStep === 1 && (
+            <>
+              <Button
+                variant="secondary"
+                onClick={closeForgotPassword}
+                style={{
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={sendVerificationCode}
+                disabled={isSendingCode}
+                style={{
+                  background: isSendingCode ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  minWidth: '120px',
+                  boxShadow: isSendingCode ? 'none' : '0 4px 15px rgba(102, 126, 234, 0.4)',
+                  cursor: isSendingCode ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {isSendingCode ? '📤 Sending...' : '📧 Send Code'}
+              </Button>
+            </>
+          )}
+          {resetStep === 2 && (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => setResetStep(1)}
+                style={{
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  fontWeight: '600'
+                }}
+              >
+                ← Back
+              </Button>
+              <Button
+                onClick={verifyCode}
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  minWidth: '120px',
+                  boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
+                }}
+              >
+                ✓ Verify Code
+              </Button>
+            </>
+          )}
+          {resetStep === 3 && (
+            <>
+              <Button
+                variant="secondary"
+                onClick={closeForgotPassword}
+                style={{
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={resetPassword}
+                style={{
+                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                  border: 'none',
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  minWidth: '140px',
+                  boxShadow: '0 4px 15px rgba(76, 175, 80, 0.4)'
+                }}
+              >
+                🔑 Reset Password
+              </Button>
+            </>
+          )}
+        </Modal.Footer>
+      </Modal>
 
       {/* Debug Panel */}
       {showDebugPanel && <DebugPanel />}

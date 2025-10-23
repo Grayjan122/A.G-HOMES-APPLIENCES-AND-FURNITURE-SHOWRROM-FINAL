@@ -29,6 +29,7 @@ import CategoryAdmin from '@/app/Contents/admin-contents/category';
 import BranchAdmin from '@/app/Contents/admin-contents/branch';
 import SidebarInventory from '../Sidebar-Inventory/page';
 import DashboardAdmin from '@/app/Contents/admin-contents/dashboardAdmin';
+import ProfileSetting from '@/app/Components/profileSetting/userProfilePage';
 
 const Sidebar = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -36,10 +37,24 @@ const Sidebar = () => {
   const [user_id, setUser_id] = useState('');
   const [salesFilterData, setSalesFilterData] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setUser_id(sessionStorage.getItem('user_id'));
+    setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isMounted) {
+      setUser_id(sessionStorage.getItem('user_id'));
+      
+      // Check if there's a stored activePage (for Profile navigation)
+      const storedPage = sessionStorage.getItem('activePage');
+      if (storedPage) {
+        setActivePage(storedPage);
+        sessionStorage.removeItem('activePage'); // Clear after use
+      }
+    }
+  }, [isMounted]);
 
   // Navigation handler for sales with filters
   const handleNavigateToSales = (filterData) => {
@@ -137,6 +152,13 @@ const Sidebar = () => {
       label: 'AUDIT LOG',
       icon: '/assets/images/dash-icons/ag-9.png',
       component: <Audit />,
+      children: []
+    },
+    {
+      key: 'profileSetting',
+      label: 'PROFILE SETTING',
+      icon: '/assets/images/dash-icons/ag-8.png',
+      component: <ProfileSetting />,
       children: []
     }
   ];

@@ -45,6 +45,7 @@ const StatusIndicator = ({ status }) => {
 };
 
 const User = () => {
+    const [isMounted, setIsMounted] = useState(false);
     const [show, setShow] = useState(false);
     const handleClose = () => setShow(false);
 
@@ -189,13 +190,49 @@ const User = () => {
     }, [roleFilter, locationFilter, statusFilter, searchFilter, sortField, sortDirection]);
 
     useEffect(() => {
-        GetUser();
-        GetLocation();
-        GetRole();
+        setIsMounted(true);
     }, []);
 
-    const GetRole = async () => {
+    useEffect(() => {
+        if (!isMounted || typeof window === 'undefined') return;
+        
+        // Check if baseURL is available before fetching
         const baseURL = sessionStorage.getItem('baseURL');
+        if (!baseURL) {
+            console.warn("userPage: Waiting for baseURL to be set in sessionStorage");
+            // Retry after a short delay
+            const retryTimer = setTimeout(() => {
+                const retryBaseURL = sessionStorage.getItem('baseURL');
+                if (retryBaseURL) {
+                    const fetchData = async () => {
+                        await GetUser();
+                        await GetLocation();
+                        await GetRole();
+                    };
+                    fetchData();
+                } else {
+                    console.error("userPage: baseURL still not available after retry");
+                }
+            }, 500);
+            return () => clearTimeout(retryTimer);
+        }
+        
+        const fetchData = async () => {
+            await GetUser();
+            await GetLocation();
+            await GetRole();
+        };
+        
+        fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isMounted]);
+
+    const GetRole = async () => {
+        const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
+        if (!baseURL) {
+            console.error("GetRole: baseURL is not available");
+            return;
+        }
         const url = baseURL + 'GetDropDown.php';
 
         try {
@@ -209,11 +246,17 @@ const User = () => {
             setRoleList(response.data);
         } catch (error) {
             console.error("Error fetching role list:", error);
+            console.error("URL:", url);
+            console.error("Error details:", error.message);
         }
     }
 
     const GetLocation = async () => {
-        const baseURL = sessionStorage.getItem('baseURL');
+        const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
+        if (!baseURL) {
+            console.error("GetLocation: baseURL is not available");
+            return;
+        }
         const url = baseURL + 'GetDropDown.php';
 
         try {
@@ -227,11 +270,17 @@ const User = () => {
             setLocationList(response.data);
         } catch (error) {
             console.error("Error fetching location list:", error);
+            console.error("URL:", url);
+            console.error("Error details:", error.message);
         }
     }
 
     const GetUser = async () => {
-        const baseURL = sessionStorage.getItem('baseURL');
+        const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
+        if (!baseURL) {
+            console.error("GetUser: baseURL is not available");
+            return;
+        }
         const url = baseURL + 'users.php';
 
         try {
@@ -241,20 +290,26 @@ const User = () => {
                     operation: "GetUsers"
                 }
             });
-
+            console.log(response.data);
+            
             setUserList(response.data);
         } catch (error) {
             console.error("Error fetching user list:", error);
+            console.error("URL:", url);
+            console.error("Error details:", error.message);
+            if (error.response) {
+                console.error("Response status:", error.response.status);
+                console.error("Response data:", error.response.data);
+            }
         }
     }
 
     const register_account = async () => {
+        // Validate without username and password (they'll set it up via email)
         if (
             !f_name.trim() ||
             !m_name.trim() ||
             !l_name.trim() ||
-            !user_name.trim() ||
-            !password_.trim() ||
             !phonne_.trim() ||
             !email_.trim() ||
             !address_.trim() ||
@@ -272,11 +327,30 @@ const User = () => {
             return;
         }
 
-        const baseURL = sessionStorage.getItem('baseURL');
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email_)) {
+            showAlertError({
+                icon: "warning",
+                title: "Invalid Email!",
+                text: 'Please enter a valid email address!',
+                button: 'Try Again'
+            });
+            return;
+        }
+
+        const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
+        if (!baseURL) {
+            showAlertError({
+                icon: "error",
+                title: "Connection Error!",
+                text: 'Unable to connect to the server. Please try again.',
+                button: 'OK'
+            });
+            return;
+        }
         const url = baseURL + 'users.php';
         const accountDetails = {
-            userName: user_name,
-            passWord: password_,
             fName: f_name,
             mName: m_name,
             lName: l_name,
@@ -284,7 +358,6 @@ const User = () => {
             email: email_,
             address: address_,
             phone: phonne_,
-            status: 'Offline',
             birthDate: bdate_,
             locationID: location_
         }
@@ -297,30 +370,40 @@ const User = () => {
                 }
             });
 
-            if (response.data == 'Success') {
+            if (response.data === 'Success') {
                 GetUser();
                 resetForm();
                 close_modal();
 
                 AlertSucces(
-                    "New user is successfully added!",
+                    "New user created! Setup email has been sent to " + email_,
                     "success",
                     true,
                     'Okay'
                 );
+            } else if (response.data === 'EmailExists') {
+                showAlertError({
+                    icon: "warning",
+                    title: "Email Already Exists!",
+                    text: 'This email is already registered in the system.',
+                    button: 'Try Again'
+                });
             } else {
                 showAlertError({
                     icon: "warning",
                     title: "Oppsss!",
-                    text: 'Failed to add new user',
+                    text: typeof response.data === 'string' ? response.data : 'Failed to add new user',
                     button: 'Try Again'
                 });
-                // setMessage(response.data);
-                // setModalTitle('Error ❌');
-                // setShow(true);
             }
         } catch (error) {
             console.error("Error adding new user", error);
+            showAlertError({
+                icon: "error",
+                title: "Error!",
+                text: 'An error occurred while adding the user.',
+                button: 'Try Again'
+            });
         }
     }
 
@@ -348,7 +431,8 @@ const User = () => {
     }
 
     const GetUserDetials = async (user_id) => {
-        const baseURL = sessionStorage.getItem('baseURL');
+        const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
+        if (!baseURL) return;
         const url = baseURL + 'users.php';
 
         const userId = {
@@ -388,7 +472,8 @@ const User = () => {
     const UpdateUser = async (e) => {
         e.preventDefault();
 
-        const baseURL = sessionStorage.getItem('baseURL');
+        const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
+        if (!baseURL) return;
         const url = baseURL + 'users.php';
         const userDetails = {
             fname: f_name,
@@ -490,6 +575,34 @@ const User = () => {
                 break;
         }
     };
+
+    // Prevent hydration mismatch by only rendering after mount
+    if (!isMounted) {
+        return null; // Return null during SSR to prevent any rendering
+    }
+
+    // Check if baseURL is available before rendering the full component
+    const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
+    if (!baseURL) {
+        return (
+            <div className='customer-main' style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '70vh'
+            }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ 
+                        fontSize: '18px', 
+                        color: '#007bff',
+                        marginBottom: '10px'
+                    }}>
+                        Loading...
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>
@@ -597,23 +710,19 @@ const User = () => {
                             onChange={(e) => setAddress_(e.target.value)}
                         />
                     </div>
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Username</label>
-                        <input
-                            type='text'
-                            className='prod-name-input'
-                            value={user_name}
-                            onChange={(e) => setUser_name(e.target.value)}
-                        />
-                    </div>
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Password</label>
-                        <input
-                            type='text'
-                            className='prod-name-input'
-                            value={password_}
-                            onChange={(e) => setPassword_(e.target.value)}
-                        />
+                    <div style={{
+                        padding: '12px',
+                        backgroundColor: '#e3f2fd',
+                        borderLeft: '4px solid #2196f3',
+                        borderRadius: '4px',
+                        marginTop: '10px'
+                    }}>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#1976d2', fontWeight: '500' }}>
+                            ℹ️ Username & Password Setup
+                        </p>
+                        <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#424242', lineHeight: '1.5' }}>
+                            An email will be sent to the user with instructions to set up their own username and password.
+                        </p>
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
@@ -718,14 +827,7 @@ const User = () => {
                             value={user_name}
                         />
                     </div>
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Password</label>
-                        <input
-                            disabled={true}
-                            className='prod-name-input'
-                            value={password_}
-                        />
-                    </div>
+                  
                     <div className='div-input-add-cat'>
                         <label className='add-prod-label'>Date Created</label>
                         <select className='drop-role' disabled={true}>
@@ -841,9 +943,105 @@ const User = () => {
                             <option value={status_}>{status_}</option>
                             <option value={'Active'}>Active</option>
                             <option value={'Deactive'}>Deactive</option>
-                            <option value={'Suspended'}>Suspend</option>
+                            <option value={'Suspended'}>Suspended</option>
                         </select>
                     </div>
+                    
+                    {/* Status Warning Messages */}
+                    {status_ === 'Deactive' && (
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: '#fff3cd',
+                            border: '1px solid #ffc107',
+                            borderLeft: '4px solid #ffc107',
+                            borderRadius: '4px',
+                            marginTop: '10px'
+                        }}>
+                            <p style={{ 
+                                margin: 0, 
+                                fontSize: '14px', 
+                                color: '#856404', 
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                ⚠️ Warning: Deactivated Account
+                            </p>
+                            <p style={{ 
+                                margin: '8px 0 0 0', 
+                                fontSize: '13px', 
+                                color: '#856404', 
+                                lineHeight: '1.5' 
+                            }}>
+                                This user will <strong>no longer have access</strong> to the system and <strong>cannot log in</strong>. 
+                                Use this status when the user is no longer with the company or should be permanently removed from the system.
+                            </p>
+                        </div>
+                    )}
+                    
+                    {status_ === 'Suspended' && (
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: '#f8d7da',
+                            border: '1px solid #f5c6cb',
+                            borderLeft: '4px solid #dc3545',
+                            borderRadius: '4px',
+                            marginTop: '10px'
+                        }}>
+                            <p style={{ 
+                                margin: 0, 
+                                fontSize: '14px', 
+                                color: '#721c24', 
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                🚫 Account Suspended
+                            </p>
+                            <p style={{ 
+                                margin: '8px 0 0 0', 
+                                fontSize: '13px', 
+                                color: '#721c24', 
+                                lineHeight: '1.5' 
+                            }}>
+                                This user's access is <strong>temporarily suspended</strong> and they <strong>cannot log in</strong>. 
+                                The account can be reactivated later by changing the status back to "Active".
+                            </p>
+                        </div>
+                    )}
+                    
+                    {status_ === 'Active' && (
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: '#d4edda',
+                            border: '1px solid #c3e6cb',
+                            borderLeft: '4px solid #28a745',
+                            borderRadius: '4px',
+                            marginTop: '10px'
+                        }}>
+                            <p style={{ 
+                                margin: 0, 
+                                fontSize: '14px', 
+                                color: '#155724', 
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                ✅ Active Account
+                            </p>
+                            <p style={{ 
+                                margin: '8px 0 0 0', 
+                                fontSize: '13px', 
+                                color: '#155724', 
+                                lineHeight: '1.5' 
+                            }}>
+                                This user has <strong>full access</strong> to the system and can log in normally.
+                            </p>
+                        </div>
+                    )}
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={close_modal}>
@@ -1597,7 +1795,7 @@ const User = () => {
                                     paddingTop: '15px',
                                     borderTop: '1px solid #e9ecef'
                                 }}>
-                                    {/* <StatusIndicator status={user.active_status} /> */}
+                                    <StatusIndicator status={user.active_status} />
 
                                     <div style={{
                                         fontSize: '12px',

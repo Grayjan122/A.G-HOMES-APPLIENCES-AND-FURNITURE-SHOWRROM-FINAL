@@ -47,6 +47,7 @@ const UnifiedRequestManagement = () => {
     const [normalReqDateTime, setNormalReqDateTime] = useState('');
     const [normalTransferDriver, setNormalTransferDriver] = useState('');
     const [normalRID, setNormalRID] = useState('');
+    const [normalRequestFromID, setNormalRequestFromID] = useState('');
 
     // Customize Request states
     const [customizeRequestList, setCustomizeRequestList] = useState([]);
@@ -186,6 +187,7 @@ const UnifiedRequestManagement = () => {
             const data = response.data[0];
             setNormalRequestID(response.data[0].request_stock_id);
             setNormalRequestFrom(response.data[0].reqFrom);
+            setNormalRequestFromID(response.data[0].request_from); // Store requesting location ID
             setNormalRequestBy(response.data[0].fname + " " + response.data[0].mname + " " + response.data[0].lname);
             setNormalRequestStatus(response.data[0].request_status);
             GetNormalTrackRequestTimeandDate(data.request_stock_id, data.request_status);
@@ -255,6 +257,21 @@ const UnifiedRequestManagement = () => {
                 setNormalDeliveriesDataVisible(true);
                 GetNormalRequest();
                 Logs(accountID, 'Deliver the request #' + normalRID);
+                
+                // Send notification to requesting location (Inventory Manager)
+                const driverName = userList.find(d => d.account_id?.toString() === normalTransferDriver.toString());
+                const driverFullName = driverName ? `${driverName.fname} ${driverName.lname}` : 'Driver';
+                
+                await createNotification({
+                    type: 'delivery',
+                    title: 'Stock On Delivery',
+                    message: `Your stock request #${normalRID} is now on delivery. Driver: ${driverFullName}`,
+                    locationId: normalRequestFromID, // Send to requesting location
+                    targetRole: 'Inventory Manager',
+                    productId: null,
+                    customerId: null,
+                    referenceId: normalRID
+                });
             } else {
                 showAlertError({
                     icon: "error",
@@ -265,6 +282,27 @@ const UnifiedRequestManagement = () => {
             }
         } catch (error) {
             console.error("Error delivering normal stock:", error);
+        }
+    };
+
+    // Function to create notification
+    const createNotification = async (notificationData) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        if (!baseURL) return;
+
+        const url = baseURL + 'notifications.php';
+        
+        try {
+            // Format data for PHP backend (using FormData for POST)
+            const formData = new FormData();
+            formData.append('operation', 'CreateNotification');
+            formData.append('json', JSON.stringify(notificationData));
+
+            const response = await axios.post(url, formData);
+            console.log('Notification sent successfully:', response.data);
+        } catch (error) {
+            console.error('Error sending notification:', error);
+            console.error('Error details:', error.response?.data || error.message);
         }
     };
 
@@ -388,6 +426,18 @@ const UnifiedRequestManagement = () => {
                 setCustomizeDeliveriesDataVisible(true);
                 GetCustomizeRequest();
                 Logs(accountID, 'Deliver the customize request #' + customizeRID);
+                
+                // Send notification to requesting location (Sales Clerk)
+                await createNotification({
+                    type: 'delivery',
+                    title: 'Customize Order On Delivery',
+                    message: `Your customize request #${customizeRID} is now on delivery. Driver: ${customizeTransferDriverName}`,
+                    locationId: customizeDeliverToID, // Send to requesting location
+                    targetRole: 'Sales Clerk',
+                    productId: null,
+                    customerId: null,
+                    referenceId: customizeRID
+                });
             } else {
                 showAlertError({
                     icon: "error",
@@ -1649,7 +1699,7 @@ const UnifiedRequestManagement = () => {
                                                     }}>
                                                         📋
                                                     </div>
-                                                    <div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
                                                         <div style={{
                                                             fontSize: '11px',
                                                             color: '#6c757d',
@@ -1663,7 +1713,10 @@ const UnifiedRequestManagement = () => {
                                                         <div style={{
                                                             fontSize: '18px',
                                                             fontWeight: '700',
-                                                            color: '#2c3e50'
+                                                            color: '#2c3e50',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap'
                                                         }}>
                                                             #{request.customize_req_id}
                                                         </div>

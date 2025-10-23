@@ -34,6 +34,7 @@ const Location = () => {
   // Data arrays
   const [branchList, setBranchList] = useState([]);
   const [locationList, setLocationList] = useState([]);
+  const [locationTypeList, setLocationTypeList] = useState([]);
 
   // Location inputs
   const [locID, setLocID] = useState('');
@@ -44,6 +45,8 @@ const Location = () => {
   const [locAddress, setLocAddress] = useState('');
   const [locBranchID, setLocBranchID] = useState('');
   const [locBranchName, setLocBranchName] = useState('');
+  const [locTypeID, setLocTypeID] = useState('');
+  const [locTypeName, setLocTypeName] = useState('');
 
   // Filter locations
   const filteredLocations = useMemo(() => {
@@ -85,6 +88,7 @@ const Location = () => {
   useEffect(() => {
     GetBranch();
     GetLocation();
+    GetLocationType();
   }, []);
 
   const GetBranch = async () => {
@@ -102,6 +106,24 @@ const Location = () => {
       setBranchList(response.data);
     } catch (error) {
       console.error("Error fetching branch list:", error);
+    }
+  }
+
+  const GetLocationType = async () => {
+    const baseURL = sessionStorage.getItem('baseURL');
+    const url = baseURL + 'GetDropDown.php';
+
+    try {
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify([]),
+          operation: "GetLocationType"
+        }
+      });
+
+      setLocationTypeList(response.data);
+    } catch (error) {
+      console.error("Error fetching location type list:", error);
     }
   }
 
@@ -132,6 +154,8 @@ const Location = () => {
     setLocAddress('');
     setLocBranchID('');
     setLocBranchName('');
+    setLocTypeID('');
+    setLocTypeName('');
     setModalTitle('');
     setMessage('');
   };
@@ -151,7 +175,8 @@ const Location = () => {
       !locPhone.trim() ||
       !locEmail.trim() ||
       !locAddress.trim() ||
-      !locBranchID.trim()
+      !locBranchID.trim() ||
+      !locTypeID.trim()
     ) {
      
        showAlertError({
@@ -171,7 +196,8 @@ const Location = () => {
       phone: locPhone,
       email: locEmail,
       address: locAddress,
-      branchID: locBranchID
+      branchID: locBranchID,
+      locTypeID: locTypeID
     }
 
     try {
@@ -219,6 +245,14 @@ const Location = () => {
         }
       });
 
+      console.log('📍 Location Details Response:', response.data[0]);
+      console.log('🔍 Checking for location type name in:');
+      console.log('  - location_type_name:', response.data[0].location_type_name);
+      console.log('  - loc_type_name:', response.data[0].loc_type_name);
+      console.log('  - type_name:', response.data[0].type_name);
+      console.log('  - name:', response.data[0].name);
+      console.log('  - loc_type_id:', response.data[0].loc_type_id);
+      
       setLocName(response.data[0].location_name);
       setLocID(response.data[0].location_id);
       setLocContactPerson(response.data[0].contact_person);
@@ -227,6 +261,39 @@ const Location = () => {
       setLocBranchName(response.data[0].branch_name);
       setLocAddress(response.data[0].address);
       setLocBranchID(response.data[0].branch_id);
+      
+      // Set location type name - check multiple possible column names
+      const typeName = response.data[0].location_type_name 
+                    || response.data[0].loc_type_name 
+                    || response.data[0].type_name 
+                    || response.data[0].name
+                    || '';
+      
+      console.log('✅ Selected typeName:', typeName);
+      setLocTypeName(typeName);
+      
+      // Set location type ID - get from response or find by name
+      let typeID = response.data[0].loc_type_id || '';
+      
+      console.log('🆔 loc_type_id from backend:', typeID);
+      console.log('📋 locationTypeList:', locationTypeList);
+      
+      // If no ID from backend but we have a name, find the ID from locationTypeList
+      if (!typeID && typeName && locationTypeList.length > 0) {
+        console.log('⚠️ No ID from backend, searching by name...');
+        const foundType = locationTypeList.find(lt => lt.name === typeName);
+        if (foundType) {
+          typeID = foundType.loc_type_id;
+          console.log('✅ Found ID by name:', typeID);
+        } else {
+          console.log('❌ Could not find type by name');
+        }
+      }
+      
+      setLocTypeID(typeID);
+      
+      console.log('🎯 Final Location Type ID:', typeID);
+      console.log('🎯 Final Location Type Name:', typeName);
 
     } catch (error) {
       console.error("Error fetching location details:", error);
@@ -243,7 +310,8 @@ const Location = () => {
       email: locEmail,
       address: locAddress,
       branchID: locBranchID,
-      locID: locID
+      locID: locID,
+      locTypeID: locTypeID
     }
 
     try {
@@ -372,6 +440,19 @@ const Location = () => {
               ))}
             </select>
           </div>
+          <div className='div-input-add-prod'>
+            <label className='add-prod-label'>Location Type</label>
+            <select className='category-dropdown' onChange={(e) => setLocTypeID(e.target.value)} value={locTypeID}>
+              <option value="" disabled hidden>
+                Select Location Type
+              </option>
+              {locationTypeList.map((locType) => (
+                <option key={locType.loc_type_id} value={locType.loc_type_id}>
+                  {locType.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={close_modal}>
@@ -417,6 +498,12 @@ const Location = () => {
             <label className='add-prod-label'>Branch Name</label>
             <select className='drop-role' disabled={true}>
               <option>{locBranchName}</option>
+            </select>
+          </div>
+          <div className='div-input-add-cat'>
+            <label className='add-prod-label'>Location Type</label>
+            <select className='drop-role' disabled={true} value={locTypeName || ''}>
+              <option value="">{locTypeName || 'Not Set'}</option>
             </select>
           </div>
         </Modal.Body>
@@ -487,6 +574,28 @@ const Location = () => {
               {branchList.map((branch) => (
                 <option key={branch.branch_id} value={branch.branch_name}>
                   {branch.branch_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className='div-input-add-cat'>
+            <label className='add-prod-label'>Location Type</label>
+            <select className='drop-role' value={locTypeID} onChange={(e) => {
+              const selectedTypeID = e.target.value;
+              setLocTypeID(selectedTypeID);
+              const locType = locationTypeList.find(lt => lt.loc_type_id == selectedTypeID);
+              if (locType) {
+                setLocTypeName(locType.name);
+              }
+            }}>
+              {!locTypeID && (
+                <option value="" disabled>
+                  Select Location Type
+                </option>
+              )}
+              {locationTypeList.map((locType) => (
+                <option key={locType.loc_type_id} value={locType.loc_type_id}>
+                  {locType.name}
                 </option>
               ))}
             </select>

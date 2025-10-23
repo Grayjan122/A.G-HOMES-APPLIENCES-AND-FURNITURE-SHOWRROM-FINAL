@@ -15,6 +15,21 @@ import { showAlertError } from '@/app/Components/SweetAlert/error';
 
 const ITEMS_PER_PAGE = 9;
 
+// Helper function to get the correct image URL
+const getImageUrl = (imagePath) => {
+    if (!imagePath || imagePath === 'Nothing as for now') {
+        return null;
+    }
+    
+    // If it's already a full URL (Cloudinary), return as-is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return imagePath;
+    }
+    
+    // If it's a local path, return as-is (Next.js will handle it from public folder)
+    return imagePath;
+};
+
 const ProductsAdmin = () => {
     const [show, setShow] = useState(false);
 
@@ -27,6 +42,7 @@ const ProductsAdmin = () => {
     // Filter states for products
     const [categoryFilter, setCategoryFilter] = useState('');
     const [searchFilter, setSearchFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
 
     // Sorting states for products
     const [sortField, setSortField] = useState('');
@@ -72,16 +88,126 @@ const ProductsAdmin = () => {
     const [imagePreview, setImagePreview] = useState('');
     const [uploadingImage, setUploadingImage] = useState(false);
     const [productImagePath, setProductImagePath] = useState('');
+    
+    // Image zoom modal states
+    const [showImageZoom, setShowImageZoom] = useState(false);
+    const [zoomedImageUrl, setZoomedImageUrl] = useState('');
 
-    const handleFileSelect = (event) => {
+    const handleImageZoom = (imageUrl) => {
+        setZoomedImageUrl(imageUrl);
+        setShowImageZoom(true);
+    };
+
+    const closeImageZoom = () => {
+        setShowImageZoom(false);
+        setZoomedImageUrl('');
+    };
+
+    const compressImage = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Keep original dimensions - don't resize unless EXTREMELY large
+                    const maxDimension = 4000; // Much higher limit
+                    if (width > maxDimension || height > maxDimension) {
+                        if (width > height) {
+                            height = (height / width) * maxDimension;
+                            width = maxDimension;
+                        } else {
+                            width = (width / height) * maxDimension;
+                            height = maxDimension;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Try with high quality first (0.95 = 95%)
+                    canvas.toBlob(
+                        (blob) => {
+                            if (blob) {
+                                // If still over 10MB, try slightly lower quality
+                                if (blob.size > 10 * 1024 * 1024) {
+                                    canvas.toBlob(
+                                        (blob2) => {
+                                            if (blob2) {
+                                                const compressedFile = new File([blob2], file.name, {
+                                                    type: 'image/jpeg',
+                                                    lastModified: Date.now()
+                                                });
+                                                console.log(`Image compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
+                                                resolve(compressedFile);
+                                            } else {
+                                                reject(new Error('Compression failed'));
+                                            }
+                                        },
+                                        'image/jpeg',
+                                        0.92 // Slightly lower quality if needed
+                                    );
+                                } else {
+                                    const compressedFile = new File([blob], file.name, {
+                                        type: 'image/jpeg',
+                                        lastModified: Date.now()
+                                    });
+                                    console.log(`Image compressed: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
+                                    resolve(compressedFile);
+                                }
+                            } else {
+                                reject(new Error('Compression failed'));
+                            }
+                        },
+                        'image/jpeg',
+                        0.95 // Very high quality (95%)
+                    );
+                };
+                img.onerror = () => reject(new Error('Failed to load image'));
+                img.src = e.target.result;
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleFileSelect = async (event) => {
         const file = event.target.files[0];
         if (file) {
-            setSelectedFile(file);
+            // Check file size
+            const fileSizeMB = file.size / 1024 / 1024;
+            console.log(`Original file size: ${fileSizeMB.toFixed(2)}MB`);
+
+            // Show preview immediately
             const reader = new FileReader();
             reader.onload = (e) => {
                 setImagePreview(e.target.result);
             };
             reader.readAsDataURL(file);
+
+            // Only compress if over 9.5MB (Cloudinary limit is 10MB)
+            if (fileSizeMB > 9.5) {
+                try {
+                    const compressedFile = await compressImage(file);
+                    setSelectedFile(compressedFile);
+                    
+                    setMessage(`Image optimized from ${fileSizeMB.toFixed(1)}MB to ${(compressedFile.size / 1024 / 1024).toFixed(1)}MB for upload`);
+                    setAlertVariant('info');
+                    setAlertBG('#5bc0de');
+                    setAlert1(true);
+                    setTimeout(() => setAlert1(false), 3000);
+                } catch (error) {
+                    console.error('Compression error:', error);
+                    setSelectedFile(file); // Use original if compression fails
+                }
+            } else {
+                setSelectedFile(file);
+            }
         }
     };
 
@@ -100,16 +226,20 @@ const ProductsAdmin = () => {
 
             const result = await response.json();
 
+            console.log('Upload Response:', result);
+
             if (response.ok) {
-                return result.path;
+                // Cloudinary returns the secure_url in the path field
+                console.log('Cloudinary URL:', result.path);
+                return result.path; // This is now a Cloudinary URL
             } else {
-                throw new Error(result.message || 'Upload failed');
+                throw new Error(result.error || result.message || 'Upload failed');
             }
         } catch (error) {
             console.error('Upload error:', error);
             showAlertError({
                 icon: "error",
-                title: "Opss!",
+                title: "Upload Failed!",
                 text: 'Failed to upload image: ' + error.message,
                 button: 'Try Again'
             });
@@ -179,7 +309,20 @@ const ProductsAdmin = () => {
 
     // Filter and sort products
     const filteredAndSortedProducts = useMemo(() => {
+        // Ensure productList is an array
+        if (!Array.isArray(productList)) {
+            return [];
+        }
+
         let filtered = productList.filter(product => {
+            // Status filter
+            if (statusFilter === 'active' && product.status !== 'Active') {
+                return false;
+            }
+            if (statusFilter === 'inactive' && product.status !== 'Inactive') {
+                return false;
+            }
+
             // Category filter
             if (categoryFilter && product.category_name !== categoryFilter) {
                 return false;
@@ -219,7 +362,7 @@ const ProductsAdmin = () => {
         }
 
         return filtered;
-    }, [productList, categoryFilter, searchFilter, sortField, sortDirection]);
+    }, [productList, categoryFilter, searchFilter, statusFilter, sortField, sortDirection]);
 
     // Pagination for products
     const totalPagesProducts = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
@@ -229,7 +372,7 @@ const ProductsAdmin = () => {
     // Reset to page 1 when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [categoryFilter, searchFilter, sortField, sortDirection]);
+    }, [categoryFilter, searchFilter, statusFilter, sortField, sortDirection]);
 
     const handlePageChange = (page) => {
         if (page >= 1 && page <= totalPagesProducts) {
@@ -262,6 +405,7 @@ const ProductsAdmin = () => {
     const clearProductFilters = () => {
         setCategoryFilter('');
         setSearchFilter('');
+        setStatusFilter('all');
         setSortField('');
         setSortDirection('asc');
     };
@@ -274,6 +418,9 @@ const ProductsAdmin = () => {
             case 'search':
                 setSearchFilter('');
                 break;
+            case 'status':
+                setStatusFilter('all');
+                break;
         }
     };
 
@@ -285,13 +432,32 @@ const ProductsAdmin = () => {
             const response = await axios.get(url, {
                 params: {
                     json: JSON.stringify([]),
-                    operation: "GetProduct"
+                    operation: "GetProduct2"
                 }
             });
 
-            setProductList(response.data);
+            console.log('📦 Products fetched:', response.data);
+            
+            // Ensure response.data is an array
+            if (Array.isArray(response.data)) {
+                console.log('✅ Valid array with', response.data.length, 'products');
+                
+                // Log first product's image URL for debugging
+                if (response.data.length > 0) {
+                    const firstProduct = response.data[0];
+                    console.log('First product image URL:', firstProduct.product_preview_image);
+                    console.log('First product status:', firstProduct.status);
+                    console.log('getImageUrl result:', getImageUrl(firstProduct.product_preview_image));
+                }
+                
+                setProductList(response.data);
+            } else {
+                console.error('❌ Response is not an array:', typeof response.data);
+                setProductList([]);
+            }
         } catch (error) {
             console.error("Error fetching product list:", error);
+            setProductList([]);
         }
     }
 
@@ -319,11 +485,9 @@ const ProductsAdmin = () => {
         if (
             !prodName?.trim() ||
             !cat?.trim() ||
-            !dimension?.trim() ||
-            !i_color?.trim() ||
             !i_price?.toString().trim() ||
-            !i_description?.trim() ||
-            !i_material?.trim()
+            !i_description?.trim() 
+           
         ) {
             setMessage("Please fill in all needed details!");
             setAlertVariant('danger');
@@ -337,12 +501,15 @@ const ProductsAdmin = () => {
         }
 
         // Upload image first if one is selected
-        let imagePath = '/uploads/products/defualt.jpg';
+        let imagePath = '/uploads/products/defualt.jpg'; // Default local placeholder (matches your filename)
         if (selectedFile) {
             imagePath = await uploadImage();
+            console.log('Image path after upload:', imagePath);
             if (!imagePath) {
-                return;
+                return; // Upload failed, don't proceed
             }
+        } else {
+            console.log('No image selected, using default:', imagePath);
         }
 
         const baseURL = sessionStorage.getItem('baseURL');
@@ -358,6 +525,8 @@ const ProductsAdmin = () => {
             product_preview_image: imagePath
         }
 
+        console.log('Product details being sent to database:', productDetails);
+
         try {
             const response = await axios.get(url, {
                 params: {
@@ -367,6 +536,7 @@ const ProductsAdmin = () => {
             });
 
             if (response.data === 'Success') {
+                console.log('✅ Product saved successfully! Refreshing product list...');
                 GetProduct();
                 resetForm();
                 close_modal();
@@ -376,6 +546,11 @@ const ProductsAdmin = () => {
                     true,
                     'Okay'
                 );
+                
+                // Log for debugging: Check if image shows after refresh
+                setTimeout(() => {
+                    console.log('Product list refreshed. Check if image is visible.');
+                }, 1000);
                 return;
 
             } else {
@@ -445,7 +620,7 @@ const ProductsAdmin = () => {
         e.preventDefault();
 
         // Upload new image if one is selected
-        let imagePath = productImagePath || 'Nothing as for now';
+        let imagePath = productImagePath || '/uploads/products/defualt.jpg'; // Use default if no existing image
         if (selectedFile) {
             const newImagePath = await uploadImage();
             if (newImagePath) {
@@ -500,6 +675,53 @@ const ProductsAdmin = () => {
 
         } catch (error) {
             console.error("Error updating product:", error);
+        }
+    };
+
+    const ToggleProductStatus = async (productId, currentStatus) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'products.php';
+        
+        const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+        
+        const statusData = {
+            prodId: productId,
+            status: newStatus
+        };
+
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify(statusData),
+                    operation: "UpdateProductStatus"
+                }
+            });
+
+            if (response.data === 'Success') {
+                GetProduct();
+                
+                AlertSucces(
+                    `Product ${newStatus === 'Active' ? 'activated' : 'deactivated'} successfully!`,
+                    "success",
+                    true,
+                    'Okay'
+                );
+            } else {
+                showAlertError({
+                    icon: "error",
+                    title: "Failed!",
+                    text: 'Failed to update product status!',
+                    button: 'Try Again'
+                });
+            }
+        } catch (error) {
+            console.error("Error toggling product status:", error);
+            showAlertError({
+                icon: "error",
+                title: "Error!",
+                text: 'An error occurred while updating product status',
+                button: 'OK'
+            });
         }
     };
 
@@ -646,10 +868,10 @@ const ProductsAdmin = () => {
                             disabled={uploadingImage}
                         />
                         {/* Show current image if exists */}
-                        {!imagePreview && productImagePath && productImagePath !== 'Nothing as for now' && (
+                        {!imagePreview && getImageUrl(productImagePath) && (
                             <div style={{ marginTop: '10px' }}>
                                 <img
-                                    src={productImagePath}
+                                    src={getImageUrl(productImagePath)}
                                     alt="Current"
                                     style={{
                                         // maxWidth: '200px',
@@ -702,7 +924,7 @@ const ProductsAdmin = () => {
                 </Modal.Header>
                 <Modal.Body className='modal-add-product-body' >
                     <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Product Name</label>
+                        <label className='add-prod-label'>Product Code</label>
                         <input
                             type="text"
                             className="prod-name-input"
@@ -723,26 +945,10 @@ const ProductsAdmin = () => {
                         </select>
                     </div>
 
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Dimensions</label>
-                        <input
-                            type='text'
-                            className='dimension-input'
-                            value={dimension}
-                            onChange={e => setDimension(e.target.value)}
-                        />
-                    </div>
+                 
 
                     <div className='div-for-line'>
-                        <div className='div-input-add-prod'>
-                            <label className='add-prod-label'>Color</label>
-                            <input
-                                type='text'
-                                className='prod-name-input1'
-                                value={i_color}
-                                onChange={(e) => setI_Color(e.target.value)}
-                            />
-                        </div>
+                       
 
                         <div className='div-input-add-prod'>
                             <label className='add-prod-label'>Price</label>
@@ -764,14 +970,7 @@ const ProductsAdmin = () => {
                         />
                     </div>
 
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Material</label>
-                        <textarea
-                            className='description-input'
-                            value={i_material}
-                            onChange={(e) => setI_Marterial(e.target.value)}
-                        />
-                    </div>
+                  
 
                     <div className='div-input-add-prod'>
                         <label className='add-prod-label'>Preview Image</label>
@@ -829,7 +1028,7 @@ const ProductsAdmin = () => {
                         />
                     </div>
                     <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Product Name</label>
+                        <label className='add-prod-label'>Product Code</label>
                         <input
                             disabled={true}
                             className='prod-name-input'
@@ -843,34 +1042,7 @@ const ProductsAdmin = () => {
                         </select>
                     </div>
 
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Dimensions</label>
-                        <input
-                            className='dimension-input'
-                            disabled={true}
-                            value={dimension}
-                        />
-                    </div>
-                    <div className='div-for-line'>
-                        <div className='div-input-add-prod'>
-                            <label className='add-prod-label'>Color</label>
-                            <input
-                                className='prod-name-input1'
-                                disabled={true}
-                                value={i_color}
-                            />
-                        </div>
-
-                        <div className='div-input-add-prod'>
-                            <label className='add-prod-label'>Price</label>
-                            <input
-                                type='number'
-                                className='prod-name-input1'
-                                disabled={true}
-                                value={i_price}
-                            />
-                        </div>
-                    </div>
+                  
 
                     <div className='div-input-add-prod'>
                         <label className='add-prod-label'>Description</label>
@@ -881,14 +1053,6 @@ const ProductsAdmin = () => {
                         />
                     </div>
 
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Material</label>
-                        <textarea
-                            className='description-input'
-                            disabled={true}
-                            value={i_material}
-                        />
-                    </div>
 
                     <div className='div-input-add-prod'>
                         <label className='add-prod-label'>Date Created</label>
@@ -901,19 +1065,43 @@ const ProductsAdmin = () => {
 
                     <div className='div-input-add-prod'>
                         <label className='add-prod-label'>Preview Image</label>
-                        {productImagePath && productImagePath !== 'Nothing as for now' ? (
-                            <div style={{ marginTop: '10px' }}>
+                        {getImageUrl(productImagePath) ? (
+                            <div style={{ marginTop: '10px', position: 'relative' }}>
                                 <img
-                                    src={productImagePath}
+                                    src={getImageUrl(productImagePath)}
                                     alt="Product"
+                                    onClick={() => handleImageZoom(getImageUrl(productImagePath))}
                                     style={{
                                         // maxWidth: '300px',
                                         width: '100%',
                                         maxHeight: '300px',
                                         borderRadius: '8px',
-                                        border: '1px solid #ddd'
+                                        border: '1px solid #ddd',
+                                        cursor: 'pointer',
+                                        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1.02)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.boxShadow = 'none';
                                     }}
                                 />
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '15px',
+                                    right: '15px',
+                                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                                    color: 'white',
+                                    padding: '5px 10px',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    pointerEvents: 'none'
+                                }}>
+                                    🔍 Click to zoom
+                                </div>
                             </div>
                         ) : (
                             <div style={{
@@ -929,6 +1117,56 @@ const ProductsAdmin = () => {
                         )}
                     </div>
                 </Modal.Body>
+            </Modal>
+
+            {/* Image Zoom Modal */}
+            <Modal 
+                show={showImageZoom} 
+                onHide={closeImageZoom} 
+                size='xl'
+                centered
+                style={{ zIndex: 2000 }}
+            >
+                <Modal.Header closeButton style={{ border: 'none', paddingBottom: 0 }}>
+                    <Modal.Title>Product Image</Modal.Title>
+                </Modal.Header>
+                <Modal.Body style={{ 
+                    padding: '20px',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: '#000',
+                    minHeight: '70vh'
+                }}>
+                    {zoomedImageUrl && (
+                        <img
+                            src={zoomedImageUrl}
+                            alt="Zoomed Product"
+                            style={{
+                                width: '100%',
+                                height: 'auto',
+                                maxHeight: '80vh',
+                                objectFit: 'contain',
+                                borderRadius: '8px'
+                            }}
+                            onClick={closeImageZoom}
+                        />
+                    )}
+                </Modal.Body>
+                <Modal.Footer style={{ 
+                    border: 'none', 
+                    justifyContent: 'center',
+                    backgroundColor: '#000',
+                    paddingTop: 0
+                }}>
+                    <div style={{ 
+                        color: '#fff', 
+                        fontSize: '14px',
+                        textAlign: 'center'
+                    }}>
+                        💡 Click image or close button to exit
+                    </div>
+                </Modal.Footer>
             </Modal>
 
             <div className='customer-main'>
@@ -956,6 +1194,28 @@ const ProductsAdmin = () => {
                         gap: '15px',
                         alignItems: 'end'
                     }}>
+                        {/* Status Filter */}
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                                Filter by Status
+                            </label>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    border: '1px solid #ced4da',
+                                    borderRadius: '4px',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                <option value="all">All Products</option>
+                                <option value="active">Active Only</option>
+                                <option value="inactive">Inactive Only</option>
+                            </select>
+                        </div>
+
                         {/* Category Filter */}
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
@@ -1077,6 +1337,50 @@ const ProductsAdmin = () => {
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                         <strong>Active Filters:</strong>
 
+                        {statusFilter !== 'all' && (
+                            <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '4px 8px',
+                                backgroundColor: '#e9ecef',
+                                borderRadius: '16px',
+                                fontSize: '13px',
+                                border: '1px solid #dee2e6'
+                            }}>
+                                Status: {statusFilter === 'active' ? 'Active' : 'Inactive'}
+                                <button
+                                    type="button"
+                                    onClick={() => removeProductFilter('status')}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#6c757d',
+                                        cursor: 'pointer',
+                                        padding: '2px',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '18px',
+                                        height: '18px',
+                                        marginLeft: '4px'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.backgroundColor = '#dc3545';
+                                        e.target.style.color = 'white';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.backgroundColor = 'transparent';
+                                        e.target.style.color = '#6c757d';
+                                    }}
+                                    title="Remove status filter"
+                                >
+                                    ×
+                                </button>
+                            </span>
+                        )}
+
                         {categoryFilter && (
                             <span style={{
                                 display: 'inline-flex',
@@ -1165,7 +1469,7 @@ const ProductsAdmin = () => {
                             </span>
                         )}
 
-                        {!categoryFilter && !searchFilter && (
+                        {!categoryFilter && !searchFilter && statusFilter === 'all' && (
                             <span style={{ color: '#6c757d' }}>None</span>
                         )}
 
@@ -1439,9 +1743,9 @@ const ProductsAdmin = () => {
                                             position: 'relative',
                                             overflow: 'hidden'
                                         }}>
-                                            {product.product_preview_image && product.product_preview_image !== 'Nothing as for now' ? (
+                                            {getImageUrl(product.product_preview_image) ? (
                                                 <img
-                                                    src={product.product_preview_image}
+                                                    src={getImageUrl(product.product_preview_image)}
                                                     alt={product.product_name}
                                                     style={{
                                                         width: '100%',
@@ -1480,40 +1784,142 @@ const ProductsAdmin = () => {
                                                 {product.category_name}
                                             </div>
 
-                                            {/* Edit Action Button */}
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    triggerModal('editProduct', product.product_id, e);
-                                                }}
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: '10px',
-                                                    right: '10px',
-                                                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                                                    border: 'none',
+                                            {/* Status Badge */}
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '45px',
+                                                left: '10px',
+                                                backgroundColor: product.status === 'Active' ? '#28a745' : '#dc3545',
+                                                color: 'white',
+                                                padding: '4px 8px',
+                                                borderRadius: '12px',
+                                                fontSize: '11px',
+                                                fontWeight: '600',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}>
+                                                <span style={{ 
+                                                    width: '6px', 
+                                                    height: '6px', 
+                                                    backgroundColor: 'white', 
                                                     borderRadius: '50%',
-                                                    width: '36px',
-                                                    height: '36px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    cursor: 'pointer',
-                                                    fontSize: '16px',
-                                                    transition: 'all 0.2s ease'
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.backgroundColor = '#007bff';
-                                                    e.currentTarget.style.color = 'white';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
-                                                    e.currentTarget.style.color = 'black';
-                                                }}
-                                                title="Edit Product"
-                                            >
-                                                ✏️
-                                            </button>
+                                                    display: 'inline-block'
+                                                }}></span>
+                                                {product.status || 'Active'}
+                                            </div>
+
+                                            {/* Zoom Icon Button */}
+                                            {getImageUrl(product.product_preview_image) && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleImageZoom(getImageUrl(product.product_preview_image));
+                                                    }}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        bottom: '10px',
+                                                        right: '10px',
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '50%',
+                                                        width: '40px',
+                                                        height: '40px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        fontSize: '18px',
+                                                        transition: 'all 0.2s ease',
+                                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(0, 123, 255, 0.9)';
+                                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                    }}
+                                                    title="View full image"
+                                                >
+                                                    🔍
+                                                </button>
+                                            )}
+
+                                            {/* Action Buttons Container */}
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '10px',
+                                                right: '10px',
+                                                display: 'flex',
+                                                gap: '8px'
+                                            }}>
+                                                {/* Toggle Status Button */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        ToggleProductStatus(product.product_id, product.status || 'Active');
+                                                    }}
+                                                    style={{
+                                                        backgroundColor: product.status === 'Active' ? 'rgba(220, 53, 69, 0.9)' : 'rgba(40, 167, 69, 0.9)',
+                                                        border: 'none',
+                                                        borderRadius: '50%',
+                                                        width: '36px',
+                                                        height: '36px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        fontSize: '16px',
+                                                        transition: 'all 0.2s ease',
+                                                        color: 'white',
+                                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                    }}
+                                                    title={product.status === 'Active' ? 'Deactivate Product' : 'Activate Product'}
+                                                >
+                                                    {product.status === 'Active' ? '🚫' : '✅'}
+                                                </button>
+
+                                                {/* Edit Action Button */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        triggerModal('editProduct', product.product_id, e);
+                                                    }}
+                                                    style={{
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                                        border: 'none',
+                                                        borderRadius: '50%',
+                                                        width: '36px',
+                                                        height: '36px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        fontSize: '16px',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = '#007bff';
+                                                        e.currentTarget.style.color = 'white';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                                                        e.currentTarget.style.color = 'black';
+                                                    }}
+                                                    title="Edit Product"
+                                                >
+                                                    ✏️
+                                                </button>
+                                            </div>
                                         </div>
 
                                         {/* Product Information */}

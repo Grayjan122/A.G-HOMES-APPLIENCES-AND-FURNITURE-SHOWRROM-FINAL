@@ -16,6 +16,8 @@ import Customer from '@/app/Contents/admin-contents/Customer/page';
 import User from '@/app/Contents/admin-contents/User/page';
 import Setting from '@/app/Contents/admin-contents/Setting/page';
 import { useRouter } from "next/navigation";
+import { AlertSucces } from "@/app/Components/SweetAlert/success";
+import { showAlertError } from "@/app/Components/SweetAlert/error";
 
 const DashboardSalesClerk = () => {
     const [counts, setCounts] = useState({
@@ -53,6 +55,9 @@ const DashboardSalesClerk = () => {
 
     const [customerList, setCustomerList] = useState([]);
 
+    const [sendingEmails, setSendingEmails] = useState(false);
+    const [emailResults, setEmailResults] = useState(null);
+
     useEffect(() => {
         const user_id = sessionStorage.getItem("user_id");
         if (!user_id) {
@@ -61,6 +66,9 @@ const DashboardSalesClerk = () => {
         GetCustomer();
         GetInstallment();
         countConfigs.forEach(config => fetchCount(config));
+        
+        // Auto-send notifications on dashboard load (optional - run once per day)
+        checkAndSendNotifications();
     }, []);
 
     const GetCustomer = async () => {
@@ -298,6 +306,147 @@ const DashboardSalesClerk = () => {
         }
     };
 
+    const checkAndSendNotifications = async () => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        if (!baseURL) return;
+
+        // Check if we've already sent notifications today
+        const lastSent = localStorage.getItem('lastNotificationCheck');
+        const today = new Date().toDateString();
+
+        if (lastSent === today) {
+            console.log('Notifications already sent today');
+            return;
+        }
+
+        try {
+            // Send installment reminders (1 week, 3 days, 1 day before)
+            await sendInstallmentReminders();
+            
+            // Send overdue notifications (after grace period)
+            await sendOverdueNotifications();
+            
+            // Mark as sent for today
+            localStorage.setItem('lastNotificationCheck', today);
+        } catch (error) {
+            console.error('Error checking notifications:', error);
+        }
+    };
+
+    const sendInstallmentReminders = async () => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'installment-notifications.php';
+
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify({}),
+                    operation: 'SendInstallmentReminders'
+                }
+            });
+
+            console.log('Installment reminders sent:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error sending installment reminders:', error);
+            throw error;
+        }
+    };
+
+    const sendOverdueNotifications = async () => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'installment-notifications.php';
+
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify({}),
+                    operation: 'SendOverdueNotifications'
+                }
+            });
+
+            console.log('Overdue notifications sent:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error sending overdue notifications:', error);
+            throw error;
+        }
+    };
+
+    const manualSendNotifications = async () => {
+        console.log('=== MANUAL SEND NOTIFICATIONS STARTED ===');
+        setSendingEmails(true);
+        setEmailResults(null);
+
+        try {
+            console.log('Calling sendInstallmentReminders...');
+            const reminders = await sendInstallmentReminders();
+            console.log('Reminders response:', reminders);
+            
+            console.log('Calling sendOverdueNotifications...');
+            const overdue = await sendOverdueNotifications();
+            console.log('Overdue response:', overdue);
+
+            const results = {
+                one_week: reminders.one_week_reminders || 0,
+                three_day: reminders.three_day_reminders || 0,
+                one_day: reminders.one_day_reminders || 0,
+                overdue: overdue.overdue_notifications || 0,
+                total: (reminders.one_week_reminders || 0) + 
+                       (reminders.three_day_reminders || 0) + 
+                       (reminders.one_day_reminders || 0) + 
+                       (overdue.overdue_notifications || 0)
+            };
+
+            console.log('Final results:', results);
+            setEmailResults(results);
+            
+            // Update last sent timestamp
+            localStorage.setItem('lastNotificationCheck', new Date().toDateString());
+            
+            // Show detailed results
+            let message = `Email Notification Results:\n\n`;
+            message += `✅ 1 Week Reminders: ${results.one_week}\n`;
+            message += `✅ 3 Day Reminders: ${results.three_day}\n`;
+            message += `✅ 1 Day Reminders: ${results.one_day}\n`;
+            message += `✅ Overdue Notices: ${results.overdue}\n`;
+            message += `\nTotal Emails Sent: ${results.total}\n\n`;
+            
+            if (results.total === 0) {
+              
+            } else {
+                message += '🎉 Emails sent successfully!';
+            }
+            
+            AlertSucces(
+                message,           // title
+                results.total > 0 ? "success" : "info",  // icon
+                true,             // draggable
+                'OK'              // button text
+            );
+            
+            console.log('=== MANUAL SEND NOTIFICATIONS COMPLETED ===');
+        } catch (error) {
+            console.error('=== ERROR IN MANUAL SEND ===');
+            console.error('Error details:', error);
+            console.error('Error message:', error.message);
+            console.error('Error response:', error.response);
+            
+            let errorMessage = 'Failed to send email notifications.\n\n';
+            errorMessage += 'Error: ' + (error.response?.data || error.message) + '\n\n';
+            errorMessage += 'Check browser console (F12) for full details.';
+            
+            showAlertError({
+                icon: 'error',
+                title: '❌ Email Sending Failed',
+                text: errorMessage,
+                button: 'OK'
+            });
+        } finally {
+            setSendingEmails(false);
+        }
+    };
+
     const router = useRouter();
 
     const handleCardClick = (path) => {
@@ -380,14 +529,74 @@ const DashboardSalesClerk = () => {
 
     return (
         <div className='dash-main'>
-            <h1 className='h-dashboard' style={{
-                color: '#333',
-                marginBottom: '30px',
-                fontSize: '2.5em',
-                fontWeight: 'bold'
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '30px'
             }}>
-                DASHBOARD
-            </h1>
+                <h1 className='h-dashboard' style={{
+                    color: '#333',
+                    margin: 0,
+                    fontSize: '2.5em',
+                    fontWeight: 'bold'
+                }}>
+                    DASHBOARD
+                </h1>
+                
+                <button
+                    onClick={manualSendNotifications}
+                    disabled={sendingEmails}
+                    style={{
+                        padding: '12px 24px',
+                        backgroundColor: sendingEmails ? '#ccc' : '#667eea',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: sendingEmails ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                        if (!sendingEmails) {
+                            e.currentTarget.style.backgroundColor = '#5568d3';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        if (!sendingEmails) {
+                            e.currentTarget.style.backgroundColor = '#667eea';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                        }
+                    }}
+                >
+                    {sendingEmails ? (
+                        <>
+                            <span style={{ 
+                                display: 'inline-block',
+                                width: '16px',
+                                height: '16px',
+                                border: '2px solid white',
+                                borderTopColor: 'transparent',
+                                borderRadius: '50%',
+                                animation: 'spin 1s linear infinite'
+                            }}></span>
+                            Sending...
+                        </>
+                    ) : (
+                        <>
+                            📧 Send Payment Reminders
+                        </>
+                    )}
+                </button>
+            </div>
 
             <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
                 <div style={{
@@ -816,6 +1025,11 @@ const DashboardSalesClerk = () => {
                 @keyframes blink {
                     0%, 50% { opacity: 1; }
                     51%, 100% { opacity: 0.7; }
+                }
+                
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
                 }
             `}</style>
         </div>

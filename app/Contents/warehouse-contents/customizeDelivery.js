@@ -407,6 +407,26 @@ const DeliveryCustomizeWR = () => {
         setShowModal(true);
     };
 
+    const createNotification = async (notificationData) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        if (!baseURL) return;
+
+        const url = baseURL + 'notifications.php';
+        
+        try {
+            // Format data for PHP backend (using FormData for POST)
+            const formData = new FormData();
+            formData.append('operation', 'CreateNotification');
+            formData.append('json', JSON.stringify(notificationData));
+
+            const response = await axios.post(url, formData);
+            console.log('Notification sent successfully:', response.data);
+        } catch (error) {
+            console.error('Error sending notification:', error);
+            console.error('Error details:', error.response?.data || error.message);
+        }
+    };
+
     const handleMarkComplete = async () => {
         const accountID = parseInt(sessionStorage.getItem('user_id'));
         const baseURL = sessionStorage.getItem('baseURL');
@@ -435,6 +455,18 @@ const DeliveryCustomizeWR = () => {
                     );
                     setShowModal(false);
                     fetchAllData();
+                    const name = sessionStorage.getItem('fullname');
+                    // Send notification to the requesting location (Sales Clerk)
+                    await createNotification({
+                        type: 'delivery',
+                        title: 'Delivery Completed',
+                        message: `Customize request #${selectedDelivery.customize_request_id} has been marked as completed by ${name}.`,
+                        locationId: selectedDelivery.deliver_to, // Requesting location (store)
+                        targetRole: 'Sales Clerk',
+                        productId: null,
+                        customerId: null,
+                        referenceId: selectedDelivery.customize_request_id
+                    });
                 } else {
                     showAlertError({
                         icon: "error",
@@ -476,6 +508,18 @@ const DeliveryCustomizeWR = () => {
                     );
                     setShowModal(false);
                     fetchAllData();
+                    const name = sessionStorage.getItem('fullname');
+                    // Send notification to the requesting location (Inventory Manager)
+                    await createNotification({
+                        type: 'delivery',
+                        title: 'Delivery Completed',
+                        message: `Stock request #${selectedDelivery.request_stock_id} has been marked as completed by ${name}.`,
+                        locationId: selectedDelivery.request_from, // Requesting location (store)
+                        targetRole: 'Inventory Manager',
+                        productId: null,
+                        customerId: null,
+                        referenceId: selectedDelivery.request_stock_id
+                    });
                 } else {
                     showAlertError({
                         icon: "error",

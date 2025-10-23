@@ -725,9 +725,55 @@ const RequestStockIM = () => {
                 setRequestFrom('');
                 setRequestTo('');
                 Logs(accountID, `Sent a request from ${from1.location_name} to ${to1.location_name}`);
+                
+                // Create notification for Warehouse Representatives at the "Request To" location
+                await createNotification(
+                    'stock_request',
+                    'New Stock Request',
+                    `New stock request from ${from1.location_name} to ${to1.location_name} with ${stockInList.length} item(s)`,
+                    requestTo,
+                    'Warehouse Representative',  // Send only to Warehouse Representatives
+                    null
+                );
             }
         } catch (error) {
             console.error("Error sending request:", error);
+        }
+    };
+
+    // Function to create notification
+    const createNotification = async (type, title, message, locationId, targetRole, referenceId) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        if (!baseURL) {
+            console.error("baseURL not found in sessionStorage");
+            return;
+        }
+
+        const notificationURL = baseURL + 'notifications.php';
+        const notificationData = {
+            type: type,
+            title: title,
+            message: message,
+            locationId: locationId,  // Changed from location_id to locationId (camelCase)
+            targetRole: targetRole,  // Changed from target_role to targetRole (camelCase)
+            referenceId: referenceId, // Changed from reference_id to referenceId (camelCase)
+            productId: null,
+            customerId: null
+        };
+
+        console.log('Creating notification:', notificationData);
+
+        try {
+            const response = await axios.get(notificationURL, {
+                params: {
+                    json: JSON.stringify(notificationData),
+                    operation: "CreateNotification"
+                }
+            });
+            console.log('Notification created successfully:', response.data);
+        } catch (error) {
+            console.error("Error creating notification:", error);
+            console.error("Notification data:", notificationData);
         }
     };
 
@@ -1769,7 +1815,7 @@ const RequestStockIM = () => {
                                     >
                                         <option value="">Select Store / Location</option>
                                         {locationList
-                                            .filter((r) => r.location_name !== "Warehouse CDO")
+                                            .filter((r) => r.name !== "Warehouse") // Exclude Warehouse from Request From options
                                             .map((r) => (
                                                 <option key={r.location_id} value={r.location_id}>
                                                     {r.location_name}
@@ -1781,7 +1827,9 @@ const RequestStockIM = () => {
                                     <label className='add-prod-label'>Request To:</label>
                                     <select className='category-dropdown' value={requestTo} onChange={(e) => setRequestTo(e.target.value)}>
                                         <option value={''}>Select Store / Location</option>
-                                        {locationList.map((r) => (
+                                        {locationList
+                                            .filter((r) => r.name === "Warehouse") // Only include Warehouse in Request To options
+                                            .map((r) => (
                                             <option key={r.location_id} value={r.location_id}>
                                                 {r.location_name}
                                             </option>

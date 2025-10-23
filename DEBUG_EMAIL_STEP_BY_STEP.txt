@@ -1,0 +1,254 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║       🔍 DEBUG: Email Not Found - Step by Step Guide                ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+UPDATED FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ app/page.js - Added detailed console logging
+✅ C:\xampp\htdocs\capstone-api\api\forgot-password.php - Enhanced debugging
+
+
+STEP-BY-STEP DEBUGGING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1: Verify Email Exists in Database
+───────────────────────────────────────────────────────────────────────
+
+A. Open the test tool:
+   http://localhost/capstone-api/api/test-email-check.php
+
+B. Look for your email in the list
+   - Is it there? ✅
+   - What's the status? Should be "Active"
+
+C. Click "Test This Email" next to your email
+   - Does it say "EMAIL FOUND"? ✅
+
+If NOT found:
+→ The email doesn't exist in your database
+→ You need to register it first
+→ Or check for typos/spaces
+
+
+STEP 2: Test API Directly in Browser
+───────────────────────────────────────────────────────────────────────
+
+Open this URL (replace YOUR_EMAIL with your actual email):
+
+http://localhost/capstone-api/api/forgot-password.php?operation=checkEmail&json={"email":"YOUR_EMAIL"}
+
+Example:
+http://localhost/capstone-api/api/forgot-password.php?operation=checkEmail&json={"email":"admin@gmail.com"}
+
+Expected Response (if email EXISTS):
+{
+  "exists": true,
+  "account_id": 1,
+  "fname": "Admin"
+}
+
+Expected Response (if email DOESN'T exist):
+{
+  "exists": false,
+  "error": "This email address is not registered in our system."
+}
+
+What did you get?
+- If "exists: true" → API is working! Problem is in frontend
+- If "exists: false" → Email truly doesn't exist in database
+- If error → Check PHP error logs
+
+
+STEP 3: Check Browser Console (Frontend)
+───────────────────────────────────────────────────────────────────────
+
+A. Open your Next.js app
+B. Press F12 to open Developer Tools
+C. Go to "Console" tab
+D. Try the forgot password feature
+E. Look for these messages:
+
+   🔍 Checking email: your@email.com
+   📡 API URL: http://localhost/capstone-api/api/forgot-password.php
+   📦 Sending data: {email: "your@email.com"}
+   📥 Server response: {exists: true, account_id: 1, fname: "..."}
+
+What do you see?
+- Email looks correct? ✅
+- API URL correct? ✅
+- Server response shows "exists: true"? ✅
+- Server response shows "exists: false"? ❌ Problem!
+
+
+STEP 4: Check PHP Error Logs (Backend)
+───────────────────────────────────────────────────────────────────────
+
+Location: C:\xampp\php\logs\php_error_log
+
+Or: XAMPP Control Panel → Apache → Logs
+
+Look for these lines:
+[timestamp] Forgot Password - Check Email: your@email.com
+[timestamp] Query result: Found
+
+OR
+
+[timestamp] Forgot Password - Check Email: your@email.com
+[timestamp] Query result: Not found
+
+What does it say?
+- "Found" → Good! Email exists
+- "Not found" → Email doesn't match database
+
+
+STEP 5: Check for Common Issues
+───────────────────────────────────────────────────────────────────────
+
+Issue 1: Email has spaces
+───────────────────────────────────────────────────────────────────────
+Database:  "admin@gmail.com "  (space at end)
+You enter: "admin@gmail.com"   (no space)
+Result: NOT FOUND ❌
+
+FIX: Clean your database
+UPDATE account SET email = TRIM(email);
+
+
+Issue 2: Email case doesn't match
+───────────────────────────────────────────────────────────────────────
+Database:  "Admin@Gmail.com"
+You enter: "admin@gmail.com"
+Result: Should work now ✅ (code uses LOWER())
+
+
+Issue 3: Wrong database/table
+───────────────────────────────────────────────────────────────────────
+Check conn.php:
+- Database name: AGDataBase
+- Table name: account
+- Column name: email
+
+
+Issue 4: Account is Inactive
+───────────────────────────────────────────────────────────────────────
+Even if email exists, inactive accounts are blocked
+
+FIX:
+UPDATE account SET status = 'Active' WHERE email = 'your@email.com';
+
+
+STEP 6: Manual Database Check
+───────────────────────────────────────────────────────────────────────
+
+1. Open phpMyAdmin: http://localhost/phpmyadmin
+2. Select: AGDataBase
+3. Click: account table
+4. Run this query:
+
+   SELECT account_id, fname, email, status 
+   FROM account 
+   WHERE email LIKE '%YOUR_EMAIL%';
+
+   Replace YOUR_EMAIL with part of your email
+
+5. Check the results:
+   - Email found? ✅
+   - Status = "Active"? ✅
+   - Matches exactly what you're typing? ✅
+
+
+WHAT TO LOOK FOR IN EACH STEP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ STEP 1: Email shows in test tool
+✅ STEP 2: Direct API call returns "exists: true"
+✅ STEP 3: Browser console shows correct email being sent
+✅ STEP 4: PHP logs show "Query result: Found"
+✅ STEP 5: No spaces, correct case, active status
+✅ STEP 6: Email exists in phpMyAdmin
+
+
+COMMON SCENARIOS & SOLUTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Scenario 1: Step 1 fails (email not in test tool)
+→ Email doesn't exist in database
+→ Register the account first
+
+Scenario 2: Step 2 works, but Step 3 fails
+→ Frontend is sending wrong data
+→ Check browser console for the exact data being sent
+
+Scenario 3: Step 2 and 3 work, but still shows "not found"
+→ Response parsing issue
+→ Check browser console for server response
+
+Scenario 4: All steps work but get "inactive" message
+→ Account status is not "Active"
+→ Update status in database
+
+
+QUICK FIX COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Clean all emails (remove spaces):
+UPDATE account SET email = TRIM(email);
+
+Activate all accounts:
+UPDATE account SET status = 'Active';
+
+Activate specific account:
+UPDATE account SET status = 'Active' WHERE email = 'your@email.com';
+
+Find emails with spaces:
+SELECT account_id, email, LENGTH(email) as len 
+FROM account 
+WHERE email LIKE '% %' OR email LIKE ' %' OR email LIKE '% ';
+
+
+TOOLS PROVIDED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ test-email-check.php
+   http://localhost/capstone-api/api/test-email-check.php
+   
+   Shows all emails and lets you test each one
+
+
+NEXT ACTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Go through each step above
+2. Note which step fails
+3. Check the corresponding solution
+4. Test again
+
+When you test again, look at:
+- Browser Console (F12 → Console)
+- Network tab (F12 → Network)
+- PHP error logs
+
+
+TELL ME THE RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After testing, tell me:
+
+1. What does test-email-check.php show?
+   - Email found? Yes/No
+   - Status? Active/Inactive
+
+2. What does direct API test show?
+   - Copy the JSON response
+
+3. What does browser console show?
+   - Copy the console messages
+
+4. What do PHP logs show?
+   - Copy the error log entries
+
+This will help me identify the exact issue! 🔍
+

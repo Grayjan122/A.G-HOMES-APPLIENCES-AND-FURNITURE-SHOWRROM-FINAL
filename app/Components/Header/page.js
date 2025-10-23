@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import InitialsAvatar from '../profile/profile';
+import NotificationBell from '../Notifications/NotificationBell';
 
 
 
@@ -20,22 +21,75 @@ export default function Header() {
   const [user_fname, setUser_Fname] = useState('');
   const [user_role, setUser_Role] = useState('');
   const [userFullname, setUserFullname] = useState('');
-
-
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isMounted) return;
+
     setUser_id(sessionStorage.getItem('user_id'));
     setUser_Fname(sessionStorage.getItem('user_fname'));
-    setUser_Role(sessionStorage.getItem('user_role'));
+    const role = sessionStorage.getItem('user_role');
+    // Shorten "Warehouse Representative" to "Warehouse Rep"
+    setUser_Role(role === 'Warehouse Representative' ? 'Warehouse Rep' : role);
     setUserFullname(sessionStorage.getItem('fullname'));
+    OnlineState(sessionStorage.getItem('user_id'));
+  }, [isMounted]);
 
+  const OnlineState = async (accID) => {
+    const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
+    if (!baseURL) return null;
+    const url = baseURL + 'login.php';
 
-  }, []);
+    const Details = {
+      userID: accID,
+      state: 'Online'
+    };
+
+    try {
+     
+
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify(Details),
+          operation: "actStatus"
+        },
+        timeout: 10000,
+        validateStatus: (status) => status < 600
+      });
+
+      
+
+      // Check if successful
+      if (response.status === 200) {
+        console.log('✅ User status set to Online successfully');
+        
+      } else {
+        console.error('❌ Failed to set user status to Online. Status:', response.status);
+        
+      }
+
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Online state error:', error);
+      addDebugLog('Online state error:', {
+        message: error.message,
+        response: error.response?.data
+      });
+      // Don't throw - allow login to continue even if status update fails
+      return null;
+    }
+  };
 
   const OfflineState = async (accID) => {
     // setProdId(id);
 
-    const baseURL = sessionStorage.getItem('baseURL');
+    const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
+    if (!baseURL) return null;
     const url = baseURL + 'login.php';
     // const url = "http://localhost/capstone-api/api/products.php";
 
@@ -135,14 +189,7 @@ export default function Header() {
             alignItems: 'center',
             gap: '20px'
           }}>
-            <Image
-              src={'/assets/images/bell.png'}
-              width={50}
-              height={50}
-              className='bell'
-              alt='notif'
-              style={{ cursor: 'pointer' }}
-            />
+            <NotificationBell />
 
             <div className="profile-container" ref={dropdownRef} style={{
               display: 'flex',

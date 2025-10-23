@@ -9,6 +9,7 @@ import { useState } from 'react';
 import SidebarWarehouseRep from '../Components/Sidebar-WarehouseRep/page';
 import SidebarInventory from '../Components/Sidebar-Inventory/page';
 import { LogInSuccess } from '../Components/SweetAlert/logIn';
+import InactivityLogout from '../Components/InactivityLogout/inactivityLogout';
 
 
 const AdminPage = () => {
@@ -16,15 +17,15 @@ const AdminPage = () => {
   const router = useRouter();
 
   const [user_id, setUser_ID] = useState('');
-
-
-
-  useEffect(() => {
-
-
-  })
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isMounted) return;
+
     const user_id = sessionStorage.getItem("user_id");
     const hasReloaded = sessionStorage.getItem("reloaded");
 
@@ -56,12 +57,12 @@ const AdminPage = () => {
       // router.push('/Components/404/notFound');
       router.push('/errorPage');
     }
-  }, []);
+  }, [isMounted, router]);
 
 
   return (
     <>
-
+      <InactivityLogout />
       <Header />
       <Sidebar />
       {/* <SidebarWarehouseRep /> */}

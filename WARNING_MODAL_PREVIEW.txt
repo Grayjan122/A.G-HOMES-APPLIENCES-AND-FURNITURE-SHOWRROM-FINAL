@@ -1,0 +1,351 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║                    WARNING MODAL - VISUAL PREVIEW                    ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+
+FULL SCREEN VIEW (When Warning Appears)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌────────────────────────────────────────────────────────────────────┐
+│                         🌐 Browser Window                          │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│   ┌────────────────────────────────────────────────────────────┐  │
+│   │ 📊 Your Dashboard (Blurred Background)                     │  │
+│   │                                                            │  │
+│   │                                                            │  │
+│   │       ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓       │  │
+│   │       ┃  ╔════════════════════════════════════╗  ┃       │  │
+│   │       ┃  ║  ⚠️  Inactivity Warning           ║  ┃       │  │
+│   │       ┃  ╚════════════════════════════════════╝  ┃       │  │
+│   │       ┃  ┌──────────────────────────────────────┐ ┃       │  │
+│   │       ┃  │                                      │ ┃       │  │
+│   │       ┃  │  You have been inactive for too     │ ┃       │  │
+│   │       ┃  │  long!                              │ ┃       │  │
+│   │       ┃  │                                      │ ┃       │  │
+│   │       ┃  │  You will be automatically logged   │ ┃       │  │
+│   │       ┃  │  out in:                            │ ┃       │  │
+│   │       ┃  │                                      │ ┃       │  │
+│   │       ┃  │            🔴  45                    │ ┃       │  │
+│   │       ┃  │               seconds                │ ┃       │  │
+│   │       ┃  │                                      │ ┃       │  │
+│   │       ┃  │  Click "Stay Logged In" to continue │ ┃       │  │
+│   │       ┃  │  your session, or you will be       │ ┃       │  │
+│   │       ┃  │  redirected to the login page.      │ ┃       │  │
+│   │       ┃  │                                      │ ┃       │  │
+│   │       ┃  └──────────────────────────────────────┘ ┃       │  │
+│   │       ┃  ┌──────────────────────────────────────┐ ┃       │  │
+│   │       ┃  │                                      │ ┃       │  │
+│   │       ┃  │  ┏━━━━━━━━━━━━━━━┓  ┏━━━━━━━━━━━━┓  │ ┃       │  │
+│   │       ┃  │  ┃ ✓ Stay Logged ┃  ┃ ✗ Logout   ┃  │ ┃       │  │
+│   │       ┃  │  ┃    In         ┃  ┃    Now     ┃  │ ┃       │  │
+│   │       ┃  │  ┗━━━━━━━━━━━━━━━┛  ┗━━━━━━━━━━━━┛  │ ┃       │  │
+│   │       ┃  │    (Green)            (Red)        │ ┃       │  │
+│   │       ┃  │                                      │ ┃       │  │
+│   │       ┃  └──────────────────────────────────────┘ ┃       │  │
+│   │       ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛       │  │
+│   │                                                            │  │
+│   │                                                            │  │
+│   └────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+
+
+MODAL COLORS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Header Background:
+  ┌──────────────────────┐
+  │  #ff9800 (Orange)    │  ⚠️ Inactivity Warning
+  └──────────────────────┘
+
+Countdown Timer (60-11 seconds):
+  ┌──────────────────────┐
+  │  #ff9800 (Orange)    │     45s
+  └──────────────────────┘
+
+Countdown Timer (10-0 seconds):
+  ┌──────────────────────┐
+  │  #dc3545 (Red)       │     8s  ⚠️ URGENT!
+  └──────────────────────┘
+
+Stay Logged In Button:
+  ┌──────────────────────┐
+  │  #28a745 (Green)     │  ✓ Stay Logged In
+  └──────────────────────┘
+
+Logout Now Button:
+  ┌──────────────────────┐
+  │  #dc3545 (Red)       │  ✗ Logout Now
+  └──────────────────────┘
+
+
+COUNTDOWN ANIMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+60 seconds → Orange:
+  ╔══════════╗
+  ║    60    ║  🟠 Calm
+  ╚══════════╝
+
+45 seconds → Orange:
+  ╔══════════╗
+  ║    45    ║  🟠 Still time
+  ╚══════════╝
+
+30 seconds → Orange:
+  ╔══════════╗
+  ║    30    ║  🟠 Getting closer
+  ╚══════════╝
+
+15 seconds → Orange:
+  ╔══════════╗
+  ║    15    ║  🟠 Action needed
+  ╚══════════╝
+
+10 seconds → RED:
+  ╔══════════╗
+  ║    10    ║  🔴 URGENT!
+  ╚══════════╝
+
+5 seconds → RED:
+  ╔══════════╗
+  ║     5    ║  🔴 ACT NOW!
+  ╚══════════╝
+
+0 seconds → AUTO LOGOUT:
+  ╔══════════╗
+  ║     0    ║  🔴 Logging out...
+  ╚══════════╝
+
+
+MOBILE VIEW (Responsive)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────┐
+│   📱 Mobile Phone   │
+├─────────────────────┤
+│                     │
+│ ┏━━━━━━━━━━━━━━━━━┓ │
+│ ┃ ╔═════════════╗ ┃ │
+│ ┃ ║ ⚠️  Warning ║ ┃ │
+│ ┃ ╚═════════════╝ ┃ │
+│ ┃ ┌─────────────┐ ┃ │
+│ ┃ │ Inactive!   │ ┃ │
+│ ┃ │             │ ┃ │
+│ ┃ │ Logout in:  │ ┃ │
+│ ┃ │             │ ┃ │
+│ ┃ │     45s     │ ┃ │
+│ ┃ │             │ ┃ │
+│ ┃ │ Click below │ ┃ │
+│ ┃ │ to continue │ ┃ │
+│ ┃ └─────────────┘ ┃ │
+│ ┃ ┌─────────────┐ ┃ │
+│ ┃ │ ✓ Stay In   │ ┃ │
+│ ┃ └─────────────┘ ┃ │
+│ ┃ ┌─────────────┐ ┃ │
+│ ┃ │ ✗ Logout    │ ┃ │
+│ ┃ └─────────────┘ ┃ │
+│ ┗━━━━━━━━━━━━━━━━━┛ │
+│                     │
+└─────────────────────┘
+
+
+TABLET VIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌────────────────────────────────────┐
+│        💻 Tablet Device            │
+├────────────────────────────────────┤
+│                                    │
+│    ┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓   │
+│    ┃  ╔══════════════════════╗ ┃   │
+│    ┃  ║ ⚠️  Inactivity      ║ ┃   │
+│    ┃  ║     Warning         ║ ┃   │
+│    ┃  ╚══════════════════════╝ ┃   │
+│    ┃  ┌──────────────────────┐ ┃   │
+│    ┃  │                      │ ┃   │
+│    ┃  │  You've been         │ ┃   │
+│    ┃  │  inactive!           │ ┃   │
+│    ┃  │                      │ ┃   │
+│    ┃  │  Logout in:          │ ┃   │
+│    ┃  │        45s           │ ┃   │
+│    ┃  │                      │ ┃   │
+│    ┃  │  Stay logged in or   │ ┃   │
+│    ┃  │  you'll be logged    │ ┃   │
+│    ┃  │  out automatically.  │ ┃   │
+│    ┃  │                      │ ┃   │
+│    ┃  └──────────────────────┘ ┃   │
+│    ┃  ┌──────────────────────┐ ┃   │
+│    ┃  │ ✓ Stay   ✗ Logout    │ ┃   │
+│    ┃  └──────────────────────┘ ┃   │
+│    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━┛   │
+│                                    │
+└────────────────────────────────────┘
+
+
+USER INTERACTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Scenario 1: User clicks "Stay Logged In"
+┌────────────────────────────────────┐
+│  [Warning Modal Visible]           │
+│                                    │
+│  User Action: Click ✓ Stay        │
+│               Logged In            │
+└────────┬───────────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────┐
+│  ✅ Result:                        │
+│  • Modal closes instantly          │
+│  • Timer resets to 1 hour          │
+│  • User continues working          │
+│  • No logout, no redirect          │
+└────────────────────────────────────┘
+
+
+Scenario 2: User clicks "Logout Now"
+┌────────────────────────────────────┐
+│  [Warning Modal Visible]           │
+│                                    │
+│  User Action: Click ✗ Logout Now  │
+└────────┬───────────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────┐
+│  🔴 Result:                        │
+│  • User logged out immediately     │
+│  • Status → "Offline"              │
+│  • Audit log created               │
+│  • Redirect to login page          │
+└────────────────────────────────────┘
+
+
+Scenario 3: User does nothing (countdown reaches 0)
+┌────────────────────────────────────┐
+│  [Warning Modal Visible]           │
+│  Countdown: 60s → 59s → ... → 1s   │
+│                                    │
+│  User Action: None (AFK)           │
+└────────┬───────────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────┐
+│  🔴 Result at 0s:                  │
+│  • Auto logout triggered           │
+│  • Status → "Offline"              │
+│  • Audit log: "Inactivity Timeout" │
+│  • Redirect to login page          │
+└────────────────────────────────────┘
+
+
+Scenario 4: User clicks outside modal (doesn't work!)
+┌────────────────────────────────────┐
+│  [Warning Modal Visible]           │
+│                                    │
+│  User Action: Click on background  │
+│               (gray area)          │
+└────────┬───────────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────┐
+│  ⚠️ Result:                        │
+│  • Nothing happens                 │
+│  • Modal stays open                │
+│  • Countdown continues             │
+│  • Must click a button             │
+└────────────────────────────────────┘
+
+
+ACTUAL SIZE REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Modal Width:      500px (default Bootstrap modal)
+Modal Height:     Auto (based on content)
+Countdown Size:   48px font (very large!)
+Header Height:    ~60px
+Button Width:     200px each
+Button Height:    48px (large for easy clicking)
+Padding:          20px around content
+Z-Index:          99999 (topmost layer)
+
+
+ACCESSIBILITY FEATURES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ High contrast colors (Orange/Red on white)
+✓ Large, readable text
+✓ Clear call-to-action buttons
+✓ Visual countdown (easy to see time remaining)
+✓ Color changes at 10s (urgency indicator)
+✓ Emoji warning icon (universal symbol)
+✓ Static backdrop (forces interaction)
+✓ Centered on screen (hard to miss)
+
+
+TIMELINE OF APPEARANCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+0:00  → User logs in
+      Dashboard visible, normal work
+
+↓ ... user working normally ...
+
+58:00 → Still working
+        Timer resets on each action
+
+↓ ... user stops activity ...
+
+59:00 → 🚨 WARNING MODAL APPEARS!
+        "You have been inactive for too long!"
+        Countdown starts: 60s
+
+59:01 → Countdown: 59s
+59:02 → Countdown: 58s
+...
+59:50 → Countdown: 10s → Color changes to RED
+59:51 → Countdown: 9s (RED)
+59:58 → Countdown: 2s (RED, VERY URGENT!)
+59:59 → Countdown: 1s (LAST CHANCE!)
+60:00 → Countdown: 0s → AUTO LOGOUT → Redirect to login
+
+
+COMPARISON: Before vs After Feature
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BEFORE (No Auto Logout):
+  User leaves computer
+      ↓
+  Hours pass
+      ↓
+  User still logged in ❌
+      ↓
+  Security risk!
+      ↓
+  Someone can access their account
+
+AFTER (With Auto Logout):
+  User leaves computer
+      ↓
+  59 minutes pass
+      ↓
+  Warning appears (but user is away)
+      ↓
+  60 seconds pass
+      ↓
+  Auto logout ✅
+      ↓
+  Account secure!
+      ↓
+  Must log in again to access
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                        🎨 BEAUTIFUL & FUNCTIONAL 🎨
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+

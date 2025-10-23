@@ -143,8 +143,8 @@ body, html {
   }
 
   .logo {
-    font-size: 20px;
-    margin-left: 10px;
+    font-size: 0px;
+    margin-left: 0px;
   }
 
   .pic-logo,
@@ -156,6 +156,10 @@ body, html {
 
 /* Mobile (phones) */
 @media (max-width: 768px) {
+   .logo {
+    font-size: 0px;
+    margin-left: 0;
+  }
   .header {
     height: 70px;
     padding: 10px;

@@ -351,6 +351,26 @@ const ReceiveStockIM = () => {
     };
 
 
+    const createNotification = async (notificationData) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        if (!baseURL) return;
+
+        const url = baseURL + 'notifications.php';
+        
+        try {
+            // Format data for PHP backend (using FormData for POST)
+            const formData = new FormData();
+            formData.append('operation', 'CreateNotification');
+            formData.append('json', JSON.stringify(notificationData));
+
+            const response = await axios.post(url, formData);
+            console.log('Notification sent successfully:', response.data);
+        } catch (error) {
+            console.error('Error sending notification:', error);
+            console.error('Error details:', error.response?.data || error.message);
+        }
+    };
+
     const ReveiceStock = async () => {
 
 
@@ -447,6 +467,19 @@ const ReceiveStockIM = () => {
                 setContinueR(true);
                 GetRequest();
                 Logs(accountID, 'Receive the delivery from request #' + s_reqID);
+
+                // Send notification to warehouse location (Warehouse Representative)
+                await createNotification({
+                    type: 'delivery',
+                    title: 'Delivery Received',
+                    message: `Stock request #${s_reqID} has been successfully received by ${s_reqFrom}.`,
+                    locationId: reqToId, // Warehouse location (delivery from)
+                    targetRole: 'Warehouse Representative',
+                    productId: null,
+                    customerId: null,
+                    referenceId: s_reqID
+                });
+                
                 return;
 
 

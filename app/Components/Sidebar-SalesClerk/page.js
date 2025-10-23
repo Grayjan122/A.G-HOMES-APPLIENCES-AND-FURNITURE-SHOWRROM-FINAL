@@ -20,9 +20,16 @@ const SidebarSaleClerk = () => {
   const [expandedParent, setExpandedParent] = useState(null);
   const [user_id, setUser_id] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // ✅ Get user_id and check if there's a stored active page
   useEffect(() => {
+    if (typeof window === 'undefined' || !isMounted) return;
+
     setUser_id(sessionStorage.getItem('user_id'));
 
     const savedPage = sessionStorage.getItem('activePage');
@@ -30,17 +37,19 @@ const SidebarSaleClerk = () => {
       setActivePage(savedPage);
       sessionStorage.removeItem('activePage'); // clear it after switching
     }
-  }, []);
+  }, [isMounted]);
 
   const [mainSize, setMainSize] = useState('755px');
   useEffect(() => {
+    if (typeof window === 'undefined' || !isMounted) return;
+
     const ua = navigator.userAgent;
     if (ua.includes('Edg')) {
       setMainSize('755px');
     } else if (ua.includes('Chrome')) {
       setMainSize('715px');
     }
-  }, []);
+  }, [isMounted]);
 
   // 📌 handle page change
   const handlePageChange = (pageKey) => {

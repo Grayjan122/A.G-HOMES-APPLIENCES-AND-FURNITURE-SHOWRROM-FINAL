@@ -1,0 +1,68 @@
+========================================
+HOW TO UPDATE YOUR LOGIN.PHP FILE
+========================================
+
+✅ I've already edited the file for you!
+
+STEP 1: Locate the updated file
+--------------------------------
+The edited file is saved here:
+C:\Users\USER\capstone2\login_UPDATED.php
+
+
+STEP 2: Copy the updated file to XAMPP
+---------------------------------------
+Option A - Manual Copy:
+   1. Open: C:\Users\USER\capstone2\login_UPDATED.php
+   2. Copy ALL the content (Ctrl+A, then Ctrl+C)
+   3. Open: C:\xampp\htdocs\capstone-api\api\login.php
+   4. Delete everything and paste the new content (Ctrl+A, then Ctrl+V)
+   5. Save (Ctrl+S)
+
+Option B - File Replace:
+   1. Copy the file: C:\Users\USER\capstone2\login_UPDATED.php
+   2. Paste it to: C:\xampp\htdocs\capstone-api\api\
+   3. Rename it from "login_UPDATED.php" to "login.php"
+   4. Overwrite the old file
+
+
+STEP 3: Test it
+---------------
+1. Go to User Management in your app
+2. Edit a user and set status to "Deactive"
+3. Try to log in with that user
+4. You should see: "This user no longer has access to the system"
+5. Change status back to "Active"
+6. Login should work now
+
+
+WHAT I CHANGED:
+===============
+I added this code at line 62-78 (after password check):
+
+    // ⭐ CHECK ACCOUNT STATUS BEFORE ALLOWING LOGIN ⭐
+    $accountStatus = $user['status'];
+    
+    // Block deactivated accounts
+    if ($accountStatus === 'Deactive') {
+        return json_encode([
+            'error' => 'account_deactivated',
+            'message' => 'This user no longer has access...'
+        ]);
+    }
+    
+    // Block suspended accounts
+    if ($accountStatus === 'Suspended') {
+        return json_encode([
+            'error' => 'account_suspended',
+            'message' => 'Your account has been suspended...'
+        ]);
+    }
+
+This checks the user's status and blocks login if they are 
+Deactive or Suspended!
+
+
+THAT'S IT! ✅
+=============
+

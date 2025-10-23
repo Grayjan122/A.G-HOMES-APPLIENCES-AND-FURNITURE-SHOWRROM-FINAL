@@ -8,6 +8,7 @@ import Sidebar from '../Components/Sidebar-Admin/page';
 import { useState } from 'react';
 import SidebarInventory from '../Components/Sidebar-Inventory/page';
 import { LogInSuccess } from '../Components/SweetAlert/logIn';
+import InactivityLogout from '../Components/InactivityLogout/inactivityLogout';
 
 
 const InventoryPage = () => {
@@ -15,15 +16,15 @@ const InventoryPage = () => {
   const router = useRouter();
 
   const [user_id, setUser_ID] = useState('');
-
-
-
-  useEffect(() => {
-
-
-  })
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isMounted) return;
+
     const user_id = sessionStorage.getItem("user_id");
     const hasReloaded = sessionStorage.getItem("reloaded");
 
@@ -55,11 +56,11 @@ const InventoryPage = () => {
       router.push('/errorPage');
 
     }
-  }, []);
+  }, [isMounted, router]);
 
   return (
     <>
-
+      <InactivityLogout />
       <Header />
       <SidebarInventory />
 

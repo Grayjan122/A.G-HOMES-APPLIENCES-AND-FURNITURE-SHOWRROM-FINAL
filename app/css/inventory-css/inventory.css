@@ -627,8 +627,9 @@ td {
     display: flex;
     gap: 10px;
     margin-bottom: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: baseline;
+    overflow: hidden;
 }
 
 .cardLabel {
@@ -636,12 +637,17 @@ td {
     color: #444;
     font-size: 16px;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .cardValue {
     color: #222;
     font-size: 15px;
-    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
 }
 
 .statusIcon {
