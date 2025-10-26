@@ -172,15 +172,29 @@ const NotificationBell = () => {
     };
 
     const formatTimeAgo = (dateString) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const seconds = Math.floor((now - date) / 1000);
-
+        // Backend stores timestamps in Asia/Manila timezone (UTC+8)
+        // Format: "2025-10-26 13:36:20"
+        
+        // Parse the notification timestamp as Manila time (UTC+8)
+        const notifTime = new Date(dateString.replace(' ', 'T') + '+08:00');
+        
+        // Get current time in Manila timezone (UTC+8)
+        // This ensures consistency regardless of device timezone settings
+        const nowUTC = new Date();
+        const nowManila = new Date(nowUTC.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+        
+        // Calculate difference in seconds
+        const seconds = Math.floor((nowManila - notifTime) / 1000);
+        
+        // Handle edge cases
+        if (seconds < 0 || isNaN(seconds)) return 'Just now';
         if (seconds < 60) return 'Just now';
         if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
         if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
         if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-        return date.toLocaleDateString();
+        
+        // For older dates, show the actual date in Manila timezone
+        return notifTime.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' });
     };
 
     const getDropdownPosition = () => {
