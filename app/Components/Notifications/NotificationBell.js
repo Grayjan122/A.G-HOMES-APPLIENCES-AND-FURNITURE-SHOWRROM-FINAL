@@ -175,32 +175,57 @@ const NotificationBell = () => {
         // Backend stores timestamps in Asia/Manila timezone (UTC+8)
         // Format: "2025-10-26 13:36:20"
         
-        // Convert backend timestamp to UTC by treating it as Manila time
-        // Step 1: Parse the date string (YYYY-MM-DD HH:MM:SS)
-        const parts = dateString.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
-        if (!parts) return 'Just now';
-        
-        const [, year, month, day, hour, minute, second] = parts;
-        
-        // Step 2: Create a date in UTC, then subtract 8 hours to convert from Manila time
-        const notifTimeUTC = Date.UTC(year, month - 1, day, hour, minute, second) - (8 * 60 * 60 * 1000);
-        
-        // Step 3: Get current time in UTC
-        const nowUTC = Date.now();
-        
-        // Step 4: Calculate difference in seconds
-        const seconds = Math.floor((nowUTC - notifTimeUTC) / 1000);
-        
-        // Handle edge cases
-        if (seconds < 0 || isNaN(seconds)) return 'Just now';
-        if (seconds < 60) return 'Just now';
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-        if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-        
-        // For older dates, show the actual date
-        const notifDate = new Date(notifTimeUTC);
-        return notifDate.toLocaleDateString();
+        try {
+            // Parse the date string (YYYY-MM-DD HH:MM:SS)
+            const parts = dateString.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+            if (!parts) return 'Just now';
+            
+            const [, year, month, day, hour, minute, second] = parts;
+            
+            // Manila time is UTC+8
+            // If backend says "13:36:20" in Manila, the UTC time is "05:36:20"
+            // Method: Parse as UTC, then subtract 8 hours
+            const manilaTimeAsUTC = Date.UTC(
+                parseInt(year), 
+                parseInt(month) - 1, 
+                parseInt(day), 
+                parseInt(hour), 
+                parseInt(minute), 
+                parseInt(second)
+            );
+            
+            // Convert Manila time to actual UTC by subtracting 8 hours (8 * 60 * 60 * 1000 ms)
+            const actualUTC = manilaTimeAsUTC - (8 * 60 * 60 * 1000);
+            
+            // Get current time in UTC
+            const nowUTC = Date.now();
+            
+            // Calculate difference in seconds
+            const seconds = Math.floor((nowUTC - actualUTC) / 1000);
+            
+            // Debug logs (remove after testing)
+            console.log('DEBUG TIME:', {
+                original: dateString,
+                manilaAsUTC: new Date(manilaTimeAsUTC).toISOString(),
+                actualUTC: new Date(actualUTC).toISOString(),
+                now: new Date(nowUTC).toISOString(),
+                secondsAgo: seconds
+            });
+            
+            // Handle edge cases
+            if (seconds < 0) return 'Just now';
+            if (isNaN(seconds)) return 'Just now';
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+            
+            // For older dates, show the actual date
+            return new Date(actualUTC).toLocaleDateString();
+        } catch (error) {
+            console.error('Error formatting time:', error);
+            return 'Just now';
+        }
     };
 
     const getDropdownPosition = () => {
