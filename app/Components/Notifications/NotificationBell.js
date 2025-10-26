@@ -175,16 +175,21 @@ const NotificationBell = () => {
         // Backend stores timestamps in Asia/Manila timezone (UTC+8)
         // Format: "2025-10-26 13:36:20"
         
-        // Parse the notification timestamp as Manila time (UTC+8)
-        const notifTime = new Date(dateString.replace(' ', 'T') + '+08:00');
+        // Convert backend timestamp to UTC by treating it as Manila time
+        // Step 1: Parse the date string (YYYY-MM-DD HH:MM:SS)
+        const parts = dateString.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+        if (!parts) return 'Just now';
         
-        // Get current time in Manila timezone (UTC+8)
-        // This ensures consistency regardless of device timezone settings
-        const nowUTC = new Date();
-        const nowManila = new Date(nowUTC.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+        const [, year, month, day, hour, minute, second] = parts;
         
-        // Calculate difference in seconds
-        const seconds = Math.floor((nowManila - notifTime) / 1000);
+        // Step 2: Create a date in UTC, then subtract 8 hours to convert from Manila time
+        const notifTimeUTC = Date.UTC(year, month - 1, day, hour, minute, second) - (8 * 60 * 60 * 1000);
+        
+        // Step 3: Get current time in UTC
+        const nowUTC = Date.now();
+        
+        // Step 4: Calculate difference in seconds
+        const seconds = Math.floor((nowUTC - notifTimeUTC) / 1000);
         
         // Handle edge cases
         if (seconds < 0 || isNaN(seconds)) return 'Just now';
@@ -193,8 +198,9 @@ const NotificationBell = () => {
         if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
         if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
         
-        // For older dates, show the actual date in Manila timezone
-        return notifTime.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' });
+        // For older dates, show the actual date
+        const notifDate = new Date(notifTimeUTC);
+        return notifDate.toLocaleDateString();
     };
 
     const getDropdownPosition = () => {
