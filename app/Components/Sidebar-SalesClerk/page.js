@@ -63,14 +63,14 @@ const SidebarSaleClerk = () => {
     {
       key: 'dashboard',
       label: 'DASHBOARD',
-      icon: '/assets/images/dashboard.png',
+      icon: '/assets/images/dash-icons/last-dash1.png',
       component: <DashboardSalesClerk />,
       children: []
     },
     {
       key: 'pos1',
       label: 'POS',
-      icon: '/assets/images/dash-icons/ag-14.png',
+      icon: '/assets/images/dash-icons/last-pos1.png',
       component: <CombinedSalePage />,
       children: []
     },
@@ -78,14 +78,14 @@ const SidebarSaleClerk = () => {
     {
       key: 'installments',
       label: 'INSTALLMENTS',
-      icon: '/assets/images/dash-icons/ag-11.png',
+      icon: '/assets/images/dash-icons/last-installment1.png',
       component: <PaymentBehavior />,
       children: []
     },
     {
       key: 'delivery',
       label: 'DELIVERY TRACKING',
-      icon: '/assets/images/dash-icons/ag-14.png',
+      icon: '/assets/images/dash-icons/last-track-delivery1.png',
       component: <DeliveryTracking />,
       children: []
     },
@@ -99,7 +99,7 @@ const SidebarSaleClerk = () => {
     {
       key: 'customize',
       label: 'CUSTOMIZE INVENTORY',
-      icon: '/assets/images/dash-icons/ag-13.png',
+      icon: '/assets/images/dash-icons/last-customer1.png',
       component: <CustomizeInventorySC />,
       children: [
         {
@@ -113,14 +113,14 @@ const SidebarSaleClerk = () => {
     {
       key: 'customer',
       label: 'CUSTOMER',
-      icon: '/assets/images/customer.png',
+      icon: '/assets/images/dash-icons/last-customer.png',
       component: <Customer />,
       children: []
     },
     {
       key: 'profileSetting',
       label: 'PROFILE SETTING',
-      icon: '/assets/images/customer.png',
+      icon: '/assets/images/dash-icons/last-profile1.png',
       component: <ProfileSetting />,
       children: []
     // 64px

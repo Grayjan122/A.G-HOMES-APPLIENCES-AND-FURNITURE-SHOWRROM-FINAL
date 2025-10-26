@@ -55,31 +55,28 @@ const SidebarWarehouseRep = () => {
     {
       key: 'dashboard',
       label: 'Dashboard',
-      icon: '/assets/images/dashboard.png',
-      component: <DashboardWR setActivePage={setActivePage} setExpandedParent={setExpandedParent} />,
+      icon: '/assets/images/dash-icons/last-dash1.png',
+      component: <DashboardWR />,
+     
     },
     {
       key: 'inventory',
       label: 'Inventory',
-      icon: '/assets/images/inventory.png',
+      icon: '/assets/images/dash-icons/last-inventory.png',
       component: <InventoryWR />,
       children: [
-        {
-          key: 'inventory-stockin',
-          label: 'Stock In',
-          component: <StockInWR />,
-        },
         {
           key: 'inventory-ledger',
           label: 'Inventory Ledger',
           component: <InventoryLedgerWR />,
         },
       ],
+     
     },
      {
       key: 'combineRequestManagement',
       label: 'Request Management',
-      icon: '/assets/images/req-mng.png',
+      icon: '/assets/images/dash-icons/last-req-management.png',
       component: <UnifiedRequestManagement />,
       children: [
         {
@@ -141,13 +138,13 @@ const SidebarWarehouseRep = () => {
      {
       key: 'deliverycustomize',
       label: 'Delivery',
-      icon: '/assets/images/delivery-removebg-preview.png',
+      icon: '/assets/images/dash-icons/last-track-delivery1.png',
       component: <DeliveryCustomizeWR />,
     },
     {
       key: 'profileSetting',
       label: 'Profile Setting',
-      icon: '/assets/images/customer.png',
+      icon: '/assets/images/dash-icons/last-profile1.png',
       component: <ProfileSetting />,
       children: []
     }

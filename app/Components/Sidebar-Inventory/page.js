@@ -86,13 +86,13 @@ const SidebarInventory = () => {
     {
       key: 'dashboard',
       label: 'Dashboard',
-      icon: '/assets/images/dashboard.png',
+      icon: '/assets/images/dash-icons/last-dash1.png',
       component: <DashboardIM />,
     },
     {
       key: 'inventory',
       label: 'Inventory',
-      icon: '/assets/images/inventory.png',
+      icon: '/assets/images/dash-icons/last-inventory.png',
       component: <InventoryIM />,
       children: [
         {
@@ -126,7 +126,7 @@ const SidebarInventory = () => {
     {
       key: 'request-management',
       label: 'Request Stock',
-      icon: '/assets/images/22.png',
+      icon: '/assets/images/dash-icons/last-request.png',
       component: <RequestStockIM />,
       children: [
         {
@@ -139,7 +139,7 @@ const SidebarInventory = () => {
     {
       key: 'profileSetting',
       label: 'Profile Setting',
-      icon: '/assets/images/customer.png',
+      icon: '/assets/images/dash-icons/last-profile1.png',
       component: <ProfileSetting />,
       children: []
     }

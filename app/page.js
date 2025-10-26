@@ -345,6 +345,12 @@ export default function LoginPage() {
           sessionStorage.setItem('user_fname', userData.fname);
           sessionStorage.setItem('user_role', userData.role_name);
           sessionStorage.setItem('fullname', `${userData.fname} ${userData.mname || ''} ${userData.lname}`.trim());
+          
+          // ⭐ Store session token for session validation
+          if (userData.session_token) {
+            sessionStorage.setItem('session_token', userData.session_token);
+            addDebugLog('✅ Session token stored:', userData.session_token.substring(0, 10) + '...');
+          }
 
           if (userData.location_name) {
             sessionStorage.setItem('location_name', userData.location_name);
@@ -652,6 +658,12 @@ export default function LoginPage() {
             sessionStorage.setItem('user_fname', userData.fname);
             sessionStorage.setItem('user_role', userData.role_name);
             sessionStorage.setItem('fullname', `${userData.fname} ${userData.mname || ''} ${userData.lname}`.trim());
+            
+            // ⭐ Store session token for session validation
+            if (userData.session_token) {
+              sessionStorage.setItem('session_token', userData.session_token);
+              addDebugLog('✅ Session token stored:', userData.session_token.substring(0, 10) + '...');
+            }
 
             if (userData.location_name) {
               sessionStorage.setItem('location_name', userData.location_name);

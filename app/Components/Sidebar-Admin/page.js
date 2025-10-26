@@ -76,14 +76,14 @@ const Sidebar = () => {
     {
       key: 'dashboard',
       label: 'DASHBOARD',
-      icon: '/assets/images/dash-icons/ag-1.png',
+      icon: '/assets/images/dash-icons/last-dash1.png',
       component: <DashboardAdmin onNavigateToSales={handleNavigateToSales} />,
       children: []
     },
     {
       key: 'products',
       label: 'PRODUCTS',
-      icon: '/assets/images/dash-icons/ag-2.png',
+      icon: '/assets/images/dash-icons/last-product.png',
       component: <ProductsAdmin />,
       children: [
          {
@@ -96,14 +96,14 @@ const Sidebar = () => {
     {
       key: 'sales',
       label: 'SALES',
-      icon: '/assets/images/dash-icons/ag-3.png',
+      icon: '/assets/images/dash-icons/last-sale.png',
       component: <SaleAdmin initialFilters={salesFilterData} />,
       children: []
     },
     {
       key: 'inventory',
       label: 'INVENTORY',
-      icon: '/assets/images/dash-icons/ag-4.png',
+      icon: '/assets/images/dash-icons/last-inventory.png',
       component: <InventoryIM />,
       children: [
         {
@@ -116,7 +116,7 @@ const Sidebar = () => {
     {
       key: 'locations',
       label: 'LOCATIONS',
-      icon: '/assets/images/dash-icons/ag-5.png',
+      icon: '/assets/images/dash-icons/last-location.png',
       component: <Location />,
       children: [
           {
@@ -126,38 +126,38 @@ const Sidebar = () => {
         },
       ]
     },
-    {
-      key: 'delivery',
-      label: 'DELIVERY',
-      icon: '/assets/images/dash-icons/ag-6.png',
-      component: <DeliveryAdmin />,
-      children: []
-    },
+    // {
+    //   key: 'delivery',
+    //   label: 'DELIVERY',
+    //   icon: '/assets/images/dash-icons/ag-6.png',
+    //   component: <DeliveryAdmin />,
+    //   children: []
+    // },
     {
       key: 'customer',
       label: 'CUSTOMER',
-      icon: '/assets/images/dash-icons/ag-7.png',
+      icon: '/assets/images/dash-icons/last-customer.png',
       component: <Customer />,
       children: []
     },
     {
       key: 'users',
       label: 'USERS',
-      icon: '/assets/images/dash-icons/ag-8.png',
+      icon: '/assets/images/dash-icons/last-user4.png',
       component: <User />,
       children: []
     },
     {
       key: 'audit',
       label: 'AUDIT LOG',
-      icon: '/assets/images/dash-icons/ag-9.png',
+      icon: '/assets/images/dash-icons/last-log2.png',
       component: <Audit />,
       children: []
     },
     {
       key: 'profileSetting',
       label: 'PROFILE SETTING',
-      icon: '/assets/images/dash-icons/ag-8.png',
+      icon: '/assets/images/dash-icons/last-profile1.png',
       component: <ProfileSetting />,
       children: []
     }
@@ -267,7 +267,7 @@ const Sidebar = () => {
                     }
                   }}
                 >
-                  <Image src={page.icon} width={50} height={50} alt={page.label} />
+                  <Image src={page.icon} width={40} height={40} alt={page.label} />
                   {page.label}
                 </p>
 

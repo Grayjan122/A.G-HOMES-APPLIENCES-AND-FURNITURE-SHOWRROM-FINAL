@@ -33,11 +33,22 @@ export default function SessionValidator() {
     // Function to check if session is still valid
     const checkSessionValidity = async () => {
       try {
+        const sessionToken = sessionStorage.getItem('session_token');
+        
+        // If no session token, it might be an old session or database not updated
+        // Don't logout - just log warning and skip check
+        if (!sessionToken) {
+          console.warn('⚠️ No session token found. Session validation skipped.');
+          console.warn('💡 Tip: Make sure database has session_token column.');
+          return; // Skip validation if no token
+        }
+        
         const url = baseURL + 'session-check.php';
         const response = await axios.get(url, {
           params: {
             json: JSON.stringify({
-              userID: userId
+              userID: userId,
+              sessionToken: sessionToken
             }),
             operation: 'checkSession'
           },
@@ -110,14 +121,14 @@ export default function SessionValidator() {
       }
     };
 
-    // Wait 3 seconds before starting checks (to avoid checking immediately after login)
+    // Wait 5 seconds before starting checks (to ensure session is fully established)
     const startupDelay = setTimeout(() => {
-      // Check session validity every 3 seconds (faster detection)
-      checkIntervalRef.current = setInterval(checkSessionValidity, 3000);
+      // Check session validity every 10 seconds (reduced frequency for stability)
+      checkIntervalRef.current = setInterval(checkSessionValidity, 10000);
       
       // Initial check (after delay)
       checkSessionValidity();
-    }, 3000); // Wait 3 seconds after page load
+    }, 5000); // Wait 5 seconds after page load to ensure session is established
 
     // Cleanup
     return () => {
