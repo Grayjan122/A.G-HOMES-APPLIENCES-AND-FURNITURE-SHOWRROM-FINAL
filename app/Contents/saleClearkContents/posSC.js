@@ -6,6 +6,8 @@ import { AlertSucces } from '@/app/Components/SweetAlert/success';
 import { showAlertError } from '@/app/Components/SweetAlert/error';
 import CustomPagination from '@/app/Components/Pagination/pagination';
 
+// Note: useEffect is already imported above and will be used by the CustomizeManagementModal component
+
 export default function CombinedSalePage() {
   const [user_id, setUser_id] = useState('');
   const [location_id, setLocation_id] = useState('');
@@ -111,7 +113,7 @@ export default function CombinedSalePage() {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [customerType, setCustomerType] = useState('customer');
+  const [customerType, setCustomerType] = useState('customer'); // Default to customer, all sales require a customer
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const [discountType, setDiscountType] = useState('percentage');
@@ -137,6 +139,11 @@ export default function CombinedSalePage() {
   const [partialPaymentAmount, setPartialPaymentAmount] = useState('');
   const [usePartialPayment, setUsePartialPayment] = useState(false);
 
+  // Delivery states
+  const [needsDelivery, setNeedsDelivery] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [preferredDeliveryTime, setPreferredDeliveryTime] = useState('');
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -146,6 +153,9 @@ export default function CombinedSalePage() {
   const [customizationType, setCustomizationType] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingCartItem, setEditingCartItem] = useState(null);
+
+  // Customization Management Modal
+  const [showCustomizeManagementModal, setShowCustomizeManagementModal] = useState(false);
   const [customization, setCustomization] = useState({
     product_name: '',
     description: '',
@@ -154,6 +164,59 @@ export default function CombinedSalePage() {
     quantity: 1,
     isCustom: false
   });
+
+  // Cart highlight effect
+  const [highlightCart, setHighlightCart] = useState(false);
+  const cartRef = React.useRef(null);
+  
+  // Refs for form fields
+  const customerSearchRef = React.useRef(null);
+  const deliveryAddressRef = React.useRef(null);
+  const warehouseSelectRef = React.useRef(null);
+  const partialPaymentRef = React.useRef(null);
+
+  // Function to scroll and highlight cart
+  const focusOnCart = () => {
+    if (cartRef.current) {
+      cartRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setHighlightCart(true);
+      setTimeout(() => setHighlightCart(false), 1000); // Remove highlight after 1 second
+    }
+  };
+
+  // Function to scroll to and focus on a field
+  const scrollToField = (ref) => {
+    if (ref && ref.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => {
+        if (ref.current) {
+          ref.current.focus();
+          // Add a temporary highlight effect
+          const originalBorder = ref.current.style.border;
+          ref.current.style.border = '2px solid #7c3aed';
+          setTimeout(() => {
+            if (ref.current) {
+              ref.current.style.border = originalBorder;
+            }
+          }, 2000);
+        }
+      }, 500);
+    }
+  };
+
+  // Check if sale can be processed
+  const canProcessSale = () => {
+    const checks = {
+      hasItems: cart.length > 0,
+      hasCustomer: selectedCustomer !== null, // All sales require a customer
+      hasValidPartialPayment: paymentPlan === 'full' && usePartialPayment 
+        ? (partialPaymentAmount >= calculateMinimumPartialPayment())
+        : true,
+      hasDeliveryAddress: needsDelivery ? deliveryAddress.trim() !== '' : true,
+      hasWarehouse: saleMode === 'custom' ? requestTo !== '' : true
+    };
+    return checks;
+  };
 
   const GetInventory = async () => {
     const locID = sessionStorage.getItem('location_id');
@@ -328,6 +391,9 @@ export default function CombinedSalePage() {
 
     setShowCustomizationModal(false);
     resetCustomization();
+    
+    // Focus on cart after adding item
+    setTimeout(() => focusOnCart(), 100);
   };
 
   const resetCustomization = () => {
@@ -372,6 +438,9 @@ export default function CombinedSalePage() {
       } else {
         setCart([...cart, { ...product, quantity: 1 }]);
       }
+      
+      // Focus on cart after adding item
+      setTimeout(() => focusOnCart(), 100);
     } else {
       // For custom mode, directly open customization
       openCustomization('semi', product);
@@ -515,8 +584,18 @@ export default function CombinedSalePage() {
         monthlyPayment,
         totalWithInterest
       }));
+      
+      // Auto-enable delivery for installment plans
+      setNeedsDelivery(true);
     }
   }, [paymentPlan, installmentDetails.months, installmentDetails.interestRate, cart, discountValue, customDownpayment]);
+
+  // Auto-enable delivery for custom sales mode
+  useEffect(() => {
+    if (saleMode === 'custom') {
+      setNeedsDelivery(true);
+    }
+  }, [saleMode]);
 
   const showReceiptModal = (transaction) => {
     setLastTransaction(transaction);
@@ -539,31 +618,12 @@ export default function CombinedSalePage() {
       return;
     }
 
-    if (!customerType && saleMode === 'inventory') {
-      showAlertError({
-        icon: "error",
-        title: "Customer Type Required!",
-        text: 'Please select customer type (Walk-in or Customer).',
-        button: 'Okay'
-      });
-      return;
-    }
-
-    if (customerType === 'customer' && !selectedCustomer) {
+    // All sales require a customer
+    if (!selectedCustomer) {
       showAlertError({
         icon: "error",
         title: "Customer Required!",
-        text: 'Please select a customer.',
-        button: 'Okay'
-      });
-      return;
-    }
-
-    if (saleMode === 'custom' && !selectedCustomer) {
-      showAlertError({
-        icon: "error",
-        title: "Customer Required!",
-        text: 'Please select a customer for custom orders.',
+        text: 'Please select a customer to proceed.',
         button: 'Okay'
       });
       return;
@@ -574,6 +634,17 @@ export default function CombinedSalePage() {
         icon: "error",
         title: "Invalid Partial Payment!",
         text: 'Partial payment must be at least 50% of the total amount.',
+        button: 'Okay'
+      });
+      return;
+    }
+
+    // Validate delivery information
+    if (needsDelivery && !deliveryAddress.trim()) {
+      showAlertError({
+        icon: "error",
+        title: "Delivery Address Required!",
+        text: 'Please provide a delivery address.',
         button: 'Okay'
       });
       return;
@@ -615,7 +686,7 @@ export default function CombinedSalePage() {
 
       if (paymentPlan === 'full') {
         const PurchaseDetails = {
-          custID: customerType === 'walk-in' ? null : selectedCustomer.cust_id,
+          custID: selectedCustomer.cust_id, // All sales require a customer
           accID: accountID,
           locID: locId,
           payMethod: paymentMethod,
@@ -625,11 +696,14 @@ export default function CombinedSalePage() {
           total: calculateTotal(),
           paymentPlan: paymentPlan,
           amountPaid: calculateAmountDueToday(),
-          remainingBalance: calculateRemainingBalance()
+          remainingBalance: calculateRemainingBalance(),
+          needsDelivery: needsDelivery,
+          deliveryAddress: deliveryAddress,
+          preferredDeliveryTime: preferredDeliveryTime
         };
 
         try {
-          const operation = customerType === 'walk-in' ? "walkSale" : "customerSale";
+          const operation = "customerSale"; // All sales are customer sales
 
           const response = await axios.get(url, {
             params: {
@@ -644,7 +718,7 @@ export default function CombinedSalePage() {
           if (!isNaN(response.data) && response.data !== null && response.data !== "") {
             const transaction = {
               invoice_id: response.data,
-              customer: customerType === 'walk-in' ? 'walk-in' : selectedCustomer,
+              customer: selectedCustomer,
               items: [...cart],
               subtotal: calculateSubtotal(),
               discount: calculateDiscount(),
@@ -665,10 +739,7 @@ export default function CombinedSalePage() {
             // Reset form
             resetForm();
 
-            const activity = customerType === 'walk-in' ?
-              `Processed a walk-in customer sale at ${locName}, Invoice #${response.data}` :
-              `Processed a customer sale at ${locName}, Invoice #${response.data}`;
-
+            const activity = `Processed a customer sale at ${locName}, Invoice #${response.data}`;
             Logs(accountID, activity);
 
           } else {
@@ -691,11 +762,8 @@ export default function CombinedSalePage() {
           });
         }
       } else if (paymentPlan === 'installment') {
-        const list1 = generatePaymentDates().map((date, index) => ({
-          paymentNumber: index + 1,
-          paymentDate: date,
-          amountDue: installmentDetails.monthlyPayment,
-        }));
+        // Payment schedule will ALWAYS be created after delivery, not at purchase time
+        const list1 = [];
 
         const firstProductId = cart.length > 0 ? cart[0].product_id : null;
 
@@ -726,6 +794,9 @@ export default function CombinedSalePage() {
           locID: locId,
           accID: accountID,
           prodID: firstProductId,
+          needsDelivery: needsDelivery,
+          deliveryAddress: deliveryAddress,
+          preferredDeliveryTime: preferredDeliveryTime
         };
 
         try {
@@ -760,8 +831,7 @@ export default function CombinedSalePage() {
                 monthly_payment: installmentDetails.monthlyPayment,
                 months: installmentDetails.months,
                 interest_rate: installmentDetails.interestRate,
-                total_with_interest: installmentDetails.totalWithInterest,
-                payment_dates: generatePaymentDates()
+                total_with_interest: installmentDetails.totalWithInterest
               },
               date: new Date().toLocaleDateString(),
               time: new Date().toLocaleTimeString(),
@@ -822,7 +892,10 @@ export default function CombinedSalePage() {
           paymentPlan: paymentPlan,
           amountPaid: calculateAmountDueToday(),
           remainingBalance: calculateRemainingBalance(),
-          warehouseID: requestTo
+          warehouseID: requestTo,
+          needsDelivery: needsDelivery,
+          deliveryAddress: deliveryAddress,
+          preferredDeliveryTime: preferredDeliveryTime
         };
 
         const semiBasedProducts = [];
@@ -878,6 +951,35 @@ export default function CombinedSalePage() {
 
             showReceiptModal(transaction);
 
+            // Send notification to warehouse
+            try {
+              const notificationUrl = baseURL + 'notifications.php';
+              const warehouseName = locationList.find(l => l.location_id == requestTo)?.location_name || 'Warehouse';
+              
+              const notificationData = {
+                type: 'custom_order',
+                title: 'New Customization Order',
+                message: `New customization order from ${locName}. Invoice #${response.data}. Customer: ${selectedCustomer.cust_name}. ${cart.length} item(s) ordered.`,
+                locationId: requestTo,
+                targetRole: 'Warehouse Representative',
+                productId: null,
+                customerId: selectedCustomer.cust_id,
+                referenceId: response.data
+              };
+
+              await axios.get(notificationUrl, {
+                params: {
+                  json: JSON.stringify(notificationData),
+                  operation: "CreateNotification"
+                }
+              });
+
+              console.log('Warehouse notification sent successfully');
+            } catch (notificationError) {
+              console.error("Error sending warehouse notification:", notificationError);
+              // Don't block the sale if notification fails
+            }
+
             // Reset form
             resetForm();
 
@@ -901,11 +1003,8 @@ export default function CombinedSalePage() {
           });
         }
       } else if (paymentPlan === 'installment') {
-        const list1 = generatePaymentDates().map((date, index) => ({
-          paymentNumber: index + 1,
-          paymentDate: date,
-          amountDue: installmentDetails.monthlyPayment,
-        }));
+        // Payment schedule will ALWAYS be created after delivery, not at purchase time
+        const list1 = [];
 
         const total = calculateTotal();
         const installmentDetails1 = {
@@ -923,9 +1022,13 @@ export default function CombinedSalePage() {
           custID: selectedCustomer.cust_id,
           locID: locId,
           accID: accountID,
+          warehouseID: requestTo,
+          needsDelivery: needsDelivery,
+          deliveryAddress: deliveryAddress,
+          preferredDeliveryTime: preferredDeliveryTime
         };
 
-        return;
+        // return;
 
         try {
           const operation = 'CustomizeinstallmentPlan';
@@ -964,8 +1067,7 @@ export default function CombinedSalePage() {
                 monthly_payment: installmentDetails.monthlyPayment,
                 months: installmentDetails.months,
                 interest_rate: installmentDetails.interestRate,
-                total_with_interest: installmentDetails.totalWithInterest,
-                payment_dates: generatePaymentDates()
+                total_with_interest: installmentDetails.totalWithInterest
               },
               date: new Date().toLocaleDateString(),
               time: new Date().toLocaleTimeString(),
@@ -973,6 +1075,35 @@ export default function CombinedSalePage() {
             };
 
             showReceiptModal(transaction);
+
+            // Send notification to warehouse for installment custom order
+            try {
+              const notificationUrl = baseURL + 'notifications.php';
+              const warehouseName = locationList.find(l => l.location_id == requestTo)?.location_name || 'Warehouse';
+              
+              const notificationData = {
+                type: 'custom_order_installment',
+                title: 'New Customization Installment Order',
+                message: `New customization INSTALLMENT order from ${locName}. Invoice #${response.data}. Customer: ${selectedCustomer.cust_name}. ${cart.length} item(s) ordered. ${installmentDetails.months}-month plan.`,
+                locationId: requestTo,
+                targetRole: 'Warehouse Representative',
+                productId: null,
+                customerId: selectedCustomer.cust_id,
+                referenceId: response.data
+              };
+
+              await axios.get(notificationUrl, {
+                params: {
+                  json: JSON.stringify(notificationData),
+                  operation: "CreateNotification"
+                }
+              });
+
+              console.log('Warehouse notification sent successfully for installment order');
+            } catch (notificationError) {
+              console.error("Error sending warehouse notification:", notificationError);
+              // Don't block the sale if notification fails
+            }
 
             // Reset form
             resetForm();
@@ -1003,7 +1134,7 @@ export default function CombinedSalePage() {
   const resetForm = () => {
     setCart([]);
     setPaymentMethod("cash");
-    setCustomerType('');
+    // Keep customerType as 'customer' - all sales require a customer
     setSelectedCustomer(null);
     setCustomerSearchTerm('');
     setDiscountValue(0);
@@ -1012,6 +1143,9 @@ export default function CombinedSalePage() {
     setCustomDownpayment('');
     setUsePartialPayment(false);
     setPartialPaymentAmount('');
+    setNeedsDelivery(false);
+    setDeliveryAddress('');
+    setPreferredDeliveryTime('');
     setInstallmentDetails({
       months: 3,
       interestRate: 0,
@@ -1088,7 +1222,7 @@ export default function CombinedSalePage() {
               }}>
                 <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
                   <span style={{ color: '#10b981', marginRight: '8px' }}>✓</span>
-                  Payment Successful!
+                  {lastTransaction.payment_type === 'Balance Payment' ? 'Balance Payment Receipt!' : 'Payment Successful!'}
                 </h3>
                 <button
                   onClick={closeReceipt}
@@ -1137,15 +1271,11 @@ export default function CombinedSalePage() {
                     background: '#f9fafb',
                     borderRadius: '8px'
                   }}>
-                    {lastTransaction.customer === 'walk-in' ? (
-                      <div style={{ fontStyle: 'italic', color: '#6b7280' }}>Walk-in Customer</div>
-                    ) : (
-                      <div>
-                        <div style={{ fontWeight: '600' }}>Name: {lastTransaction.customer.cust_name}</div>
-                        <div style={{ color: '#6b7280' }}>Phone: {lastTransaction.customer.phone}</div>
-                        <div style={{ color: '#6b7280' }}>Email: {lastTransaction.customer.email}</div>
-                      </div>
-                    )}
+                    <div>
+                      <div style={{ fontWeight: '600' }}>Name: {lastTransaction.customer.cust_name}</div>
+                      <div style={{ color: '#6b7280' }}>Phone: {lastTransaction.customer.phone}</div>
+                      <div style={{ color: '#6b7280' }}>Email: {lastTransaction.customer.email}</div>
+                    </div>
                   </div>
                 </div>
 
@@ -1223,7 +1353,46 @@ export default function CombinedSalePage() {
                     background: '#f9fafb',
                     borderRadius: '8px'
                   }}>
-                    {lastTransaction.payment_plan === 'installment' ? (
+                    {lastTransaction.payment_type === 'Balance Payment' ? (
+                      <>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
+                          <span>Original Invoice:</span>
+                          <span>#{lastTransaction.original_invoice}</span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
+                          <span>Total Order Amount:</span>
+                          <span>₱{(lastTransaction.total_price || 0).toLocaleString()}</span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
+                          <span>Total Paid:</span>
+                          <span style={{ color: '#10b981' }}>₱{(lastTransaction.total_paid || 0).toLocaleString()}</span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          paddingTop: '8px',
+                          borderTop: '2px solid #e5e7eb',
+                          color: lastTransaction.new_balance > 0 ? '#dc2626' : '#10b981'
+                        }}>
+                          <span>Remaining Balance:</span>
+                          <span>₱{(lastTransaction.new_balance || 0).toLocaleString()}</span>
+                        </div>
+                      </>
+                    ) : lastTransaction.payment_plan === 'installment' ? (
                       <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -1279,40 +1448,73 @@ export default function CombinedSalePage() {
                   </h5>
                   <div style={{
                     padding: '12px',
-                    background: lastTransaction.payment_plan === 'installment' ? '#fff7ed' : '#f0fdf4',
-                    border: `1px solid ${lastTransaction.payment_plan === 'installment' ? '#fed7aa' : '#bbf7d0'}`,
+                    background: lastTransaction.payment_type === 'Balance Payment' ? '#eff6ff' : (lastTransaction.payment_plan === 'installment' ? '#fff7ed' : '#f0fdf4'),
+                    border: `1px solid ${lastTransaction.payment_type === 'Balance Payment' ? '#bfdbfe' : (lastTransaction.payment_plan === 'installment' ? '#fed7aa' : '#bbf7d0')}`,
                     borderRadius: '8px'
                   }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      marginBottom: '8px'
-                    }}>
-                      <span style={{ fontWeight: '500' }}>Payment Method:</span>
-                      <span style={{ textTransform: 'uppercase' }}>
-                        {lastTransaction.payment_method}
-                      </span>
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      marginBottom: '8px'
-                    }}>
-                      <span style={{ fontWeight: '500' }}>Payment Plan:</span>
-                      <span>
-                        {lastTransaction.payment_plan === 'full' ? 'Full Payment' : 'Installment Plan'}
-                      </span>
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: lastTransaction.payment_plan === 'installment' ? '#f59e0b' : '#10b981'
-                    }}>
-                      <span>Amount Paid Today:</span>
-                      <span>₱{(lastTransaction.amount_paid || 0).toLocaleString()}</span>
-                    </div>
+                    {lastTransaction.payment_type === 'Balance Payment' ? (
+                      <>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
+                          <span style={{ fontWeight: '500' }}>Payment Type:</span>
+                          <span>{lastTransaction.payment_type}</span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
+                          <span style={{ fontWeight: '500' }}>Previous Balance:</span>
+                          <span style={{ color: '#dc2626' }}>₱{(lastTransaction.previous_balance || 0).toLocaleString()}</span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#10b981'
+                        }}>
+                          <span>Amount Paid Today:</span>
+                          <span>₱{(lastTransaction.amount_paid || 0).toLocaleString()}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
+                          <span style={{ fontWeight: '500' }}>Payment Method:</span>
+                          <span style={{ textTransform: 'uppercase' }}>
+                            {lastTransaction.payment_method}
+                          </span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
+                          <span style={{ fontWeight: '500' }}>Payment Plan:</span>
+                          <span>
+                            {lastTransaction.payment_plan === 'full' ? 'Full Payment' : 'Installment Plan'}
+                          </span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: lastTransaction.payment_plan === 'installment' ? '#f59e0b' : '#10b981'
+                        }}>
+                          <span>Amount Paid Today:</span>
+                          <span>₱{(lastTransaction.amount_paid || 0).toLocaleString()}</span>
+                        </div>
+                      </>
+                    )}
 
                     {lastTransaction.remainingBalance > 0 && (
                       <div style={{
@@ -1387,25 +1589,43 @@ export default function CombinedSalePage() {
                             Payment Schedule:
                           </div>
                           <div style={{
-                            maxHeight: '120px',
-                            overflowY: 'auto',
-                            fontSize: '12px'
+                            padding: '14px',
+                            background: 'linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%)',
+                            border: '2px solid #3b82f6',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            color: '#1e40af'
                           }}>
-                            {lastTransaction.installment_details.payment_dates.map((date, index) => (
-                              <div
-                                key={index}
-                                style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  marginBottom: '4px'
-                                }}
-                              >
-                                <span>Payment #{index + 1}: {date}</span>
-                                <span style={{ fontWeight: '600' }}>
-                                  ₱{lastTransaction.installment_details.monthly_payment.toLocaleString()}
-                                </span>
-                              </div>
-                            ))}
+                            <div style={{ 
+                              fontWeight: '700', 
+                              marginBottom: '8px',
+                              fontSize: '14px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              <span style={{ fontSize: '18px' }}>📅</span>
+                              Schedule Will Be Created After Delivery
+                            </div>
+                            <div style={{ 
+                              fontSize: '12px', 
+                              lineHeight: '1.6',
+                              marginBottom: '10px',
+                              color: '#1e3a8a'
+                            }}>
+                              The payment schedule will be automatically generated once the item is delivered to the customer. 
+                              The first monthly payment will be due <strong>one month from the delivery date</strong>.
+                            </div>
+                            <div style={{ 
+                              background: 'rgba(255, 255, 255, 0.7)',
+                              padding: '10px',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              color: '#1e3a8a'
+                            }}>
+                              💰 Monthly Payment: ₱{lastTransaction.installment_details.monthly_payment.toLocaleString()} × {lastTransaction.installment_details.months} months
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1567,14 +1787,9 @@ export default function CombinedSalePage() {
 
                       <div class="info-section">
                         <h3>Customer Information</h3>
-                        ${lastTransaction.customer === 'walk-in'
-                        ? '<div style="font-style: italic; color: #666;">Walk-in Customer</div>'
-                        : `
-                            <div><strong>Name:</strong> ${lastTransaction.customer.cust_name}</div>
-                            <div><strong>Phone:</strong> ${lastTransaction.customer.phone}</div>
-                            <div><strong>Email:</strong> ${lastTransaction.customer.email}</div>
-                          `
-                      }
+                        <div><strong>Name:</strong> ${lastTransaction.customer.cust_name}</div>
+                        <div><strong>Phone:</strong> ${lastTransaction.customer.phone}</div>
+                        <div><strong>Email:</strong> ${lastTransaction.customer.email}</div>
                       </div>
 
                       <div class="info-section">
@@ -2089,6 +2304,39 @@ export default function CombinedSalePage() {
                 </button>
               </div>
 
+              {/* Customization Management Button */}
+              <div style={{ marginTop: '12px' }}>
+                <button
+                  onClick={() => setShowCustomizeManagementModal(true)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '2px solid #7c3aed',
+                    background: 'white',
+                    color: '#7c3aed',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#7c3aed';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.color = '#7c3aed';
+                  }}
+                >
+                  🛠️ Manage Customization Orders
+                </button>
+              </div>
+
               {saleMode === 'custom' && (
                 <div style={{
                   marginTop: '12px',
@@ -2357,31 +2605,55 @@ export default function CombinedSalePage() {
               </div>
 
               {/* Cart Section */}
-              <div style={{
-                background: 'white',
-                borderRadius: '16px',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                padding: '24px',
-                height: 'fit-content',
-                minHeight: window.innerWidth > 1024 ? '800px' : 'auto',
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>
+              <div 
+                ref={cartRef}
+                style={{
+                  background: 'white',
+                  borderRadius: '16px',
+                  boxShadow: highlightCart 
+                    ? '0 0 0 4px rgba(124, 58, 237, 0.3), 0 10px 25px rgba(0,0,0,0.1)' 
+                    : '0 10px 25px rgba(0,0,0,0.1)',
+                  padding: '24px',
+                  height: 'fit-content',
+                  minHeight: window.innerWidth > 1024 ? '800px' : 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'box-shadow 0.3s ease-in-out',
+                  position: 'relative'
+                }}
+              >
+                <h2 style={{ 
+                  fontSize: '24px', 
+                  fontWeight: 'bold', 
+                  marginBottom: '16px',
+                  color: highlightCart ? '#7c3aed' : '#1f2937',
+                  transition: 'color 0.3s ease-in-out'
+                }}>
                   🛒 Cart
+                  {highlightCart && (
+                    <span style={{
+                      marginLeft: '8px',
+                      fontSize: '14px',
+                      color: '#10b981',
+                      fontWeight: 'normal',
+                      animation: 'fadeIn 0.3s ease-in-out'
+                    }}>
+                      ✓ Item added!
+                    </span>
+                  )}
                 </h2>
 
-                {/* Customer Type Selection */}
+                {/* Customer Type Selection - HIDDEN: All sales require a customer */}
 
-
-                {/* Customer Search and Selection */}
-                {(customerType === 'customer' || saleMode === 'custom') && (
+                {/* Customer Search and Selection - Always shown */}
+                {true && (
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontSize: '20px', fontWeight: '500', marginBottom: '8px' }}>
-                      Select Customer
+                      Select Customer *
                     </label>
                     <div style={{ position: 'relative', marginBottom: '8px' }}>
                       <input
+                        ref={customerSearchRef}
                         type="text"
                         placeholder="Search customers by name, email, or phone..."
                         value={customerSearchTerm}
@@ -2731,6 +3003,7 @@ export default function CombinedSalePage() {
                             Payment Amount (Min 50%: ₱{calculateMinimumPartialPayment().toLocaleString()})
                           </label>
                           <input
+                            ref={partialPaymentRef}
                             type="number"
                             value={partialPaymentAmount}
                             onChange={(e) => {
@@ -3034,7 +3307,7 @@ export default function CombinedSalePage() {
                           )}
                         </div>
 
-                        {/* Payment Schedule Preview */}
+                        {/* Payment Schedule Info */}
                         <div style={{
                           marginTop: '8px',
                           paddingTop: '8px',
@@ -3044,21 +3317,19 @@ export default function CombinedSalePage() {
                             fontSize: '11px',
                             fontWeight: '600',
                             color: '#92400e',
-                            marginBottom: '4px'
+                            marginBottom: '6px'
                           }}>
                             Payment Schedule:
                           </div>
                           <div style={{
                             fontSize: '10px',
                             color: '#78350f',
-                            maxHeight: '60px',
-                            overflowY: 'auto'
+                            padding: '6px 8px',
+                            background: 'rgba(254, 243, 199, 0.5)',
+                            borderRadius: '4px',
+                            lineHeight: '1.4'
                           }}>
-                            {generatePaymentDates().map((date, index) => (
-                              <div key={index} style={{ marginBottom: '1px' }}>
-                                Payment #{index + 1}: {date} - ₱{installmentDetails.monthlyPayment.toLocaleString()}
-                              </div>
-                            ))}
+                            📅 Schedule will be created after delivery. First payment due one month from delivery date.
                           </div>
                         </div>
                       </div>
@@ -3128,6 +3399,131 @@ export default function CombinedSalePage() {
                     </button>
                   </div>
                 </div>
+
+                {/* Delivery Option */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{
+                    background: '#f0f9ff',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid #bae6fd'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                      <input
+                        type="checkbox"
+                        id="deliveryOption"
+                        checked={needsDelivery}
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          setNeedsDelivery(isChecked);
+                          if (!isChecked) {
+                            setDeliveryAddress('');
+                            setPreferredDeliveryTime('');
+                          }
+                        }}
+                        disabled={paymentPlan === 'installment' || saleMode === 'custom'}
+                        style={{ 
+                          cursor: (paymentPlan === 'installment' || saleMode === 'custom') ? 'not-allowed' : 'pointer',
+                          width: '16px',
+                          height: '16px'
+                        }}
+                      />
+                      <label
+                        htmlFor="deliveryOption"
+                        style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#0369a1',
+                          cursor: (paymentPlan === 'installment' || saleMode === 'custom') ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        🚚 Customer wants delivery
+                        {(paymentPlan === 'installment' || saleMode === 'custom') && (
+                          <span style={{ fontSize: '12px', color: '#f59e0b', marginLeft: '8px' }}>
+                            (Required)
+                          </span>
+                        )}
+                      </label>
+                    </div>
+
+                    {needsDelivery && (
+                      <div style={{ marginTop: '12px' }}>
+                        <div style={{ marginBottom: '12px' }}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#0c4a6e'
+                          }}>
+                            Delivery Address / Note *
+                          </label>
+                          <textarea
+                            ref={deliveryAddressRef}
+                            value={deliveryAddress}
+                            onChange={(e) => setDeliveryAddress(e.target.value)}
+                            rows={3}
+                            placeholder="Enter complete delivery address and any special instructions..."
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              border: '1px solid #bae6fd',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                              resize: 'vertical',
+                              boxSizing: 'border-box',
+                              fontFamily: 'inherit'
+                            }}
+                          />
+                        </div>
+
+                        {/* Show preferred time only for non-custom orders */}
+                        {saleMode !== 'custom' && (
+                          <div>
+                            <label style={{
+                              display: 'block',
+                              fontSize: '13px',
+                              fontWeight: '500',
+                              marginBottom: '6px',
+                              color: '#0c4a6e'
+                            }}>
+                              Preferred Delivery Time (Optional)
+                            </label>
+                            <input
+                              type="datetime-local"
+                              value={preferredDeliveryTime}
+                              onChange={(e) => setPreferredDeliveryTime(e.target.value)}
+                              min={new Date().toISOString().slice(0, 16)}
+                              style={{
+                                width: '100%',
+                                padding: '8px',
+                                border: '1px solid #bae6fd',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                boxSizing: 'border-box'
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {saleMode === 'custom' && (
+                          <div style={{
+                            fontSize: '12px',
+                            color: '#0369a1',
+                            fontStyle: 'italic',
+                            marginTop: '8px',
+                            padding: '8px',
+                            background: '#e0f2fe',
+                            borderRadius: '4px'
+                          }}>
+                            ℹ️ Custom orders will be delivered once completed. Delivery time will be communicated separately.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Warehouse Selection for Custom Orders */}
                 {saleMode === 'custom' && (
                   <div style={{ marginBottom: '16px' }}>
@@ -3141,6 +3537,7 @@ export default function CombinedSalePage() {
                       🏭 Send Request To Warehouse *
                     </label>
                     <select
+                      ref={warehouseSelectRef}
                       value={requestTo}
                       onChange={(e) => setRequestTo(e.target.value)}
                       style={{
@@ -3264,21 +3661,275 @@ export default function CombinedSalePage() {
                   </div>
                 </div>
 
+                {/* Sales Processing Guide/Checklist */}
+                <div style={{
+                  marginTop: '16px',
+                  padding: '16px',
+                  background: 'linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%)',
+                  borderRadius: '12px',
+                  border: '2px solid #bae6fd'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    marginBottom: '12px',
+                    gap: '8px'
+                  }}>
+                    <span style={{ fontSize: '18px' }}>📋</span>
+                    <h3 style={{
+                      margin: 0,
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#1e40af'
+                    }}>
+                      Before You Process
+                    </h3>
+                  </div>
+
+                  {(() => {
+                    const checks = canProcessSale();
+                    const allComplete = Object.values(checks).every(Boolean);
+
+                    return (
+                      <>
+                        {/* Cart Items */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 0',
+                          borderBottom: '1px solid #dbeafe'
+                        }}>
+                          <span style={{ fontSize: '16px' }}>
+                            {checks.hasItems ? '✅' : '⚠️'}
+                          </span>
+                          <span style={{
+                            fontSize: '13px',
+                            color: checks.hasItems ? '#065f46' : '#dc2626',
+                            fontWeight: checks.hasItems ? '500' : '600'
+                          }}>
+                            {checks.hasItems
+                              ? `${cart.length} item${cart.length > 1 ? 's' : ''} in cart`
+                              : 'Add items to cart'}
+                          </span>
+                        </div>
+
+                        {/* Customer Selection - Required for all sales */}
+                        <div 
+                          onClick={() => !checks.hasCustomer && scrollToField(customerSearchRef)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 0',
+                            borderBottom: '1px solid #dbeafe',
+                            cursor: !checks.hasCustomer ? 'pointer' : 'default',
+                            transition: 'background 0.2s',
+                            borderRadius: '4px',
+                            paddingLeft: '4px',
+                            paddingRight: '4px'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!checks.hasCustomer) {
+                              e.currentTarget.style.background = '#f0f9ff';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          <span style={{ fontSize: '16px' }}>
+                            {checks.hasCustomer ? '✅' : '⚠️'}
+                          </span>
+                          <span style={{
+                            fontSize: '13px',
+                            color: checks.hasCustomer ? '#065f46' : '#dc2626',
+                            fontWeight: checks.hasCustomer ? '500' : '600'
+                          }}>
+                            {checks.hasCustomer
+                              ? `Customer: ${selectedCustomer?.cust_name}`
+                              : 'Select a customer'}
+                            {!checks.hasCustomer && (
+                              <span style={{ fontSize: '11px', marginLeft: '6px', color: '#0369a1' }}>
+                                (click to focus)
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Warehouse (Custom Mode Only) */}
+                        {saleMode === 'custom' && (
+                          <div 
+                            onClick={() => !checks.hasWarehouse && scrollToField(warehouseSelectRef)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '8px 0',
+                              borderBottom: '1px solid #dbeafe',
+                              cursor: !checks.hasWarehouse ? 'pointer' : 'default',
+                              transition: 'background 0.2s',
+                              borderRadius: '4px',
+                              paddingLeft: '4px',
+                              paddingRight: '4px'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!checks.hasWarehouse) {
+                                e.currentTarget.style.background = '#f0f9ff';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'transparent';
+                            }}
+                          >
+                            <span style={{ fontSize: '16px' }}>
+                              {checks.hasWarehouse ? '✅' : '⚠️'}
+                            </span>
+                            <span style={{
+                              fontSize: '13px',
+                              color: checks.hasWarehouse ? '#065f46' : '#dc2626',
+                              fontWeight: checks.hasWarehouse ? '500' : '600'
+                            }}>
+                              {checks.hasWarehouse
+                                ? `Warehouse: ${locationList.find(l => l.location_id == requestTo)?.location_name}`
+                                : 'Select warehouse location'}
+                              {!checks.hasWarehouse && (
+                                <span style={{ fontSize: '11px', marginLeft: '6px', color: '#0369a1' }}>
+                                  (click to focus)
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Delivery Address */}
+                        {needsDelivery && (
+                          <>
+                            <div 
+                              onClick={() => !checks.hasDeliveryAddress && scrollToField(deliveryAddressRef)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 0',
+                                borderBottom: '1px solid #dbeafe',
+                                cursor: !checks.hasDeliveryAddress ? 'pointer' : 'default',
+                                transition: 'background 0.2s',
+                                borderRadius: '4px',
+                                paddingLeft: '4px',
+                                paddingRight: '4px'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!checks.hasDeliveryAddress) {
+                                  e.currentTarget.style.background = '#f0f9ff';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              <span style={{ fontSize: '16px' }}>
+                                {checks.hasDeliveryAddress ? '✅' : '⚠️'}
+                              </span>
+                              <span style={{
+                                fontSize: '13px',
+                                color: checks.hasDeliveryAddress ? '#065f46' : '#dc2626',
+                                fontWeight: checks.hasDeliveryAddress ? '500' : '600'
+                              }}>
+                                {checks.hasDeliveryAddress
+                                  ? 'Delivery address provided'
+                                  : 'Add delivery address'}
+                                {!checks.hasDeliveryAddress && (
+                                  <span style={{ fontSize: '11px', marginLeft: '6px', color: '#0369a1' }}>
+                                    (click to focus)
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Partial Payment Validation */}
+                        {paymentPlan === 'full' && usePartialPayment && (
+                          <div 
+                            onClick={() => !checks.hasValidPartialPayment && scrollToField(partialPaymentRef)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '8px 0',
+                              borderBottom: '1px solid #dbeafe',
+                              cursor: !checks.hasValidPartialPayment ? 'pointer' : 'default',
+                              transition: 'background 0.2s',
+                              borderRadius: '4px',
+                              paddingLeft: '4px',
+                              paddingRight: '4px'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!checks.hasValidPartialPayment) {
+                                e.currentTarget.style.background = '#f0f9ff';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'transparent';
+                            }}
+                          >
+                            <span style={{ fontSize: '16px' }}>
+                              {checks.hasValidPartialPayment ? '✅' : '⚠️'}
+                            </span>
+                            <span style={{
+                              fontSize: '13px',
+                              color: checks.hasValidPartialPayment ? '#065f46' : '#dc2626',
+                              fontWeight: checks.hasValidPartialPayment ? '500' : '600'
+                            }}>
+                              {checks.hasValidPartialPayment
+                                ? `Partial payment: ₱${parseFloat(partialPaymentAmount).toLocaleString()}`
+                                : 'Partial payment must be ≥50% of total'}
+                              {!checks.hasValidPartialPayment && (
+                                <span style={{ fontSize: '11px', marginLeft: '6px', color: '#0369a1' }}>
+                                  (click to focus)
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Overall Status */}
+                        <div style={{
+                          marginTop: '12px',
+                          padding: '12px',
+                          background: allComplete ? '#d1fae5' : '#fef3c7',
+                          borderRadius: '8px',
+                          textAlign: 'center'
+                        }}>
+                          <span style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: allComplete ? '#065f46' : '#92400e'
+                          }}>
+                            {allComplete
+                              ? '🎉 Ready to Process!'
+                              : '⏳ Complete the items above to proceed'}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
                 {/* Process Button */}
                 <button
                   onClick={proceedPurchase}
                   disabled={
                     cart.length === 0 ||
-                    (saleMode === 'inventory' && !customerType) ||
-                    ((customerType === 'customer' || saleMode === 'custom') && !selectedCustomer) ||
+                    !selectedCustomer ||
                     (paymentPlan === 'full' && usePartialPayment && (!partialPaymentAmount || partialPaymentAmount < calculateMinimumPartialPayment()))
                   }
                   style={{
                     width: '100%',
                     marginTop: '24px',
                     background: (cart.length === 0 ||
-                      (saleMode === 'inventory' && !customerType) ||
-                      ((customerType === 'customer' || saleMode === 'custom') && !selectedCustomer) ||
+                      !selectedCustomer ||
                       (paymentPlan === 'full' && usePartialPayment && (!partialPaymentAmount || partialPaymentAmount < calculateMinimumPartialPayment()))
                     ) ? '#d1d5db' : '#7c3aed',
                     color: 'white',
@@ -3288,8 +3939,7 @@ export default function CombinedSalePage() {
                     fontWeight: '600',
                     fontSize: '16px',
                     cursor: (cart.length === 0 ||
-                      (saleMode === 'inventory' && !customerType) ||
-                      ((customerType === 'customer' || saleMode === 'custom') && !selectedCustomer) ||
+                      !selectedCustomer ||
                       (paymentPlan === 'full' && usePartialPayment && (!partialPaymentAmount || partialPaymentAmount < calculateMinimumPartialPayment()))
                     ) ? 'not-allowed' : 'pointer',
                     transition: 'all 0.3s ease'
@@ -3324,8 +3974,2001 @@ export default function CombinedSalePage() {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
+        
+        @keyframes fadeIn {
+          0% { 
+            opacity: 0; 
+            transform: scale(0.8);
+          }
+          100% { 
+            opacity: 1; 
+            transform: scale(1);
+          }
+        }
       `}</style>
+
+      {/* Customization Management Modal */}
+      {showCustomizeManagementModal && (
+        <CustomizeManagementModal
+          show={showCustomizeManagementModal}
+          onClose={() => setShowCustomizeManagementModal(false)}
+          location_id={location_id}
+          user_id={user_id}
+        />
+      )}
       </div>
     </>
+  );
+}
+
+// Customization Management Modal Component
+function CustomizeManagementModal({ show, onClose, location_id, user_id }) {
+  // Data states
+  const [customizeSales, setCustomizeSales] = useState([]);
+  const [customizeRequest, setCustomizeRequest] = useState([]);
+  const [semiDetails, setSemiDetails] = useState([]);
+  const [fullDetails, setFullDetails] = useState([]);
+  const [customizeTracking, setCustomizeTracking] = useState([]);
+  const [invoiceRecords, setInvoiceRecords] = useState([]);
+  const [customizePaymentRecords, setCustomizePaymentRecords] = useState([]);
+  
+  // Filter states
+  const [customerFilter, setCustomerFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
+  
+  // Removed expandedCustomers state - no longer needed as each sale is its own card
+  
+  // Modal states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [lastTransaction, setLastTransaction] = useState(null);
+  
+  // Selected items
+  const [selectedSale, setSelectedSale] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedTracking, setSelectedTracking] = useState([]);
+  const [selectedPaymentHistory, setSelectedPaymentHistory] = useState([]);
+  
+  // Payment form
+  const [paymentAmount, setPaymentAmount] = useState('');
+  
+  // Alert state
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState('success');
+  const [showAlert, setShowAlert] = useState(false);
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
+  
+  // Progress steps - "Completed" removed as it just means delivered to store (already covered by "Delivered")
+  const steps = ["Pending", "On Going", "On Delivery", "Delivered", "On Delivery to Customer", "Delivered to Customer"];
+  
+  // Helper functions
+  const getBaseURL = () => sessionStorage.getItem('baseURL') || '';
+  
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  };
+  
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+  
+  const formatDateTime = (dateString, timeString) => {
+    if (!dateString) return '';
+    const formattedDate = formatDate(dateString);
+    const formattedTime = timeString ? formatTime(timeString) : '';
+    return formattedTime ? `${formattedDate} at ${formattedTime}` : formattedDate;
+  };
+  
+  const formatCurrency = (amount) => {
+    return `₱${parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+  
+  const handleError = (error, context) => {
+    console.error(`Error ${context}:`, error);
+    setAlertMessage(`Error occurred while ${context}. Please try again.`);
+    setAlertType('danger');
+    setShowAlert(true);
+    setTimeout(() => setShowAlert(false), 3000);
+  };
+  
+  const showSuccess = (msg) => {
+    setAlertMessage(msg);
+    setAlertType('success');
+    setShowAlert(true);
+    setTimeout(() => setShowAlert(false), 3000);
+  };
+  
+  // Process each sale as individual card
+  const processedSales = React.useMemo(() => {
+    const enrichedSales = customizeSales.map(sale => {
+      const request = customizeRequest.find(req => req.customize_sales_id === sale.customize_sales_id);
+      const semiItems = semiDetails.filter(item => item.customize_sales_id === sale.customize_sales_id);
+      const fullItems = fullDetails.filter(item => item.customize_sales_id === sale.customize_sales_id);
+      const invoices = invoiceRecords.filter(inv => inv.invoice_id === sale.invoice_id);
+      
+      let requestStatus = 'No Request';
+      let trackingProgress = [];
+      
+      if (request) {
+        requestStatus = request.status;
+        trackingProgress = customizeTracking
+          .filter(track => track.customize_request_id === request.customize_req_id)
+          .sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+      }
+      
+      return {
+        ...sale,
+        request,
+        semiItems,
+        fullItems,
+        invoices,
+        requestStatus,
+        trackingProgress,
+        hasBalance: parseFloat(sale.balance) > 0
+      };
+    });
+    
+    // Filter out "Delivered to Customer" orders with zero balance (they go to archive)
+    // Keep orders that are delivered but still have balance in active view
+    const activeOrders = enrichedSales.filter(sale => 
+      !(sale.requestStatus === 'Delivered to Customer' && parseFloat(sale.balance) === 0)
+    );
+    
+    // Sort by date and time (oldest first - old requests at the top)
+    const sortedSales = activeOrders.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+    
+    return sortedSales;
+  }, [customizeSales, customizeRequest, semiDetails, fullDetails, invoiceRecords, customizeTracking]);
+  
+  // Get archived sales (Delivered to Customer AND fully paid - zero balance)
+  const archivedSales = React.useMemo(() => {
+    const enrichedSales = customizeSales.map(sale => {
+      const request = customizeRequest.find(req => req.customize_sales_id === sale.customize_sales_id);
+      const semiItems = semiDetails.filter(item => item.customize_sales_id === sale.customize_sales_id);
+      const fullItems = fullDetails.filter(item => item.customize_sales_id === sale.customize_sales_id);
+      const invoices = invoiceRecords.filter(inv => inv.invoice_id === sale.invoice_id);
+      
+      let requestStatus = 'No Request';
+      let trackingProgress = [];
+      
+      if (request) {
+        requestStatus = request.status;
+        trackingProgress = customizeTracking
+          .filter(track => track.customize_request_id === request.customize_req_id)
+          .sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+      }
+      
+      return {
+        ...sale,
+        request,
+        semiItems,
+        fullItems,
+        invoices,
+        requestStatus,
+        trackingProgress,
+        hasBalance: parseFloat(sale.balance) > 0
+      };
+    });
+    
+    // Filter only "Delivered to Customer" orders with zero balance (fully paid)
+    const archived = enrichedSales.filter(sale => 
+      sale.requestStatus === 'Delivered to Customer' && parseFloat(sale.balance) === 0
+    );
+    
+    // Sort by date (newest to oldest in archive)
+    return archived.sort((a, b) => new Date(b.date + ' ' + b.time) - new Date(a.date + ' ' + a.time));
+  }, [customizeSales, customizeRequest, semiDetails, fullDetails, invoiceRecords, customizeTracking]);
+  
+  // Apply filters to individual sales
+  const filteredSales = React.useMemo(() => {
+    let filtered = [...processedSales];
+    
+    if (customerFilter) {
+      filtered = filtered.filter(sale => 
+        sale.cust_name?.toLowerCase().includes(customerFilter.toLowerCase())
+      );
+    }
+    
+    if (statusFilter) {
+      filtered = filtered.filter(sale => 
+        sale.requestStatus === statusFilter
+      );
+    }
+    
+    if (searchFilter) {
+      const search = searchFilter.toLowerCase();
+      filtered = filtered.filter(sale =>
+        sale.cust_name?.toLowerCase().includes(search) ||
+        sale.invoice_id?.toString().includes(search) ||
+        sale.customize_type?.toLowerCase().includes(search) ||
+        sale.customize_sales_id?.toString().includes(search)
+      );
+    }
+    
+    return filtered;
+  }, [processedSales, customerFilter, statusFilter, searchFilter]);
+  
+  // Pagination
+  const totalPages = Math.ceil(filteredSales.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentItems = filteredSales.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  
+  // Get unique customers for filter
+  const getUniqueCustomers = () => {
+    const customers = [...new Set(customizeSales.map(item => item.cust_name).filter(Boolean))];
+    return customers.sort();
+  };
+  
+  // API Functions
+  const GetCustomizeSales = async () => {
+    const url = `${getBaseURL()}customizeProducts.php`;
+    const ID = { locID: location_id };
+    
+    try {
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify(ID),
+          operation: "GetCustomizeSales"
+        }
+      });
+      
+      setCustomizeSales(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      handleError(error, 'fetching customize sales');
+      setCustomizeSales([]);
+    }
+  };
+  
+  const GetCustomizeRequests = async () => {
+    const url = `${getBaseURL()}customizeProducts.php`;
+    const ID = {
+      locID: location_id,
+      requestType: 'From'
+    };
+    
+    try {
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify(ID),
+          operation: "GetCustomizeRequest"
+        }
+      });
+      
+      setCustomizeRequest(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      handleError(error, 'fetching customize requests');
+      setCustomizeRequest([]);
+    }
+  };
+  
+  const GetSemiDetails = async () => {
+    const url = `${getBaseURL()}customizeProducts.php`;
+    try {
+      const response = await axios.get(url, {
+        params: { 
+          json: JSON.stringify([]), 
+          operation: "GetCustomizeRequestDetailSemi" 
+        }
+      });
+      setSemiDetails(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      handleError(error, 'fetching semi details');
+      setSemiDetails([]);
+    }
+  };
+  
+  const GetFullDetails = async () => {
+    const url = `${getBaseURL()}customizeProducts.php`;
+    try {
+      const response = await axios.get(url, {
+        params: { 
+          json: JSON.stringify([]), 
+          operation: "GetCustomizeRequestDetailFull" 
+        }
+      });
+      setFullDetails(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      handleError(error, 'fetching full details');
+      setFullDetails([]);
+    }
+  };
+  
+  const GetCustomizeTracking = async () => {
+    const url = `${getBaseURL()}customizeProducts.php`;
+    try {
+      const response = await axios.get(url, {
+        params: { 
+          json: JSON.stringify([]), 
+          operation: "GetCustomizeTracking" 
+        }
+      });
+      setCustomizeTracking(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      handleError(error, 'fetching tracking data');
+      setCustomizeTracking([]);
+    }
+  };
+  
+  const GetInvoiceRecords = async () => {
+    const url = `${getBaseURL()}sales.php`;
+    try {
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify([]),
+          operation: "SalesByInvoice"
+        }
+      });
+      
+      setInvoiceRecords(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      handleError(error, 'fetching invoice records');
+      setInvoiceRecords([]);
+    }
+  };
+  
+  const GetCustomizePaymentRecords = async () => {
+    const url = `${getBaseURL()}customizeProducts.php`;
+    try {
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify([]),
+          operation: "GetcustomizePaymentRecord"
+        }
+      });
+      
+      setCustomizePaymentRecords(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      handleError(error, 'fetching payment records');
+      setCustomizePaymentRecords([]);
+    }
+  };
+  
+  // Event handlers
+  const handleTrackRequest = (sale) => {
+    setSelectedSale(sale);
+    setSelectedRequest(sale.request);
+    setSelectedTracking(sale.trackingProgress);
+    setShowTrackingModal(true);
+  };
+  
+  const handleViewPaymentHistory = (sale) => {
+    setSelectedSale(sale);
+    // Filter payment records for this specific customize_sales_id (use == for type coercion)
+    const paymentHistory = customizePaymentRecords.filter(
+      payment => payment.customize_sales_id == sale.customize_sales_id
+    );
+    setSelectedPaymentHistory(paymentHistory);
+    setShowInvoiceModal(true);
+  };
+  
+  const handleRecordPayment = (sale) => {
+    setSelectedSale(sale);
+    setPaymentAmount(sale.balance); // Default to remaining balance
+    setShowPaymentModal(true);
+  };
+
+  const closeReceipt = () => {
+    setShowReceipt(false);
+    setLastTransaction(null);
+  };
+  
+  const RecordPayment = async () => {
+    if (!selectedSale || !paymentAmount) {
+      handleError(null, 'recording payment - missing data');
+      return;
+    }
+    
+    const url = `${getBaseURL()}customizeProducts.php`;
+    const paymentData = {
+      customize_sales_id: selectedSale.customize_sales_id,
+      invoice_id: selectedSale.invoice_id,
+      amount: paymentAmount,
+      account_id: user_id
+    };
+    
+    try {
+      // Create FormData for PHP POST
+      const formData = new FormData();
+      formData.append('json', JSON.stringify(paymentData));
+      formData.append('operation', 'RecordPayment');
+      
+      const response = await axios.post(url, formData);
+      
+      if (response.data.success) {
+        // Create payment receipt data
+        const currentDate = new Date();
+        const locationName = sessionStorage.getItem('location_name') || 'Store Location';
+        const paymentReceipt = {
+          invoice_id: response.data.invoice_id,
+          date: currentDate.toISOString().split('T')[0],
+          time: currentDate.toTimeString().split(' ')[0].substring(0, 5),
+          location: locationName,
+          customer: {
+            cust_name: selectedSale.cust_name,
+            phone: 'N/A',
+            email: 'N/A'
+          },
+          payment_type: 'Balance Payment',
+          original_invoice: selectedSale.invoice_id,
+          customize_sales_id: selectedSale.customize_sales_id,
+          amount_paid: parseFloat(paymentAmount),
+          previous_balance: parseFloat(selectedSale.balance),
+          new_balance: response.data.new_balance,
+          total_price: parseFloat(selectedSale.total_price),
+          total_paid: parseFloat(selectedSale.down_payment) + parseFloat(paymentAmount),
+          items: [
+            ...(selectedSale.semiItems || []).map(item => ({
+              product_name: item.product_name,
+              description: item.description,
+              modifications: item.modifications,
+              price: parseFloat(item.orig_price),
+              quantity: parseInt(item.qty),
+              isCustom: true,
+              customizationType: 'semi'
+            })),
+            ...(selectedSale.fullItems || []).map(item => ({
+              product_name: 'Custom Item',
+              description: item.description,
+              modifications: item.additional_description,
+              price: parseFloat(item.price),
+              quantity: parseInt(item.qty),
+              isCustom: true,
+              customizationType: 'full'
+            }))
+          ]
+        };
+
+        showSuccess('Payment recorded successfully');
+        setShowPaymentModal(false);
+        setPaymentAmount('');
+        
+        // Show payment receipt
+        setLastTransaction(paymentReceipt);
+        setShowReceipt(true);
+        
+        // Refresh data
+        GetCustomizeSales();
+        GetInvoiceRecords();
+        GetCustomizePaymentRecords();
+      } else {
+        handleError(null, response.data.message || 'recording payment');
+      }
+    } catch (error) {
+      handleError(error, 'recording payment');
+    }
+  };
+  
+  const clearAllFilters = () => {
+    setCustomerFilter('');
+    setStatusFilter('');
+    setSearchFilter('');
+    setCurrentPage(1);
+  };
+  
+  // Get progress percentage
+  const getProgressPercentage = (status) => {
+    // Handle "Completed" status (legacy) - treat it as "Delivered" (item at store)
+    let normalizedStatus = status;
+    if (status === 'Completed') {
+      normalizedStatus = 'Delivered';
+    }
+    
+    const index = steps.indexOf(normalizedStatus);
+    // Pending (index 0) = 0%, Delivered to Customer (index 5) = 100%
+    return index >= 0 ? (index / (steps.length - 1)) * 100 : 0;
+  };
+  
+  // Effects
+  useEffect(() => {
+    if (show && location_id) {
+      GetCustomizeSales();
+      GetCustomizeRequests();
+      GetSemiDetails();
+      GetFullDetails();
+      GetCustomizeTracking();
+      GetInvoiceRecords();
+      GetCustomizePaymentRecords();
+    }
+  }, [show, location_id]);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [customerFilter, statusFilter, searchFilter]);
+  
+  if (!show) return null;
+  
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999,
+      padding: '16px'
+    }}>
+      <div style={{
+        background: 'white',
+        borderRadius: '16px',
+        width: '95%',
+        maxWidth: '1400px',
+        maxHeight: '90vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '24px',
+          borderBottom: '2px solid #e5e7eb',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)'
+        }}>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
+            🛠️ Customization Management
+          </h2>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <button
+              onClick={() => setShowArchiveModal(true)}
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                border: '2px solid white',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                color: 'white',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'white'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+              onMouseOver={(e) => e.currentTarget.style.color = '#7c3aed'}
+              onMouseOut={(e) => e.currentTarget.style.color = 'white'}
+            >
+              📦 Archive ({archivedSales.length})
+            </button>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontSize: '20px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                color: '#7c3aed'
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* Alert */}
+        {showAlert && (
+          <div style={{
+            position: 'absolute',
+            top: '80px',
+            right: '20px',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            background: alertType === 'success' ? '#10b981' : '#ef4444',
+            color: 'white',
+            fontWeight: '600',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            zIndex: 10000,
+            animation: 'slideIn 0.3s ease-out'
+          }}>
+            {alertMessage}
+          </div>
+        )}
+        
+        {/* Content */}
+        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+          {/* Filters */}
+          <div style={{
+            padding: '20px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '12px',
+            marginBottom: '20px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '15px'
+            }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', fontSize: '14px' }}>
+                  Customer
+                </label>
+                <select
+                  value={customerFilter}
+                  onChange={(e) => setCustomerFilter(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '10px', 
+                    borderRadius: '8px', 
+                    border: '1px solid #d1d5db',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="">All Customers</option>
+                  {getUniqueCustomers().map((customer, index) => (
+                    <option key={index} value={customer}>{customer}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', fontSize: '14px' }}>
+                  Request Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '10px', 
+                    borderRadius: '8px', 
+                    border: '1px solid #d1d5db',
+                    fontSize: '14px'
+                  }}
+                >
+                <option value="">All Status</option>
+                <option value="Pending">Pending</option>
+                <option value="On Going">On Going</option>
+                <option value="On Delivery">On Delivery</option>
+                <option value="Delivered">Delivered</option>
+                <option value="On Delivery to Customer">On Delivery to Customer</option>
+                <option value="Delivered to Customer">Delivered to Customer</option>
+                </select>
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', fontSize: '14px' }}>
+                  Search
+                </label>
+                <input
+                  type="text"
+                  placeholder="Search customer, invoice..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '10px', 
+                    borderRadius: '8px', 
+                    border: '1px solid #d1d5db',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            </div>
+            
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              marginTop: '15px', 
+              paddingTop: '15px', 
+              borderTop: '1px solid #e5e7eb' 
+            }}>
+              <div style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
+                Showing {filteredSales.length} of {processedSales.length} orders
+              </div>
+              <button 
+                onClick={clearAllFilters} 
+                style={{ 
+                  padding: '8px 16px', 
+                  backgroundColor: '#7c3aed', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+          
+          {/* Order Cards - Each customize_sales_id is its own card */}
+          <div>
+            {currentItems.map((sale, index) => {
+              const progressPercentage = getProgressPercentage(sale.requestStatus);
+              
+              return (
+                <div 
+                  key={index}
+                  style={{
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    backgroundColor: 'white',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                    marginBottom: '16px'
+                  }}
+                >
+                  {/* Order Header */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: '16px',
+                    paddingBottom: '16px',
+                    borderBottom: '2px solid #f3f4f6'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '18px', color: '#1f2937' }}>
+                          Invoice #{sale.invoice_id}
+                        </h4>
+                        <span style={{
+                          padding: '4px 10px',
+                          borderRadius: '20px',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          backgroundColor: '#ddd6fe',
+                          color: '#7c3aed'
+                        }}>
+                          ID: {sale.customize_sales_id}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>👤</span>
+                          <strong>{sale.cust_name}</strong>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>📅</span>
+                          <span>{sale.date} • {sale.time}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>🔧</span>
+                          <span>{sale.customize_type}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        backgroundColor: sale.status === 'Paid' ? '#10b981' : '#f59e0b',
+                        color: 'white',
+                        display: 'inline-block',
+                        marginBottom: '8px'
+                      }}>
+                        {sale.status}
+                      </span>
+                      <div style={{ fontSize: '13px', fontWeight: '600' }}>
+                        Status: <span style={{ color: '#7c3aed' }}>{sale.requestStatus === 'Completed' ? 'Delivered' : sale.requestStatus}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Payment Info */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                    gap: '12px',
+                    padding: '16px',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '8px',
+                    marginBottom: '16px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Total</div>
+                      <div style={{ fontWeight: 'bold', fontSize: '16px' }}>₱{parseFloat(sale.total_price).toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Paid</div>
+                      <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#10b981' }}>₱{parseFloat(sale.down_payment).toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Balance</div>
+                      <div style={{ 
+                        fontWeight: 'bold',
+                        fontSize: '16px',
+                        color: parseFloat(sale.balance) > 0 ? '#dc2626' : '#10b981'
+                      }}>
+                        ₱{parseFloat(sale.balance).toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Quantity</div>
+                      <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{sale.total_qty} item(s)</div>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  {sale.request && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        marginBottom: '8px' 
+                      }}>
+                        <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600' }}>
+                          📊 Request Progress
+                        </span>
+                        <span style={{ fontSize: '13px', color: '#7c3aed', fontWeight: '700' }}>
+                          {Math.round(progressPercentage)}%
+                        </span>
+                      </div>
+                      <div style={{
+                        width: '100%',
+                        height: '10px',
+                        backgroundColor: '#e5e7eb',
+                        borderRadius: '5px',
+                        overflow: 'hidden',
+                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+                      }}>
+                        <div style={{
+                          width: `${progressPercentage}%`,
+                          height: '100%',
+                          background: progressPercentage === 100 
+                            ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)' 
+                            : 'linear-gradient(90deg, #7c3aed 0%, #5b21b6 100%)',
+                          transition: 'width 0.5s ease',
+                          boxShadow: '0 0 10px rgba(124, 58, 237, 0.5)'
+                        }} />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Items Summary */}
+                  {(sale.semiItems?.length > 0 || sale.fullItems?.length > 0) && (
+                    <div style={{ 
+                      marginBottom: '16px',
+                      padding: '16px',
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      <h6 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '12px', color: '#1f2937' }}>
+                        📦 Order Items
+                      </h6>
+                      {sale.semiItems?.map((item, i) => (
+                        <div key={`semi-${i}`} style={{ 
+                          fontSize: '13px', 
+                          marginBottom: '10px',
+                          paddingLeft: '12px',
+                          borderLeft: '4px solid #3b82f6',
+                          paddingTop: '6px',
+                          paddingBottom: '6px',
+                          backgroundColor: 'white',
+                          borderRadius: '4px',
+                          padding: '8px 8px 8px 12px'
+                        }}>
+                          <strong style={{ color: '#1f2937' }}>{item.product_name}</strong> - {item.description}<br/>
+                          <small style={{ color: '#6b7280' }}>✏️ Modifications: {item.modifications}</small>
+                        </div>
+                      ))}
+                      {sale.fullItems?.map((item, i) => (
+                        <div key={`full-${i}`} style={{ 
+                          fontSize: '13px', 
+                          marginBottom: '10px',
+                          paddingLeft: '12px',
+                          borderLeft: '4px solid #10b981',
+                          paddingTop: '6px',
+                          paddingBottom: '6px',
+                          backgroundColor: 'white',
+                          borderRadius: '4px',
+                          padding: '8px 8px 8px 12px'
+                        }}>
+                          <strong style={{ color: '#1f2937' }}>✨ Custom:</strong> {item.description}<br/>
+                          <small style={{ color: '#6b7280' }}>{item.additional_description}</small>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Action Buttons - Track requests and manage payments */}
+                  <div style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    paddingTop: '16px',
+                    borderTop: '2px solid #f3f4f6'
+                  }}>
+                    {/* 1. Track Request - View order progress timeline */}
+                    {sale.request && (
+                      <button
+                        onClick={() => handleTrackRequest(sale)}
+                        style={{
+                          padding: '10px 20px',
+                          backgroundColor: '#0ea5e9',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          boxShadow: '0 2px 4px rgba(14, 165, 233, 0.2)'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0ea5e9'}
+                      >
+                        📍 Track Request
+                      </button>
+                    )}
+                    
+                    {/* 2. View Payment History - Review all payment records */}
+                    <button
+                      onClick={() => handleViewPaymentHistory(sale)}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#6b7280',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 2px 4px rgba(107, 114, 128, 0.2)'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6b7280'}
+                    >
+                      💳 Payment History
+                    </button>
+                    
+                    {/* 3. Pay Balance - Record additional payments for partial payment orders */}
+                    {sale.hasBalance && parseFloat(sale.balance) > 0 && (
+                      <button
+                        onClick={() => handleRecordPayment(sale)}
+                        style={{
+                          padding: '10px 20px',
+                          backgroundColor: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          boxShadow: '0 2px 4px rgba(245, 158, 11, 0.2)'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
+                      >
+                        💰 Pay Balance
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {currentItems.length === 0 && (
+              <div style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '16px',
+                border: '2px dashed #d1d5db'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📦</div>
+                <h4 style={{ color: '#4b5563', marginBottom: '8px' }}>No customization orders found</h4>
+                <p style={{ color: '#6b7280', fontSize: '14px' }}>Try adjusting your filters or add new customization orders.</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              marginTop: '24px',
+              paddingBottom: '20px'
+            }}>
+              <CustomPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => setCurrentPage(page)}
+                color="#7c3aed"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tracking Modal */}
+      {showTrackingModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            maxWidth: '700px',
+            width: '100%',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            padding: '24px'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
+                Request Tracking - Invoice #{selectedSale?.invoice_id}
+              </h3>
+              <button
+                onClick={() => setShowTrackingModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            {selectedRequest && (
+              <>
+                <div style={{ 
+                  padding: '16px', 
+                  backgroundColor: '#f9fafb', 
+                  borderRadius: '8px', 
+                  marginBottom: '20px' 
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
+                    <div><strong>Request ID:</strong> #{selectedRequest.customize_req_id}</div>
+                    <div><strong>Status:</strong> {selectedRequest.status === 'Completed' ? 'Delivered' : selectedRequest.status}</div>
+                    <div><strong>From:</strong> {selectedRequest.reqFrom}</div>
+                    <div><strong>To:</strong> {selectedRequest.reqTo}</div>
+                  </div>
+                </div>
+                
+                <div style={{ position: 'relative', paddingLeft: '45px', paddingTop: '5px' }}>
+                  {steps.map((step, index) => {
+                    // Handle "Completed" status mapping to "Delivered"
+                    const trackingItem = selectedTracking.find(t => 
+                      t.status === step || (step === 'Delivered' && t.status === 'Completed')
+                    );
+                    const isActive = selectedTracking.some(t => 
+                      t.status === step || (step === 'Delivered' && t.status === 'Completed')
+                    );
+                    const nextStepIsActive = index < steps.length - 1 && selectedTracking.some(t => {
+                      const nextStep = steps[index + 1];
+                      return t.status === nextStep || (nextStep === 'Delivered' && t.status === 'Completed');
+                    });
+                    
+                    return (
+                      <div key={index} style={{ 
+                        position: 'relative',
+                        marginBottom: '0px'
+                      }}>
+                        {/* Vertical connecting line - goes from center of this circle to center of next circle */}
+                        {index < steps.length - 1 && (
+                          <div style={{
+                            position: 'absolute',
+                            left: '-37px',
+                            top: '10px',
+                            width: '2px',
+                            height: 'calc(100% + 10px)',
+                            backgroundColor: nextStepIsActive ? '#10b981' : '#e5e7eb',
+                            zIndex: 1,
+                            transform: 'translateX(-50%)'
+                          }} />
+                        )}
+                        
+                        {/* Circle indicator - centered */}
+                        <div style={{
+                          position: 'absolute',
+                          left: '-37px',
+                          top: '0px',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          backgroundColor: isActive ? '#10b981' : 'white',
+                          border: '3px solid ' + (isActive ? '#10b981' : '#d1d5db'),
+                          zIndex: 2,
+                          transform: 'translateX(-50%)',
+                          boxShadow: isActive ? '0 0 0 4px rgba(16, 185, 129, 0.1)' : '0 0 0 2px rgba(209, 213, 219, 0.1)'
+                        }} />
+                        
+                        {/* Status card */}
+                        <div style={{
+                          padding: '16px 20px',
+                          marginBottom: '20px',
+                          backgroundColor: isActive ? '#f0fdf4' : 'white',
+                          borderRadius: '10px',
+                          border: '2px solid ' + (isActive ? '#10b981' : '#e5e7eb'),
+                          minHeight: '70px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          opacity: isActive ? 1 : 0.5,
+                          transition: 'all 0.3s ease',
+                          boxShadow: isActive ? '0 2px 8px rgba(16, 185, 129, 0.1)' : 'none'
+                        }}>
+                          <h6 style={{ 
+                            margin: '0 0 6px 0', 
+                            fontWeight: 'bold',
+                            fontSize: '16px',
+                            color: isActive ? '#059669' : '#6b7280' 
+                          }}>
+                            {step}
+                          </h6>
+                          {trackingItem && (
+                            <p style={{ margin: '0', fontSize: '13px', color: '#6b7280' }}>
+                              {formatDateTime(trackingItem.date, trackingItem.time)}
+                            </p>
+                          )}
+                          {!trackingItem && (
+                            <p style={{ 
+                              margin: '0', 
+                              fontSize: '13px', 
+                              color: '#9ca3af', 
+                              fontStyle: 'italic' 
+                            }}>
+                              ⏳ Pending...
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Payment History Modal */}
+      {showInvoiceModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            maxWidth: '800px',
+            width: '100%',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            padding: '24px'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px',
+              paddingBottom: '16px',
+              borderBottom: '2px solid #e5e7eb'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 'bold', color: '#1f2937' }}>
+                  💳 Payment History
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6b7280' }}>
+                  Order ID: {selectedSale?.customize_sales_id} | Invoice: #{selectedSale?.invoice_id}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowInvoiceModal(false)}
+                style={{
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  color: '#6b7280'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            {selectedPaymentHistory?.length > 0 ? (
+              <div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '16px',
+                  marginBottom: '24px',
+                  padding: '20px',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Total Payments</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937' }}>
+                      {selectedPaymentHistory.length}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Total Paid</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#10b981' }}>
+                      {formatCurrency(selectedPaymentHistory.reduce((sum, p) => sum + parseFloat(p.amount), 0))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Remaining Balance</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: parseFloat(selectedSale?.balance || 0) > 0 ? '#ef4444' : '#10b981' }}>
+                      {formatCurrency(selectedSale?.balance || 0)}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {selectedPaymentHistory.map((payment, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        padding: '16px',
+                        backgroundColor: '#ffffff',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '12px',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#7c3aed'}
+                      onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              backgroundColor: '#dbeafe',
+                              color: '#1e40af'
+                            }}>
+                              Payment #{i + 1}
+                            </span>
+                            <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                              📅 {formatDateTime(payment.date, payment.time)}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#4b5563', marginTop: '8px' }}>
+                            <span style={{ fontWeight: '500' }}>Processed by:</span>{' '}
+                            <strong style={{ color: '#1f2937' }}>
+                              {payment.fname} {payment.mname} {payment.lname}
+                            </strong>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Amount</div>
+                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>
+                            {formatCurrency(payment.amount)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '60px 40px' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>💳</div>
+                <h5 style={{ color: '#6b7280', marginBottom: '8px', fontSize: '16px' }}>No Payment Records Found</h5>
+                <p style={{ color: '#9ca3af', fontSize: '14px' }}>No payments have been recorded for this order yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            maxWidth: '500px',
+            width: '100%',
+            padding: '24px'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: 'bold' }}>
+              Record Payment - Invoice #{selectedSale?.invoice_id}
+            </h3>
+            
+            {selectedSale && (
+              <>
+                <div style={{ 
+                  padding: '16px', 
+                  backgroundColor: '#f0f9ff', 
+                  borderRadius: '8px', 
+                  marginBottom: '20px',
+                  border: '1px solid #bae6fd'
+                }}>
+                  <div style={{ marginBottom: '10px', fontSize: '14px' }}>
+                    <strong>Customer:</strong> {selectedSale.cust_name}
+                  </div>
+                  <div style={{ marginBottom: '10px', fontSize: '14px' }}>
+                    <strong>Total Amount:</strong> {formatCurrency(selectedSale.total_price)}
+                  </div>
+                  <div style={{ marginBottom: '10px', fontSize: '14px' }}>
+                    <strong>Paid Amount:</strong> {formatCurrency(selectedSale.down_payment)}
+                  </div>
+                  <div style={{ fontSize: '14px' }}>
+                    <strong>Remaining Balance:</strong> 
+                    <span style={{ color: '#dc2626', fontWeight: 'bold', marginLeft: '5px', fontSize: '16px' }}>
+                      {formatCurrency(selectedSale.balance)}
+                    </span>
+                  </div>
+                </div>
+                
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', fontSize: '14px' }}>
+                    Payment Amount *
+                  </label>
+                  <input
+                    type="number"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    max={selectedSale.balance}
+                    placeholder="Enter payment amount"
+                    style={{ 
+                      width: '100%', 
+                      padding: '10px', 
+                      border: '1px solid #d1d5db', 
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </>
+            )}
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={RecordPayment}
+                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: !paymentAmount || parseFloat(paymentAmount) <= 0 ? '#d1d5db' : '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: !paymentAmount || parseFloat(paymentAmount) <= 0 ? 'not-allowed' : 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Record Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archive Modal - Delivered to Customer */}
+      {showArchiveModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10001,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            maxWidth: '1200px',
+            width: '95%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {/* Archive Header */}
+            <div style={{
+              padding: '24px',
+              borderBottom: '2px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+            }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'white' }}>
+                  📦 Delivered Orders Archive
+                </h2>
+                <p style={{ margin: '5px 0 0 0', color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+                  Fully paid orders that have been successfully delivered to customers
+                </p>
+              </div>
+              <button
+                onClick={() => setShowArchiveModal(false)}
+                style={{
+                  background: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  color: '#10b981'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Archive Content */}
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+              {archivedSales.length > 0 ? (
+                <div>
+                  <div style={{ 
+                    padding: '16px', 
+                    backgroundColor: '#f0fdf4', 
+                    borderRadius: '12px', 
+                    marginBottom: '20px',
+                    border: '1px solid #86efac'
+                  }}>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#166534' }}>
+                      Total Archived Orders: {archivedSales.length}
+                    </div>
+                  </div>
+
+                  {archivedSales.map((sale, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        border: '2px solid #86efac',
+                        borderRadius: '12px',
+                        padding: '20px',
+                        backgroundColor: '#f0fdf4',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                        marginBottom: '16px'
+                      }}
+                    >
+                      {/* Order Header */}
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: '16px',
+                        paddingBottom: '16px',
+                        borderBottom: '2px solid white'
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                            <h4 style={{ margin: 0, fontWeight: 'bold', fontSize: '18px', color: '#166534' }}>
+                              Invoice #{sale.invoice_id}
+                            </h4>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              backgroundColor: '#dcfce7',
+                              color: '#166534'
+                            }}>
+                              ID: {sale.customize_sales_id}
+                            </span>
+                            <span style={{
+                              padding: '6px 12px',
+                              borderRadius: '20px',
+                              fontSize: '12px',
+                              fontWeight: 'bold',
+                              backgroundColor: '#10b981',
+                              color: 'white'
+                            }}>
+                              ✓ Delivered & Fully Paid
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px', color: '#166534', marginTop: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>👤</span>
+                              <strong>{sale.cust_name}</strong>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>📅</span>
+                              <span>{sale.date} • {sale.time}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>🔧</span>
+                              <span>{sale.customize_type}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '14px', color: '#166534', marginBottom: '4px' }}>Total Amount</div>
+                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#166534' }}>
+                            {formatCurrency(sale.total_price)}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Payment Info */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                        gap: '12px',
+                        padding: '16px',
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        marginBottom: '16px'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#166534', marginBottom: '4px' }}>Payment Status</div>
+                          <div style={{ 
+                            fontWeight: 'bold', 
+                            fontSize: '14px',
+                            color: sale.status === 'Paid' ? '#10b981' : '#f59e0b'
+                          }}>
+                            {sale.status}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#166534', marginBottom: '4px' }}>Paid Amount</div>
+                          <div style={{ fontWeight: 'bold', fontSize: '14px' }}>₱{parseFloat(sale.down_payment).toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#166534', marginBottom: '4px' }}>Balance</div>
+                          <div style={{ 
+                            fontWeight: 'bold',
+                            fontSize: '14px',
+                            color: parseFloat(sale.balance) > 0 ? '#dc2626' : '#10b981'
+                          }}>
+                            ₱{parseFloat(sale.balance).toLocaleString()}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#166534', marginBottom: '4px' }}>Quantity</div>
+                          <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{sale.total_qty} item(s)</div>
+                        </div>
+                      </div>
+                      
+                      {/* Items Summary */}
+                      {(sale.semiItems?.length > 0 || sale.fullItems?.length > 0) && (
+                        <div style={{ 
+                          marginBottom: '16px',
+                          padding: '16px',
+                          backgroundColor: 'white',
+                          borderRadius: '8px',
+                          border: '1px solid #dcfce7'
+                        }}>
+                          <h6 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '12px', color: '#166534' }}>
+                            📦 Delivered Items
+                          </h6>
+                          {sale.semiItems?.map((item, i) => (
+                            <div key={`semi-${i}`} style={{ 
+                              fontSize: '13px', 
+                              marginBottom: '10px',
+                              paddingLeft: '12px',
+                              borderLeft: '4px solid #3b82f6',
+                              paddingTop: '6px',
+                              paddingBottom: '6px',
+                              backgroundColor: '#f0fdf4',
+                              borderRadius: '4px',
+                              padding: '8px 8px 8px 12px'
+                            }}>
+                              <strong style={{ color: '#166534' }}>{item.product_name}</strong> - {item.description}<br/>
+                              <small style={{ color: '#166534' }}>✏️ Modifications: {item.modifications}</small>
+                            </div>
+                          ))}
+                          {sale.fullItems?.map((item, i) => (
+                            <div key={`full-${i}`} style={{ 
+                              fontSize: '13px', 
+                              marginBottom: '10px',
+                              paddingLeft: '12px',
+                              borderLeft: '4px solid #10b981',
+                              paddingTop: '6px',
+                              paddingBottom: '6px',
+                              backgroundColor: '#f0fdf4',
+                              borderRadius: '4px',
+                              padding: '8px 8px 8px 12px'
+                            }}>
+                              <strong style={{ color: '#166534' }}>✨ Custom:</strong> {item.description}<br/>
+                              <small style={{ color: '#166534' }}>{item.additional_description}</small>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Action Buttons */}
+                      <div style={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap',
+                        gap: '10px',
+                        paddingTop: '16px',
+                        borderTop: '2px solid white'
+                      }}>
+                        {sale.request && (
+                          <button
+                            onClick={() => handleTrackRequest(sale)}
+                            style={{
+                              padding: '10px 20px',
+                              backgroundColor: '#0ea5e9',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              boxShadow: '0 2px 4px rgba(14, 165, 233, 0.2)'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0ea5e9'}
+                          >
+                            📍 View Timeline
+                          </button>
+                        )}
+                        
+                        <button
+                          onClick={() => handleViewPaymentHistory(sale)}
+                          style={{
+                            padding: '10px 20px',
+                            backgroundColor: '#6b7280',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 2px 4px rgba(107, 114, 128, 0.2)'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6b7280'}
+                        >
+                          💳 Payment History
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '60px 20px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '16px',
+                  border: '2px dashed #86efac'
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>📦</div>
+                  <h4 style={{ color: '#166534', marginBottom: '8px' }}>No Archived Orders Yet</h4>
+                  <p style={{ color: '#059669', fontSize: '14px' }}>Fully paid orders delivered to customers will appear here.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Archive Footer */}
+            <div style={{
+              padding: '20px 24px',
+              borderTop: '2px solid #e5e7eb',
+              background: '#f9fafb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>
+                Total Archived: {archivedSales.length} order(s)
+              </div>
+              <button
+                onClick={() => setShowArchiveModal(false)}
+                style={{
+                  padding: '10px 24px',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Close Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Receipt Modal */}
+      {showReceipt && lastTransaction && lastTransaction.payment_type === 'Balance Payment' && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10002,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            maxWidth: '500px',
+            width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <div style={{
+              padding: '24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '16px'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: 'white' }}>
+                <span style={{ marginRight: '8px' }}>✓</span>
+                Payment Receipt
+              </h3>
+              <button
+                onClick={closeReceipt}
+                style={{
+                  background: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{
+              padding: '24px',
+              overflowY: 'auto',
+              flex: 1
+            }}>
+              {/* Store Header */}
+              <div style={{
+                textAlign: 'center',
+                marginBottom: '24px',
+                padding: '16px',
+                background: '#f8fafc',
+                borderRadius: '8px'
+              }}>
+                <h4 style={{ fontWeight: '600', marginBottom: '8px' }}>
+                  A.G HOME APPLIANCE AND FURNITURE SHOWROOM
+                </h4>
+                <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                  <div>Payment Invoice #{lastTransaction.invoice_id}</div>
+                  <div>{lastTransaction.date} • {lastTransaction.time}</div>
+                  <div>{lastTransaction.location}</div>
+                </div>
+              </div>
+
+              {/* Customer Info */}
+              <div style={{ marginBottom: '24px' }}>
+                <h5 style={{ fontWeight: '600', marginBottom: '8px', color: '#1f2937' }}>
+                  Customer Information
+                </h5>
+                <div style={{
+                  padding: '12px',
+                  background: '#f9fafb',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ fontWeight: '600' }}>Name: {lastTransaction.customer.cust_name}</div>
+                  <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
+                    Order ID: {lastTransaction.customize_sales_id}
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Summary */}
+              <div style={{ marginBottom: '24px' }}>
+                <h5 style={{ fontWeight: '600', marginBottom: '8px', color: '#1f2937' }}>
+                  Payment Summary
+                </h5>
+                <div style={{
+                  padding: '12px',
+                  background: '#f9fafb',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '8px'
+                  }}>
+                    <span>Original Invoice:</span>
+                    <span>#{lastTransaction.original_invoice}</span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '8px'
+                  }}>
+                    <span>Total Order Amount:</span>
+                    <span>₱{(lastTransaction.total_price || 0).toLocaleString()}</span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '8px',
+                    paddingBottom: '8px',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    <span>Previous Balance:</span>
+                    <span style={{ color: '#dc2626' }}>₱{(lastTransaction.previous_balance || 0).toLocaleString()}</span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    marginBottom: '8px',
+                    paddingBottom: '8px',
+                    borderBottom: '2px solid #e5e7eb',
+                    color: '#10b981'
+                  }}>
+                    <span>Payment Today:</span>
+                    <span>₱{(lastTransaction.amount_paid || 0).toLocaleString()}</span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: lastTransaction.new_balance > 0 ? '#dc2626' : '#10b981'
+                  }}>
+                    <span>New Balance:</span>
+                    <span>₱{(lastTransaction.new_balance || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {lastTransaction.new_balance === 0 && (
+                <div style={{
+                  padding: '16px',
+                  background: '#f0fdf4',
+                  border: '2px solid #86efac',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  color: '#166534',
+                  fontWeight: '600'
+                }}>
+                  🎉 Fully Paid! Thank you for your payment!
+                </div>
+              )}
+            </div>
+
+            <div style={{
+              padding: '20px 24px',
+              borderTop: '1px solid #e5e7eb',
+              background: '#f9fafb',
+              display: 'flex',
+              justifyContent: 'center',
+              borderBottomLeftRadius: '16px',
+              borderBottomRightRadius: '16px'
+            }}>
+              <button
+                onClick={closeReceipt}
+                style={{
+                  padding: '12px 32px',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </div>
   );
 }

@@ -10,6 +10,7 @@ import SidebarWarehouseRep from '../Components/Sidebar-WarehouseRep/page';
 import SidebarInventory from '../Components/Sidebar-Inventory/page';
 import { LogInSuccess } from '../Components/SweetAlert/logIn';
 import InactivityLogout from '../Components/InactivityLogout/inactivityLogout';
+import SessionValidator from '../Components/SessionValidator/sessionValidator';
 
 
 const AdminPage = () => {
@@ -63,6 +64,7 @@ const AdminPage = () => {
   return (
     <>
       <InactivityLogout />
+      <SessionValidator />
       <Header />
       <Sidebar />
       {/* <SidebarWarehouseRep /> */}

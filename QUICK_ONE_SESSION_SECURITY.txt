@@ -1,0 +1,120 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║           🔒 ONE SESSION PER ACCOUNT - IMPLEMENTED!                  ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+🎯 WHAT'S NEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ One account = One active session (SECURITY!)
+✅ Concurrent logins blocked automatically
+✅ Force logout option for legitimate users
+✅ Clear warning messages
+✅ Session invalidation works properly
+
+
+🚀 HOW IT WORKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Normal Login (Account Offline):
+  Login → Backend checks → Status: Offline → ALLOW LOGIN ✅
+
+Account Already In Use:
+  Login → Backend checks → Status: Online → BLOCK LOGIN ⚠️
+    ↓
+  Show modal: "Account Already In Use"
+    ↓
+  Options:
+    • Force Logout & Login (terminate other session)
+    • Cancel (keep other session)
+
+
+🧪 TEST IT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Test 1: Normal Login
+  1. Set account offline in database
+  2. Login
+  3. ✅ Should work
+
+Test 2: Blocked Login
+  1. Login on Browser A (Chrome)
+  2. Try login on Browser B (Firefox) - same account
+  3. ⚠️ Should see "Account Already In Use" modal
+  4. ✅ Login is blocked
+
+Test 3: Force Logout
+  1. Continue from Test 2
+  2. Click "Force Logout & Login"
+  3. ✅ Login succeeds on Browser B
+  4. ✅ Browser A session is invalid
+
+
+📊 DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Check active sessions:
+  SELECT username, active_status FROM account 
+  WHERE active_status = 'Online';
+
+Reset all accounts (if needed):
+  UPDATE account SET active_status = 'Offline';
+
+
+🛡️ SECURITY BENEFITS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Prevents unauthorized concurrent access
+✓ Reduces session hijacking risk
+✓ Better user accountability
+✓ Clear audit trail
+✓ Industry-standard security
+
+
+📁 FILES MODIFIED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Backend: C:\xampp\htdocs\capstone-api\api\login.php
+  + Added forceLogout parameter check
+  + Added account_in_use error
+  + Added session blocking logic
+
+Frontend: app/page.js
+  + Added SweetAlert2 modal
+  + Added forceLoginRetry() function
+  + Added account_in_use handler
+
+
+🔧 QUICK FIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If account is stuck as "Online":
+  UPDATE account SET active_status = 'Offline' 
+  WHERE username = 'username_here';
+
+
+📚 COMPLETE GUIDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read: ONE_SESSION_PER_ACCOUNT_SECURITY.md
+
+
+✅ CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[✓] Backend updated
+[✓] Frontend updated
+[✓] Force logout option added
+[✓] Warning modal implemented
+[✓] Session blocking works
+[✓] Documentation complete
+[✓] No linter errors
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+          🔒 Your application is now more secure! 🔒
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+

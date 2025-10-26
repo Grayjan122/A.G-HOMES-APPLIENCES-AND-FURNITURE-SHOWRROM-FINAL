@@ -20,6 +20,7 @@ import RequestManagementCustomizeWR from '@/app/Contents/warehouse-contents/requ
 import UnifiedRequestManagement from '@/app/Contents/warehouse-contents/combineRequestManagement';
 import DeliveryCustomizeWR from '@/app/Contents/warehouse-contents/customizeDelivery';
 import ProfileSetting from '@/app/Components/profileSetting/userProfilePage';
+import InventoryIM from '@/app/Contents/inventory-contents/inventoryIM';
 
 const SidebarWarehouseRep = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -277,6 +278,7 @@ const SidebarWarehouseRep = () => {
       <section className="main-content">
         {renderContent()}
       </section>
+      {/* <InventoryIM /> */}
     </>
   );
 };

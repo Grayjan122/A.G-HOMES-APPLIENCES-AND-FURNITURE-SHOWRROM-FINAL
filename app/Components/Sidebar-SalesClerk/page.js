@@ -9,11 +9,13 @@ import axios from 'axios';
 import DashboardSalesClerk from '@/app/Contents/saleClearkContents/dashboardSC';
 import CombinedSalePage from '@/app/Contents/saleClearkContents/posSC';
 import PaymentBehavior from '@/app/Contents/saleClearkContents/paymentBehavior';
+import DeliveryTracking from '@/app/Contents/saleClearkContents/deliveryTracking';
 import CustomizeInventorySC from '@/app/Contents/saleClearkContents/customizInventory';
 import ReceiveCustomizeSC from '@/app/Contents/saleClearkContents/receiveCustomize';
 import CustomizeManagementSC from '@/app/Contents/saleClearkContents/customizeManagement';
 import Customer from '@/app/Contents/admin-contents/customerPage';
 import ProfileSetting from '../profileSetting/userProfilePage';
+import InventoryIM from '@/app/Contents/inventory-contents/inventoryIM';
 
 const SidebarSaleClerk = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -72,6 +74,7 @@ const SidebarSaleClerk = () => {
       component: <CombinedSalePage />,
       children: []
     },
+    
     {
       key: 'installments',
       label: 'INSTALLMENTS',
@@ -80,12 +83,19 @@ const SidebarSaleClerk = () => {
       children: []
     },
     {
-      key: 'customizemanagement',
-      label: 'CUSTOMIZE MANAGEMENT',
-      icon: '/assets/images/dash-icons/ag-13.png',
-      component: <CustomizeManagementSC />,
+      key: 'delivery',
+      label: 'DELIVERY TRACKING',
+      icon: '/assets/images/dash-icons/ag-14.png',
+      component: <DeliveryTracking />,
       children: []
     },
+    // {
+    //   key: 'customizemanagement',
+    //   label: 'CUSTOMIZE MANAGEMENT',
+    //   icon: '/assets/images/dash-icons/ag-13.png',
+    //   component: <CustomizeManagementSC />,
+    //   children: []
+    // },
     {
       key: 'customize',
       label: 'CUSTOMIZE INVENTORY',
@@ -248,6 +258,7 @@ const SidebarSaleClerk = () => {
       </div>
     </>
   );
+  
 };
 
 export default SidebarSaleClerk;

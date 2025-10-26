@@ -11,7 +11,7 @@ import Swal from 'sweetalert2';
 import Head from "next/head";
 
 // Components
-import Dashboard from '@/app/Contents/admin-contents/Dashboard/page';
+import DashboardIM from '@/app/Contents/inventory-contents/dashboardIM';
 
 
 
@@ -21,6 +21,7 @@ import TrackRequestIM from '@/app/Contents/inventory-contents/trackRequest';
 import RequestStockIM from '@/app/Contents/inventory-contents/requestStockIM';
 import ReceiveStockIM from '@/app/Contents/inventory-contents/receiveStock';
 import InventoryLedgerIM from '@/app/Contents/inventory-contents/inventoryAudit';
+import CustomizeInventorySC from '@/app/Contents/saleClearkContents/customizInventory';
 import ProfileSetting from '@/app/Components/profileSetting/userProfilePage';
 
 const SidebarInventory = () => {
@@ -75,7 +76,7 @@ const SidebarInventory = () => {
 
   }, [isMounted]);
 
-  const yawa = () => {
+  const yawa = () => {0
     document.title = 'Jan Page'
   }
 
@@ -86,7 +87,7 @@ const SidebarInventory = () => {
       key: 'dashboard',
       label: 'Dashboard',
       icon: '/assets/images/dashboard.png',
-      component: <Dashboard />,
+      component: <DashboardIM />,
     },
     {
       key: 'inventory',
@@ -114,6 +115,11 @@ const SidebarInventory = () => {
           key: 'inventory-ledger',
           label: 'Inventory Ledger',
           component: <InventoryLedgerIM />,
+        },
+        {
+          key: 'customize-inventory',
+          label: 'Customize Inventory',
+          component: <CustomizeInventorySC />,
         },
       ],
     },

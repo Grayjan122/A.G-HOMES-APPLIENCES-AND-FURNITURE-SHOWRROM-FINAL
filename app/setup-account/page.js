@@ -25,8 +25,8 @@ function SetupAccountContent() {
   const [tokenValid, setTokenValid] = useState(true);
 
 
-  // const BASE_URL = 'https://ag-home.site/backend/api/';
-  const BASE_URL = 'http://localhost/capstone-api/api/';
+  const BASE_URL = 'https://ag-home.site/backend/api/';
+  // const BASE_URL = 'http://localhost/capstone-api/api/';
 
   useEffect(() => {
     const tokenParam = searchParams.get('token');
@@ -155,16 +155,20 @@ function SetupAccountContent() {
     setIsLoading(true);
 
     try {
-      const response = await axios.get(BASE_URL + 'users.php', {
-        params: {
-          json: JSON.stringify({
-            token,
-            username,
-            password
-          }),
-          operation: 'CompleteSetup'
-        }
-      });
+      // Add a minimum delay for better UX (show the animation)
+      const [response] = await Promise.all([
+        axios.get(BASE_URL + 'users.php', {
+          params: {
+            json: JSON.stringify({
+              token,
+              username,
+              password
+            }),
+            operation: 'CompleteSetup'
+          }
+        }),
+        new Promise(resolve => setTimeout(resolve, 1500)) // 1.5 second minimum delay
+      ]);
 
       if (response.data.success) {
         AlertSucces(
@@ -393,11 +397,33 @@ function SetupAccountContent() {
               fontSize: '16px',
               fontWeight: '600',
               cursor: isLoading ? 'not-allowed' : 'pointer',
-              opacity: isLoading ? 0.7 : 1
+              opacity: isLoading ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px'
             }}
           >
-            {isLoading ? 'Setting Up...' : 'Complete Setup'}
+            {isLoading && (
+              <span style={{
+                display: 'inline-block',
+                width: '16px',
+                height: '16px',
+                border: '2px solid rgba(255,255,255,0.3)',
+                borderTop: '2px solid white',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite'
+              }}></span>
+            )}
+            {isLoading ? '⏳ Setting Up Your Account...' : '✅ Complete Setup'}
           </button>
+          
+          <style jsx>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
         </form>
 
         <div style={{ marginTop: '20px', textAlign: 'center' }}>

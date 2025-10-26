@@ -12,6 +12,7 @@ import SidebarDriver from '../Components/Sidebar-SalesClerk/page';
 import SidebarSaleClerk from '../Components/Sidebar-SalesClerk/page';
 import { LogInSuccess } from '../Components/SweetAlert/logIn';
 import InactivityLogout from '../Components/InactivityLogout/inactivityLogout';
+import SessionValidator from '../Components/SessionValidator/sessionValidator';
 
 
 const SaleClerckPage = () => {
@@ -63,6 +64,7 @@ const SaleClerckPage = () => {
   return (
     <>
       <InactivityLogout />
+      <SessionValidator />
       <Header />
       <SidebarSaleClerk />
       {/* <SidebarWarehouseRep /> */}

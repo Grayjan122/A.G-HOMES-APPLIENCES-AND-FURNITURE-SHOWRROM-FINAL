@@ -9,6 +9,7 @@ import { useState } from 'react';
 import SidebarInventory from '../Components/Sidebar-Inventory/page';
 import { LogInSuccess } from '../Components/SweetAlert/logIn';
 import InactivityLogout from '../Components/InactivityLogout/inactivityLogout';
+import SessionValidator from '../Components/SessionValidator/sessionValidator';
 
 
 const InventoryPage = () => {
@@ -61,6 +62,7 @@ const InventoryPage = () => {
   return (
     <>
       <InactivityLogout />
+      <SessionValidator />
       <Header />
       <SidebarInventory />
 

@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import './notifications.css';
 
@@ -9,6 +10,7 @@ const NotificationBell = () => {
     const [showDropdown, setShowDropdown] = useState(false);
     const [loading, setLoading] = useState(false);
     const dropdownRef = useRef(null);
+    const bellButtonRef = useRef(null);
     const [userRole, setUserRole] = useState('');
 
     useEffect(() => {
@@ -28,14 +30,21 @@ const NotificationBell = () => {
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+            if (
+                dropdownRef.current && 
+                !dropdownRef.current.contains(event.target) &&
+                bellButtonRef.current &&
+                !bellButtonRef.current.contains(event.target)
+            ) {
                 setShowDropdown(false);
             }
         };
 
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+        if (showDropdown) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showDropdown]);
 
     const fetchNotifications = async () => {
         if (typeof window === 'undefined') return;
@@ -46,15 +55,17 @@ const NotificationBell = () => {
         try {
             const locationId = sessionStorage.getItem('location_id');
             const role = sessionStorage.getItem('user_role');
+            const accountId = sessionStorage.getItem('account_id');
             
-            console.log('Fetching notifications with:', { locationId, role });
+            console.log('Fetching notifications with:', { locationId, role, accountId });
             
             const response = await axios.get(baseURL + 'notifications.php', {
                 params: {
                     operation: 'GetNotifications',
                     json: JSON.stringify({
                         locationId: locationId,
-                        role: role
+                        role: role,
+                        accountId: accountId
                     })
                 }
             });
@@ -107,7 +118,8 @@ const NotificationBell = () => {
                 params: {
                     operation: 'MarkAllAsRead',
                     json: JSON.stringify({
-                        locationId: sessionStorage.getItem('location_id')
+                        locationId: sessionStorage.getItem('location_id'),
+                        accountId: sessionStorage.getItem('account_id')
                     })
                 }
             });
@@ -166,9 +178,21 @@ const NotificationBell = () => {
         return date.toLocaleDateString();
     };
 
+    const getDropdownPosition = () => {
+        if (bellButtonRef.current) {
+            const rect = bellButtonRef.current.getBoundingClientRect();
+            return {
+                top: rect.bottom + 8,
+                right: window.innerWidth - rect.right
+            };
+        }
+        return { top: 0, right: 0 };
+    };
+
     return (
-        <div className="notification-bell-container" ref={dropdownRef}>
+        <div className="notification-bell-container">
             <button 
+                ref={bellButtonRef}
                 className="notification-bell-button"
                 onClick={() => setShowDropdown(!showDropdown)}
                 title="Notifications"
@@ -189,8 +213,16 @@ const NotificationBell = () => {
                 )}
             </button>
 
-            {showDropdown && (
-                <div className="notification-dropdown">
+            {showDropdown && typeof document !== 'undefined' && createPortal(
+                <div 
+                    ref={dropdownRef}
+                    className="notification-dropdown"
+                    style={{
+                        position: 'fixed',
+                        top: `${getDropdownPosition().top}px`,
+                        right: `${getDropdownPosition().right}px`
+                    }}
+                >
                     <div className="notification-header">
                         <h3>Notifications</h3>
                         {unreadCount > 0 && (
@@ -250,7 +282,8 @@ const NotificationBell = () => {
                             </button>
                         </div>
                     )}
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

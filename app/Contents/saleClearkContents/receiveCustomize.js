@@ -207,6 +207,26 @@ const ReceiveCustomizeSC = () => {
         }
     };
 
+    const createNotification = async (notificationData) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        if (!baseURL) return;
+
+        const url = baseURL + 'notifications.php';
+        
+        try {
+            // Format data for PHP backend (using FormData for POST)
+            const formData = new FormData();
+            formData.append('operation', 'CreateNotification');
+            formData.append('json', JSON.stringify(notificationData));
+
+            const response = await axios.post(url, formData);
+            console.log('Notification sent successfully:', response.data);
+        } catch (error) {
+            console.error('Error sending notification:', error);
+            console.error('Error details:', error.response?.data || error.message);
+        }
+    };
+
     const receiveDelivery = async () => {
 
         const locationID = parseInt(sessionStorage.getItem('location_id'));
@@ -254,7 +274,23 @@ const ReceiveCustomizeSC = () => {
                 setViewRequestDetailVisible(true);
                 setContinueR(true);
                 fetchCustomizeDeliveryList();
-                // Logs(accountID, 'Received customize delivery #' + selectedDelivery.deliver_customize_id);
+                Logs(accountID, 'Received customize delivery #' + selectedDelivery.deliver_customize_id);
+
+                // Get the store name (current location)
+                const currentLocationName = sessionStorage.getItem('location_name') || 'Store';
+
+                // Send notification to warehouse location (Warehouse Representative)
+                await createNotification({
+                    type: 'delivery',
+                    title: 'Customize Delivery Received',
+                    message: `Customize request #${selectedDelivery.customize_request_id} has been successfully received by ${currentLocationName}.`,
+                    locationId: selectedDelivery.deliver_from, // Warehouse location (delivery from)
+                    targetRole: 'Warehouse Representative',
+                    productId: null,
+                    customerId: null,
+                    referenceId: selectedDelivery.customize_request_id
+                });
+
             } else {
                 console.log('Failed to receive delivery:', response.data);
                 showAlertError({

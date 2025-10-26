@@ -48,12 +48,14 @@ export default function LoginPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [canResend, setCanResend] = useState(true);
 
   const router = useRouter();
 
   // Base URL configuration
-  // const BASE_URL = 'https://ag-home.site/backend/api/';
-  const BASE_URL = 'http://localhost/capstone-api/api/';
+  const BASE_URL = 'https://ag-home.site/backend/api/';
+  // const BASE_URL = 'http://localhost/capstone-api/api/';
 
   // Check if we're in the browser (client-side)
   const [isMounted, setIsMounted] = useState(false);
@@ -61,6 +63,18 @@ export default function LoginPage() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Countdown timer for resend cooldown
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => {
+        setResendCooldown(resendCooldown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (resendCooldown === 0 && !canResend) {
+      setCanResend(true);
+    }
+  }, [resendCooldown, canResend]);
 
   // Add debug log
   const addDebugLog = (message, data = null) => {
@@ -283,6 +297,97 @@ export default function LoginPage() {
     }
   };
 
+  // Force login retry function (when user chooses to logout other session)
+  const forceLoginRetry = async () => {
+    addDebugLog('=== Force Login Retry Started ===');
+    setIsLoading(true);
+
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('loginSuccess', 'true');
+      }
+      const baseURL = (typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null) || BASE_URL;
+      const url = baseURL + 'login.php';
+      const LogCredentials = {
+        username: email.trim(),
+        password: password,
+        forceLogout: true  // ⭐ Force logout flag
+      };
+
+      addDebugLog('Attempting force login with:', {
+        url: url,
+        username: LogCredentials.username,
+        forceLogout: true
+      });
+
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify(LogCredentials),
+          operation: "login"
+        },
+        timeout: 10000,
+        validateStatus: (status) => status < 600
+      });
+
+      addDebugLog('Force login response:', {
+        status: response.status,
+        data: response.data
+      });
+
+      if (response.status === 200 && response.data && response.data.length > 0) {
+        const userData = response.data[0];
+        
+        // Store user data
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('user_id', userData.account_id);
+          sessionStorage.setItem('location_id', userData.location_id);
+          sessionStorage.setItem('user_fname', userData.fname);
+          sessionStorage.setItem('user_role', userData.role_name);
+          sessionStorage.setItem('fullname', `${userData.fname} ${userData.mname || ''} ${userData.lname}`.trim());
+
+          if (userData.location_name) {
+            sessionStorage.setItem('location_name', userData.location_name);
+          }
+        }
+
+        // Log the activity
+        try {
+          await Logs(userData.account_id, 'Online');
+        } catch (err) {
+          console.warn('Failed to create audit log, but continuing login:', err);
+        }
+
+        // Route based on role
+        const roleRoutes = {
+          'Admin': '/adminPage',
+          'Inventory Manager': '/inventoryPage',
+          'Warehouse Representative': '/warehousePage',
+          'Sales Clerk': '/salesClerkPage'
+        };
+
+        const route = roleRoutes[userData.role_name];
+        if (route) {
+          addDebugLog(`✅ Force login successful! Redirecting to ${route}`);
+          router.push(route);
+        } else {
+          throw new Error(`Unknown role: ${userData.role_name}`);
+        }
+      } else {
+        throw new Error('Force login failed');
+      }
+    } catch (error) {
+      addDebugLog('❌ Force login error:', error);
+      showAlertError({
+        icon: "error",
+        title: "Login Failed",
+        text: 'Force login attempt failed. Please try again.',
+        button: 'OK'
+      });
+      setIsLoading(false);
+      generateRandomNumbers();
+    }
+  };
+
   const login = async (e) => {
     e.preventDefault();
 
@@ -417,21 +522,76 @@ export default function LoginPage() {
       // Check for successful response
       if (response.status === 200) {
         addDebugLog('✅ Server responded with 200 OK');
+        addDebugLog('Response data type:', typeof response.data);
+        addDebugLog('Response data:', response.data);
 
-        // Check if response is an error (account in use, deactivated, or suspended)
-        if (response.data && response.data.error) {
-          addDebugLog('❌ Login blocked:', response.data.error);
+        // Check if response is an error object (account in use, deactivated, or suspended)
+        // Backend can return error in two ways: as object or inside array
+        const errorData = response.data?.error ? response.data : 
+                         (Array.isArray(response.data) && response.data[0]?.error ? response.data[0] : null);
+        
+        if (errorData && errorData.error) {
+          addDebugLog('❌ Login blocked:', errorData.error);
           
+          // Handle "account in use" with force logout option
+          if (errorData.error === 'account_in_use' && errorData.can_force_logout) {
+            addDebugLog('Account in use - showing force logout option');
+            
+            // Import Swal dynamically
+            import('sweetalert2').then((Swal) => {
+              Swal.default.fire({
+                icon: 'warning',
+                title: 'Account Already In Use',
+                html: `
+                  <div style="text-align: left; padding: 10px;">
+                    <p style="margin-bottom: 15px;">
+                      <strong>🔒 Security Notice:</strong> This account is currently active in another session.
+                    </p>
+                    <p style="margin-bottom: 15px;">
+                      For security reasons, only <strong>one active session</strong> is allowed per account.
+                    </p>
+                    <p style="margin-bottom: 15px;">
+                      <strong>Options:</strong>
+                    </p>
+                    <ul style="text-align: left; margin-left: 20px;">
+                      <li>Click <strong>"Force Logout"</strong> to terminate the other session and login here</li>
+                      <li>Click <strong>"Cancel"</strong> to keep the other session active</li>
+                    </ul>
+                    <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                      <em>Note: If the other session is yours, it will be logged out automatically.</em>
+                    </p>
+                  </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '🔓 Force Logout & Login',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
+                allowOutsideClick: false
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  addDebugLog('User chose to force logout - retrying login');
+                  // Retry login with forceLogout flag
+                  forceLoginRetry();
+                } else {
+                  addDebugLog('User cancelled force logout');
+                  setIsLoading(false);
+                  generateRandomNumbers();
+                }
+              });
+            });
+            return;
+          }
+          
+          // Handle other errors (deactivated, suspended)
           let title = 'Login Failed';
           let icon = 'warning';
           
-          if (response.data.error === 'account_in_use') {
-            title = 'Account In Use ⚠️';
-            icon = 'warning';
-          } else if (response.data.error === 'account_deactivated') {
+          if (errorData.error === 'account_deactivated') {
             title = 'Access Denied';
             icon = 'error';
-          } else if (response.data.error === 'account_suspended') {
+          } else if (errorData.error === 'account_suspended') {
             title = 'Account Suspended';
             icon = 'warning';
           }
@@ -439,7 +599,7 @@ export default function LoginPage() {
           showAlertError({
             icon: icon,
             title: title,
-            text: response.data.message || 'Unable to login at this time.',
+            text: errorData.message || 'Unable to login at this time.',
             button: 'OK'
           });
           setIsLoading(false);
@@ -454,6 +614,9 @@ export default function LoginPage() {
             password: undefined // Don't log password
           });
 
+          // Note: Backend now handles "account already online" by forcing logout of previous session
+          // So we don't need to check active_status here anymore
+          
           // Check if account is deactivated or suspended
           if (userData.status === 'Deactive') {
             addDebugLog('❌ Account is deactivated');
@@ -611,6 +774,8 @@ export default function LoginPage() {
     setConfirmPassword('');
     setAccountId(null);
     setPasswordError('');
+    setResendCooldown(0);
+    setCanResend(true);
   };
 
   const sendVerificationCode = async () => {
@@ -619,6 +784,17 @@ export default function LoginPage() {
         icon: "error",
         title: "Email Required",
         text: 'Please enter your email address',
+        button: 'OK'
+      });
+      return;
+    }
+
+    // Check if still in cooldown period
+    if (!canResend) {
+      showAlertError({
+        icon: "warning",
+        title: "Please Wait",
+        text: `You can resend the code in ${resendCooldown} seconds`,
         button: 'OK'
       });
       return;
@@ -666,6 +842,11 @@ export default function LoginPage() {
 
         if (emailResponse.data.success) {
           setResetStep(2);
+          
+          // Start 30-second cooldown timer
+          setCanResend(false);
+          setResendCooldown(30);
+          
           showAlertError({
             icon: "success",
             title: "Code Sent!",
@@ -1233,19 +1414,42 @@ export default function LoginPage() {
                   Didn't receive the code?{' '}
                   <span
                     onClick={() => {
-                      setResetStep(1);
-                      setEnteredCode('');
+                      // Resend code to the same email without going back to step 1
+                      if (canResend && !isSendingCode) {
+                        setEnteredCode('');
+                        sendVerificationCode();
+                      }
                     }}
                     style={{
-                      color: '#667eea',
-                      cursor: 'pointer',
+                      color: (!canResend || isSendingCode) ? '#999' : '#667eea',
+                      cursor: (!canResend || isSendingCode) ? 'not-allowed' : 'pointer',
                       fontWeight: '600',
-                      textDecoration: 'underline'
+                      textDecoration: 'underline',
+                      opacity: (!canResend || isSendingCode) ? 0.5 : 1
                     }}
                   >
-                    🔄 Resend Code
+                    {isSendingCode ? '⏳ Sending...' : 
+                     !canResend ? `⏱️ Wait ${resendCooldown}s` : 
+                     '🔄 Resend Code'}
                   </span>
                 </small>
+                <div style={{ 
+                  marginTop: '8px', 
+                  fontSize: 'clamp(10px, 2.5vw, 11px)', 
+                  color: '#999' 
+                }}>
+                  Code will be sent to: <strong style={{ color: '#667eea' }}>{forgotEmail}</strong>
+                </div>
+                {!canResend && (
+                  <div style={{
+                    marginTop: '8px',
+                    fontSize: 'clamp(10px, 2.5vw, 11px)',
+                    color: '#ff9800',
+                    fontWeight: '600'
+                  }}>
+                    ⏳ Please wait {resendCooldown} seconds before resending
+                  </div>
+                )}
               </div>
             </div>
           )}

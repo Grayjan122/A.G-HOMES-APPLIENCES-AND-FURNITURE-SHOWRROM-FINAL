@@ -9,6 +9,7 @@ import { useState } from 'react';
 import SidebarWarehouseRep from '../Components/Sidebar-WarehouseRep/page';
 import { LogInSuccess } from '../Components/SweetAlert/logIn';
 import InactivityLogout from '../Components/InactivityLogout/inactivityLogout';
+import SessionValidator from '../Components/SessionValidator/sessionValidator';
 
 
 const WarehousePage = () => {
@@ -60,6 +61,7 @@ const WarehousePage = () => {
   return (
     <>
       <InactivityLogout />
+      <SessionValidator />
       <Header />
       <SidebarWarehouseRep />
 

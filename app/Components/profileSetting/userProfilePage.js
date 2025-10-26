@@ -82,7 +82,7 @@ const ProfileSetting = () => {
             hasNumber: /[0-9]/.test(password),
             hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password)
         };
-        
+
         return checks;
     };
 
@@ -120,17 +120,47 @@ const ProfileSetting = () => {
             const updateParams = new URLSearchParams();
             updateParams.append('json', JSON.stringify({ userID: user_id, newPassword: newPassword }));
             updateParams.append('operation', 'updatePassword');
-            
-            await axios.post(url, updateParams);
 
-            AlertSucces('Password successfully updated!');
-            setShowModal(false);
-            setOldPassword('');
-            setNewPassword('');
-            setConfirmPassword('');
+            const updateResponse = await axios.post(url, updateParams);
+
+            // Check if password was reused
+            if (updateResponse.data.error === 'password_reuse') {
+                showAlertError({
+                    icon: "warning",
+                    title: "Password Reuse Detected!",
+                    text: updateResponse.data.message,
+                    button: 'Choose Different Password'
+                });
+                return;
+            }
+
+            if (updateResponse.data.success) {
+                AlertSucces(
+                    "Password successfully updated!",
+                    "success",
+                    true,
+                    'Okay'
+                );
+                setShowModal(false);
+                setOldPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                showAlertError({
+                    icon: "error",
+                    title: "Update Failed!",
+                    text: updateResponse.data.message || 'Failed to update password!',
+                    button: 'Try Again'
+                });
+            }
         } catch (error) {
             console.error('Error changing password:', error);
-            showAlertError('Something went wrong!');
+            showAlertError({
+                icon: "error",
+                title: "Update Failed!",
+                text: 'Something went wrong while changing your password!',
+                button: 'Try Again'
+            });
         }
     };
 
@@ -158,7 +188,12 @@ const ProfileSetting = () => {
 
     const sendVerificationCode = async () => {
         if (!userEmail || !userEmail.trim()) {
-            showAlertError('Please enter your email address');
+            showAlertError({
+                icon: "warning",
+                title: "Email Required!",
+                text: 'Please enter your email address!',
+                button: 'Okay'
+            });
             return;
         }
 
@@ -218,11 +253,21 @@ const ProfileSetting = () => {
                     );
                 } else {
                     console.error('❌ Email sending failed:', emailResponse.data);
-                    showAlertError(emailResponse.data?.error || 'Failed to send email. Please try again.');
+                    showAlertError({
+                        icon: "error",
+                        title: "Email Send Failed!",
+                        text: emailResponse.data?.error || 'Failed to send email. Please try again.',
+                        button: 'Try Again'
+                    });
                 }
             } else {
                 console.error('❌ Email verification failed:', response.data);
-                showAlertError('Email address does not match your account');
+                showAlertError({
+                    icon: "error",
+                    title: "Email Mismatch!",
+                    text: 'Email address does not match your account!',
+                    button: 'Try Again'
+                });
             }
         } catch (error) {
             console.error('❌ ERROR in sendVerificationCode:', error);
@@ -231,7 +276,12 @@ const ProfileSetting = () => {
                 response: error.response?.data,
                 status: error.response?.status
             });
-            showAlertError('Failed to send verification code. Check console for details.');
+            showAlertError({
+                icon: "error",
+                title: "Verification Failed!",
+                text: 'Failed to send verification code. Please try again.',
+                button: 'Try Again'
+            });
         } finally {
             setIsSendingCode(false);
         }
@@ -243,7 +293,12 @@ const ProfileSetting = () => {
             setPasswordError('');
         } else {
             setPasswordError('Invalid verification code');
-            showAlertError('The verification code you entered is incorrect');
+            showAlertError({
+                icon: "error",
+                title: "Invalid Code!",
+                text: 'The verification code you entered is incorrect!',
+                button: 'Try Again'
+            });
         }
     };
 
@@ -268,14 +323,45 @@ const ProfileSetting = () => {
             const updateParams = new URLSearchParams();
             updateParams.append('json', JSON.stringify({ userID: user_id, newPassword: resetNewPassword }));
             updateParams.append('operation', 'updatePassword');
-            
-            await axios.post(url, updateParams);
 
-            AlertSucces('Password successfully reset!');
-            closeForgotPasswordModal();
+            const updateResponse = await axios.post(url, updateParams);
+
+            // Check if password was reused
+            if (updateResponse.data.error === 'password_reuse') {
+                setPasswordError(updateResponse.data.message);
+                showAlertError({
+                    icon: "warning",
+                    title: "Password Reuse Detected!",
+                    text: updateResponse.data.message,
+                    button: 'Choose Different Password'
+                });
+                return;
+            }
+
+            if (updateResponse.data.success) {
+                AlertSucces(
+                    "Password successfully reset!",
+                    "success",
+                    true,
+                    'Okay'
+                );
+                closeForgotPasswordModal();
+            } else {
+                showAlertError({
+                    icon: "error",
+                    title: "Reset Failed!",
+                    text: updateResponse.data.message || 'Failed to reset password!',
+                    button: 'Try Again'
+                });
+            }
         } catch (error) {
             console.error('Error resetting password:', error);
-            showAlertError('Something went wrong!');
+            showAlertError({
+                icon: "error",
+                title: "Reset Failed!",
+                text: 'Something went wrong while resetting your password!',
+                button: 'Try Again'
+            });
         }
     };
 
@@ -367,7 +453,12 @@ const ProfileSetting = () => {
         } catch (error) {
             console.error('Error sending email verification code:', error);
             setEmailError('Failed to send verification code. Please try again.');
-            showAlertError('Failed to send verification code');
+            showAlertError({
+                icon: "error",
+                title: "Send Failed!",
+                text: 'Failed to send verification code. Please try again!',
+                button: 'Try Again'
+            });
         } finally {
             setIsSendingEmailCode(false);
         }
@@ -378,7 +469,12 @@ const ProfileSetting = () => {
             updateEmail();
         } else {
             setEmailError('Invalid verification code');
-            showAlertError('The verification code you entered is incorrect');
+            showAlertError({
+                icon: "error",
+                title: "Invalid Code!",
+                text: 'The verification code you entered is incorrect!',
+                button: 'Try Again'
+            });
         }
     };
 
@@ -386,16 +482,22 @@ const ProfileSetting = () => {
         try {
             // Update email in database
             const updateParams = new URLSearchParams();
-            updateParams.append('json', JSON.stringify({ 
-                userID: user_id, 
-                newEmail: newEmail.trim() 
+            updateParams.append('json', JSON.stringify({
+                userID: user_id,
+                newEmail: newEmail.trim()
             }));
             updateParams.append('operation', 'updateEmail');
-            
+
             await axios.post(url, updateParams);
 
-            AlertSucces('Email successfully updated!');
-            
+            // AlertSucces('Email successfully updated!');
+             AlertSucces(
+                "Email successfully updated!",
+                "success",
+                true,
+                'Okay'
+            );
+
             // Update local state
             setUserDetails(prev => ({
                 ...prev,
@@ -405,14 +507,19 @@ const ProfileSetting = () => {
             closeEditEmailModal();
         } catch (error) {
             console.error('Error updating email:', error);
-            showAlertError('Failed to update email. Please try again.');
+            showAlertError({
+                icon: "error",
+                title: "Update Failed!",
+                text: 'Failed to update email. Please try again!',
+                button: 'Try Again'
+            });
         }
     };
 
     const fullName = `${userDetails.fname || ''} ${userDetails.mname || ''} ${userDetails.lname || ''}`.trim();
 
     return (
-        <div className="customer-main" >
+        <div className="dash-main" >
             <style jsx>{`
                 .profile-container {
                     max-width: 1000px;
@@ -555,17 +662,17 @@ const ProfileSetting = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '30px', flexWrap: 'wrap' }}>
                         <InitialsAvatar name={fullName} size={100} />
                         <div style={{ flex: 1, minWidth: '200px' }}>
-                            <h2 style={{ 
-                                margin: 0, 
-                                fontSize: 'clamp(1.5rem, 5vw, 2rem)', 
+                            <h2 style={{
+                                margin: 0,
+                                fontSize: 'clamp(1.5rem, 5vw, 2rem)',
                                 fontWeight: '700',
                                 wordBreak: 'break-word'
                             }}>
                                 {fullName || 'User'}
                             </h2>
-                            <p style={{ 
-                                margin: '5px 0 0 0', 
-                                opacity: 0.9, 
+                            <p style={{
+                                margin: '5px 0 0 0',
+                                opacity: 0.9,
                                 fontSize: 'clamp(0.9rem, 3.5vw, 1.1rem)',
                                 wordBreak: 'break-word'
                             }}>
@@ -577,18 +684,18 @@ const ProfileSetting = () => {
 
                 {/* Profile Information Card */}
                 <div className="profile-card">
-                    <h4 style={{ 
-                        marginBottom: '25px', 
-                        color: '#2d3748', 
-                        fontWeight: '700', 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                    <h4 style={{
+                        marginBottom: '25px',
+                        color: '#2d3748',
+                        fontWeight: '700',
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: '10px',
                         fontSize: 'clamp(1.1rem, 4vw, 1.3rem)'
                     }}>
                         <span style={{ fontSize: 'clamp(1.3rem, 4.5vw, 1.5rem)' }}>ℹ️</span> Personal Information
                     </h4>
-                    
+
                     <div className="info-row">
                         <div className="info-label">
                             <span>👤</span> Full Name
@@ -600,16 +707,16 @@ const ProfileSetting = () => {
                         <div className="info-label">
                             <span>📧</span> Email Address
                         </div>
-                        <div className="info-value" style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '10px', 
-                            flex: 1, 
+                        <div className="info-value" style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            flex: 1,
                             justifyContent: 'space-between',
                             flexWrap: 'wrap',
                             minWidth: 0
                         }}>
-                            <span style={{ 
+                            <span style={{
                                 wordBreak: 'break-all',
                                 overflowWrap: 'break-word',
                                 flex: '1 1 auto',
@@ -682,19 +789,19 @@ const ProfileSetting = () => {
 
                 {/* Security Section */}
                 <div className="profile-card">
-                    <h4 style={{ 
-                        marginBottom: '20px', 
-                        color: '#2d3748', 
-                        fontWeight: '700', 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                    <h4 style={{
+                        marginBottom: '20px',
+                        color: '#2d3748',
+                        fontWeight: '700',
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: '10px',
                         fontSize: 'clamp(1.1rem, 4vw, 1.3rem)'
                     }}>
                         <span style={{ fontSize: 'clamp(1.3rem, 4.5vw, 1.5rem)' }}>🔐</span> Security Settings
                     </h4>
-                    <p style={{ 
-                        color: '#6c757d', 
+                    <p style={{
+                        color: '#6c757d',
                         marginBottom: '20px',
                         fontSize: 'clamp(0.85rem, 3vw, 1rem)'
                     }}>
@@ -719,7 +826,7 @@ const ProfileSetting = () => {
                             <strong>⚠️</strong> {passwordError}
                         </Alert>
                     )}
-                    
+
                     <Form.Group className="mb-4">
                         <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
                             🔒 Old Password
@@ -729,8 +836,8 @@ const ProfileSetting = () => {
                             placeholder="Enter your current password"
                             value={oldPassword}
                             onChange={(e) => setOldPassword(e.target.value)}
-                            style={{ 
-                                borderRadius: '10px', 
+                            style={{
+                                borderRadius: '10px',
                                 padding: '12px 15px',
                                 border: '2px solid #e9ecef',
                                 transition: 'all 0.3s ease'
@@ -749,8 +856,8 @@ const ProfileSetting = () => {
                             placeholder="Enter your new password"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            style={{ 
-                                borderRadius: '10px', 
+                            style={{
+                                borderRadius: '10px',
                                 padding: '12px 15px',
                                 border: '2px solid #e9ecef',
                                 transition: 'all 0.3s ease'
@@ -838,8 +945,8 @@ const ProfileSetting = () => {
                             placeholder="Re-enter your new password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            style={{ 
-                                borderRadius: '10px', 
+                            style={{
+                                borderRadius: '10px',
                                 padding: '12px 15px',
                                 border: '2px solid #e9ecef',
                                 transition: 'all 0.3s ease'
@@ -850,10 +957,10 @@ const ProfileSetting = () => {
                     </Form.Group>
 
                     <div className="text-center mt-3 pt-3" style={{ borderTop: '1px solid #e9ecef' }}>
-                        <span 
-                            style={{ 
-                                color: '#667eea', 
-                                cursor: 'pointer', 
+                        <span
+                            style={{
+                                color: '#667eea',
+                                cursor: 'pointer',
                                 fontWeight: '600',
                                 fontSize: '0.95rem',
                                 transition: 'all 0.3s ease'
@@ -867,8 +974,8 @@ const ProfileSetting = () => {
                     </div>
                 </Modal.Body>
                 <Modal.Footer style={{ borderTop: '2px solid #e9ecef', padding: '20px 30px' }}>
-                    <Button 
-                        variant="secondary" 
+                    <Button
+                        variant="secondary"
                         onClick={() => setShowModal(false)}
                         style={{
                             borderRadius: '10px',
@@ -878,7 +985,7 @@ const ProfileSetting = () => {
                     >
                         Cancel
                     </Button>
-                    <Button 
+                    <Button
                         onClick={handleChangePassword}
                         style={{
                             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -905,25 +1012,25 @@ const ProfileSetting = () => {
                 </Modal.Header>
                 <Modal.Body style={{ padding: '30px' }}>
                     {/* Progress Indicator */}
-                    <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
                         marginBottom: '30px',
                         position: 'relative'
                     }}>
-                        <div style={{ 
-                            width: '100%', 
-                            height: '3px', 
-                            background: '#e9ecef', 
+                        <div style={{
+                            width: '100%',
+                            height: '3px',
+                            background: '#e9ecef',
                             position: 'absolute',
                             top: '15px',
                             left: 0,
                             zIndex: 0
                         }}></div>
-                        <div style={{ 
+                        <div style={{
                             width: resetStep === 1 ? '0%' : resetStep === 2 ? '50%' : '100%',
-                            height: '3px', 
-                            background: 'linear-gradient(90deg, #667eea, #764ba2)', 
+                            height: '3px',
+                            background: 'linear-gradient(90deg, #667eea, #764ba2)',
                             position: 'absolute',
                             top: '15px',
                             left: 0,
@@ -931,9 +1038,9 @@ const ProfileSetting = () => {
                             transition: 'width 0.3s ease'
                         }}></div>
                         {[1, 2, 3].map((step) => (
-                            <div key={step} style={{ 
-                                width: '35px', 
-                                height: '35px', 
+                            <div key={step} style={{
+                                width: '35px',
+                                height: '35px',
                                 borderRadius: '50%',
                                 background: resetStep >= step ? 'linear-gradient(135deg, #667eea, #764ba2)' : '#e9ecef',
                                 color: resetStep >= step ? 'white' : '#6c757d',
@@ -959,15 +1066,15 @@ const ProfileSetting = () => {
                     {/* Step 1: Verify Email */}
                     {resetStep === 1 && (
                         <>
-                            <div style={{ 
-                                padding: '20px', 
-                                backgroundColor: '#f0f4ff', 
+                            <div style={{
+                                padding: '20px',
+                                backgroundColor: '#f0f4ff',
                                 borderRadius: '10px',
                                 marginBottom: '25px',
                                 borderLeft: '4px solid #667eea'
                             }}>
                                 <p style={{ margin: 0, color: '#495057', fontSize: '0.95rem' }}>
-                                    <strong>📧 Email Verification Required</strong><br/>
+                                    <strong>📧 Email Verification Required</strong><br />
                                     We'll send a 6-digit verification code to your email address
                                 </p>
                             </div>
@@ -981,8 +1088,8 @@ const ProfileSetting = () => {
                                     value={userEmail}
                                     onChange={(e) => setUserEmail(e.target.value)}
                                     disabled={isSendingCode}
-                                    style={{ 
-                                        borderRadius: '10px', 
+                                    style={{
+                                        borderRadius: '10px',
                                         padding: '12px 15px',
                                         border: '2px solid #e9ecef',
                                         transition: 'all 0.3s ease'
@@ -997,16 +1104,16 @@ const ProfileSetting = () => {
                     {/* Step 2: Enter Verification Code */}
                     {resetStep === 2 && (
                         <>
-                            <div style={{ 
-                                padding: '20px', 
-                                backgroundColor: '#e8f5e9', 
+                            <div style={{
+                                padding: '20px',
+                                backgroundColor: '#e8f5e9',
                                 borderRadius: '10px',
                                 marginBottom: '25px',
                                 borderLeft: '4px solid #4caf50',
                                 textAlign: 'center'
                             }}>
                                 <p style={{ margin: 0, color: '#2e7d32', fontSize: '0.95rem' }}>
-                                    <strong>✉️ Code Sent!</strong><br/>
+                                    <strong>✉️ Code Sent!</strong><br />
                                     Check your inbox at <strong>{userEmail}</strong>
                                 </p>
                             </div>
@@ -1020,9 +1127,9 @@ const ProfileSetting = () => {
                                     value={enteredCode}
                                     onChange={(e) => setEnteredCode(e.target.value)}
                                     maxLength={6}
-                                    style={{ 
-                                        fontSize: '1.8rem', 
-                                        letterSpacing: '0.8rem', 
+                                    style={{
+                                        fontSize: '1.8rem',
+                                        letterSpacing: '0.8rem',
                                         textAlign: 'center',
                                         borderRadius: '10px',
                                         padding: '20px',
@@ -1032,17 +1139,17 @@ const ProfileSetting = () => {
                                     }}
                                 />
                             </Form.Group>
-                            <div className="text-center mt-4" style={{ 
+                            <div className="text-center mt-4" style={{
                                 padding: '15px',
                                 backgroundColor: '#f8f9fa',
                                 borderRadius: '10px'
                             }}>
                                 <small style={{ color: '#6c757d' }}>
-                                    Didn't receive the code? 
-                                    <span 
-                                        style={{ 
-                                            color: '#667eea', 
-                                            cursor: 'pointer', 
+                                    Didn't receive the code?
+                                    <span
+                                        style={{
+                                            color: '#667eea',
+                                            cursor: 'pointer',
                                             marginLeft: '5px',
                                             fontWeight: '600'
                                         }}
@@ -1063,20 +1170,20 @@ const ProfileSetting = () => {
                     {/* Step 3: Reset Password */}
                     {resetStep === 3 && (
                         <>
-                            <div style={{ 
-                                padding: '20px', 
-                                backgroundColor: '#e8f5e9', 
+                            <div style={{
+                                padding: '20px',
+                                backgroundColor: '#e8f5e9',
                                 borderRadius: '10px',
                                 marginBottom: '25px',
                                 borderLeft: '4px solid #4caf50',
                                 textAlign: 'center'
                             }}>
                                 <p style={{ margin: 0, color: '#2e7d32', fontSize: '1rem', fontWeight: '600' }}>
-                                    ✅ Email Verified Successfully!<br/>
+                                    ✅ Email Verified Successfully!<br />
                                     <span style={{ fontSize: '0.9rem', fontWeight: 'normal' }}>Now create your new password</span>
                                 </p>
                             </div>
-                            
+
                             <Form.Group className="mb-4">
                                 <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
                                     🔑 New Password
@@ -1087,8 +1194,8 @@ const ProfileSetting = () => {
                                         placeholder="Enter your new password"
                                         value={resetNewPassword}
                                         onChange={(e) => setResetNewPassword(e.target.value)}
-                                        style={{ 
-                                            borderRadius: '10px', 
+                                        style={{
+                                            borderRadius: '10px',
                                             padding: '12px 45px 12px 15px',
                                             border: '2px solid #e9ecef',
                                             transition: 'all 0.3s ease'
@@ -1192,8 +1299,8 @@ const ProfileSetting = () => {
                                         placeholder="Re-enter your new password"
                                         value={resetConfirmPassword}
                                         onChange={(e) => setResetConfirmPassword(e.target.value)}
-                                        style={{ 
-                                            borderRadius: '10px', 
+                                        style={{
+                                            borderRadius: '10px',
                                             padding: '12px 45px 12px 15px',
                                             border: '2px solid #e9ecef',
                                             transition: 'all 0.3s ease'
@@ -1223,8 +1330,8 @@ const ProfileSetting = () => {
                 <Modal.Footer style={{ borderTop: '2px solid #e9ecef', padding: '20px 30px' }}>
                     {resetStep === 1 && (
                         <>
-                            <Button 
-                                variant="secondary" 
+                            <Button
+                                variant="secondary"
                                 onClick={closeForgotPasswordModal}
                                 style={{
                                     borderRadius: '10px',
@@ -1234,7 +1341,7 @@ const ProfileSetting = () => {
                             >
                                 Cancel
                             </Button>
-                            <Button 
+                            <Button
                                 onClick={sendVerificationCode}
                                 disabled={isSendingCode}
                                 style={{
@@ -1253,8 +1360,8 @@ const ProfileSetting = () => {
                     )}
                     {resetStep === 2 && (
                         <>
-                            <Button 
-                                variant="secondary" 
+                            <Button
+                                variant="secondary"
                                 onClick={() => setResetStep(1)}
                                 style={{
                                     borderRadius: '10px',
@@ -1264,7 +1371,7 @@ const ProfileSetting = () => {
                             >
                                 ← Back
                             </Button>
-                            <Button 
+                            <Button
                                 onClick={verifyCode}
                                 style={{
                                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -1281,8 +1388,8 @@ const ProfileSetting = () => {
                     )}
                     {resetStep === 3 && (
                         <>
-                            <Button 
-                                variant="secondary" 
+                            <Button
+                                variant="secondary"
                                 onClick={closeForgotPasswordModal}
                                 style={{
                                     borderRadius: '10px',
@@ -1292,7 +1399,7 @@ const ProfileSetting = () => {
                             >
                                 Cancel
                             </Button>
-                            <Button 
+                            <Button
                                 onClick={resetPasswordWithCode}
                                 style={{
                                     background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
@@ -1320,25 +1427,25 @@ const ProfileSetting = () => {
                 </Modal.Header>
                 <Modal.Body style={{ padding: '30px' }}>
                     {/* Progress Indicator */}
-                    <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
                         marginBottom: '30px',
                         position: 'relative'
                     }}>
-                        <div style={{ 
-                            width: '100%', 
-                            height: '3px', 
-                            background: '#e9ecef', 
+                        <div style={{
+                            width: '100%',
+                            height: '3px',
+                            background: '#e9ecef',
                             position: 'absolute',
                             top: '15px',
                             left: 0,
                             zIndex: 0
                         }}></div>
-                        <div style={{ 
+                        <div style={{
                             width: emailStep === 1 ? '0%' : '100%',
-                            height: '3px', 
-                            background: 'linear-gradient(90deg, #667eea, #764ba2)', 
+                            height: '3px',
+                            background: 'linear-gradient(90deg, #667eea, #764ba2)',
                             position: 'absolute',
                             top: '15px',
                             left: 0,
@@ -1346,9 +1453,9 @@ const ProfileSetting = () => {
                             transition: 'width 0.3s ease'
                         }}></div>
                         {[1, 2].map((step) => (
-                            <div key={step} style={{ 
-                                width: '35px', 
-                                height: '35px', 
+                            <div key={step} style={{
+                                width: '35px',
+                                height: '35px',
                                 borderRadius: '50%',
                                 background: emailStep >= step ? 'linear-gradient(135deg, #667eea, #764ba2)' : '#e9ecef',
                                 color: emailStep >= step ? 'white' : '#6c757d',
@@ -1374,20 +1481,20 @@ const ProfileSetting = () => {
                     {/* Step 1: Enter New Email */}
                     {emailStep === 1 && (
                         <>
-                            <div style={{ 
-                                padding: '20px', 
-                                backgroundColor: '#fff3cd', 
+                            <div style={{
+                                padding: '20px',
+                                backgroundColor: '#fff3cd',
                                 borderRadius: '10px',
                                 marginBottom: '25px',
                                 borderLeft: '4px solid #ffc107'
                             }}>
                                 <p style={{ margin: 0, color: '#856404', fontSize: '0.95rem' }}>
-                                    <strong>⚠️ Important</strong><br/>
+                                    <strong>⚠️ Important</strong><br />
                                     We'll send a verification code to your new email address to confirm the change.
                                 </p>
                             </div>
 
-                            <div style={{ 
+                            <div style={{
                                 padding: '15px',
                                 backgroundColor: '#f8f9fa',
                                 borderRadius: '10px',
@@ -1408,8 +1515,8 @@ const ProfileSetting = () => {
                                     value={newEmail}
                                     onChange={(e) => setNewEmail(e.target.value)}
                                     disabled={isSendingEmailCode}
-                                    style={{ 
-                                        borderRadius: '10px', 
+                                    style={{
+                                        borderRadius: '10px',
                                         padding: '12px 15px',
                                         border: '2px solid #e9ecef',
                                         transition: 'all 0.3s ease'
@@ -1417,7 +1524,7 @@ const ProfileSetting = () => {
                                     onFocus={(e) => e.target.style.borderColor = '#667eea'}
                                     onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
                                 />
-                                <Form.Text style={{ 
+                                <Form.Text style={{
                                     display: 'block',
                                     marginTop: '8px',
                                     fontSize: '0.85rem',
@@ -1432,20 +1539,20 @@ const ProfileSetting = () => {
                     {/* Step 2: Enter Verification Code */}
                     {emailStep === 2 && (
                         <>
-                            <div style={{ 
-                                padding: '20px', 
-                                backgroundColor: '#e8f5e9', 
+                            <div style={{
+                                padding: '20px',
+                                backgroundColor: '#e8f5e9',
                                 borderRadius: '10px',
                                 marginBottom: '25px',
                                 borderLeft: '4px solid #4caf50',
                                 textAlign: 'center'
                             }}>
                                 <p style={{ margin: 0, color: '#2e7d32', fontSize: '0.95rem' }}>
-                                    <strong>✉️ Verification Code Sent!</strong><br/>
+                                    <strong>✉️ Verification Code Sent!</strong><br />
                                     Check your inbox at <strong>{newEmail}</strong>
                                 </p>
                             </div>
-                            
+
                             <Form.Group>
                                 <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px', textAlign: 'center', display: 'block' }}>
                                     🔢 Enter Verification Code
@@ -1456,9 +1563,9 @@ const ProfileSetting = () => {
                                     value={emailEnteredCode}
                                     onChange={(e) => setEmailEnteredCode(e.target.value)}
                                     maxLength={6}
-                                    style={{ 
-                                        fontSize: '1.8rem', 
-                                        letterSpacing: '0.8rem', 
+                                    style={{
+                                        fontSize: '1.8rem',
+                                        letterSpacing: '0.8rem',
                                         textAlign: 'center',
                                         borderRadius: '10px',
                                         padding: '20px',
@@ -1469,17 +1576,17 @@ const ProfileSetting = () => {
                                 />
                             </Form.Group>
 
-                            <div className="text-center mt-4" style={{ 
+                            <div className="text-center mt-4" style={{
                                 padding: '15px',
                                 backgroundColor: '#f8f9fa',
                                 borderRadius: '10px'
                             }}>
                                 <small style={{ color: '#6c757d' }}>
-                                    Didn't receive the code? 
-                                    <span 
-                                        style={{ 
-                                            color: '#667eea', 
-                                            cursor: 'pointer', 
+                                    Didn't receive the code?
+                                    <span
+                                        style={{
+                                            color: '#667eea',
+                                            cursor: 'pointer',
                                             marginLeft: '5px',
                                             fontWeight: '600'
                                         }}
@@ -1500,8 +1607,8 @@ const ProfileSetting = () => {
                 <Modal.Footer style={{ borderTop: '2px solid #e9ecef', padding: '20px 30px' }}>
                     {emailStep === 1 && (
                         <>
-                            <Button 
-                                variant="secondary" 
+                            <Button
+                                variant="secondary"
                                 onClick={closeEditEmailModal}
                                 style={{
                                     borderRadius: '10px',
@@ -1511,7 +1618,7 @@ const ProfileSetting = () => {
                             >
                                 Cancel
                             </Button>
-                            <Button 
+                            <Button
                                 onClick={sendEmailVerificationCode}
                                 disabled={isSendingEmailCode}
                                 style={{
@@ -1530,8 +1637,8 @@ const ProfileSetting = () => {
                     )}
                     {emailStep === 2 && (
                         <>
-                            <Button 
-                                variant="secondary" 
+                            <Button
+                                variant="secondary"
                                 onClick={() => setEmailStep(1)}
                                 style={{
                                     borderRadius: '10px',
@@ -1541,7 +1648,7 @@ const ProfileSetting = () => {
                             >
                                 ← Back
                             </Button>
-                            <Button 
+                            <Button
                                 onClick={verifyEmailCode}
                                 style={{
                                     background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',

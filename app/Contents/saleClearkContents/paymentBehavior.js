@@ -28,6 +28,8 @@ const PaymentBehavior = () => {
     const [selectedPaymentForBreakdown, setSelectedPaymentForBreakdown] = useState(null);
     const [planStatusFilter, setPlanStatusFilter] = useState('all');
     const [showPlanSelectionModal, setShowPlanSelectionModal] = useState(false);
+    const [manualAdjustment, setManualAdjustment] = useState(false);
+    const [adjustedAmount, setAdjustedAmount] = useState('');
 
     useEffect(() => {
         GetCustomer();
@@ -267,19 +269,36 @@ const PaymentBehavior = () => {
 
             let paymentsToRecord = [];
 
-            if (payAllUnpaid) {
-                paymentsToRecord = unpaidPayments.map(payment => ({
+            // Manual adjustment mode - distribute adjusted amount
+            if (manualAdjustment && adjustedAmount) {
+                const totalAdjusted = parseFloat(adjustedAmount);
+                const selectedPaymentsList = payAllUnpaid ? unpaidPayments : selectedPayments.map(ipsId =>
+                    unpaidPayments.find(p => p.ips_id === ipsId)
+                );
+                
+                // Distribute the adjusted amount proportionally based on original amounts
+                const totalOriginal = selectedPaymentsList.reduce((sum, payment) => sum + payment.total_amount, 0);
+                
+                paymentsToRecord = selectedPaymentsList.map(payment => ({
                     ips_id: payment.ips_id,
-                    amount: payment.total_amount
+                    amount: (payment.total_amount / totalOriginal) * totalAdjusted
                 }));
             } else {
-                paymentsToRecord = selectedPayments.map(ipsId => {
-                    const payment = unpaidPayments.find(p => p.ips_id === ipsId);
-                    return {
-                        ips_id: ipsId,
+                // Normal mode - use calculated amounts
+                if (payAllUnpaid) {
+                    paymentsToRecord = unpaidPayments.map(payment => ({
+                        ips_id: payment.ips_id,
                         amount: payment.total_amount
-                    };
-                });
+                    }));
+                } else {
+                    paymentsToRecord = selectedPayments.map(ipsId => {
+                        const payment = unpaidPayments.find(p => p.ips_id === ipsId);
+                        return {
+                            ips_id: ipsId,
+                            amount: payment.total_amount
+                        };
+                    });
+                }
             }
 
             const pdaytails = {
@@ -297,12 +316,15 @@ const PaymentBehavior = () => {
             });
 
             if (!isNaN(response.data) && response.data !== null && response.data !== "") {
-                const selectedPaymentTotal = payAllUnpaid
-                    ? unpaidPayments.reduce((sum, payment) => sum + payment.total_amount, 0)
-                    : selectedPayments.reduce((sum, ipsId) => {
-                        const payment = unpaidPayments.find(p => p.ips_id === ipsId);
-                        return sum + (payment ? payment.total_amount : 0);
-                    }, 0);
+                // Use adjusted amount if manual adjustment is enabled, otherwise calculate total
+                const selectedPaymentTotal = manualAdjustment && adjustedAmount
+                    ? parseFloat(adjustedAmount)
+                    : payAllUnpaid
+                        ? unpaidPayments.reduce((sum, payment) => sum + payment.total_amount, 0)
+                        : selectedPayments.reduce((sum, ipsId) => {
+                            const payment = unpaidPayments.find(p => p.ips_id === ipsId);
+                            return sum + (payment ? payment.total_amount : 0);
+                        }, 0);
 
                 const transaction = {
                     receipt_id: response.data,
@@ -315,7 +337,8 @@ const PaymentBehavior = () => {
                     date: new Date().toLocaleDateString(),
                     time: new Date().toLocaleTimeString(),
                     location: locName || 'Agora Showroom Main',
-                    recorded_by: sessionStorage.getItem('user_name') || 'Staff'
+                    recorded_by: sessionStorage.getItem('user_name') || 'Staff',
+                    wasAdjusted: manualAdjustment
                 };
 
                 showReceiptModal(transaction);
@@ -325,6 +348,8 @@ const PaymentBehavior = () => {
                 setRecordPaymentVisible(false);
                 setSelectedPayments([]);
                 setPayAllUnpaid(false);
+                setManualAdjustment(false);
+                setAdjustedAmount('');
             } else {
                 alert('Error recording payment: ' + response.data);
             }
@@ -339,6 +364,8 @@ const PaymentBehavior = () => {
         setShowCustomerModal(false);
         setShowPlanSelectionModal(false);
         setRecordPaymentVisible(true);
+        setManualAdjustment(false);
+        setAdjustedAmount('');
 
         const installmentSchedules = installmentDList.filter(schedule =>
             schedule.installment_id === installment.installment_sales_id
@@ -480,15 +507,14 @@ const PaymentBehavior = () => {
 
     const getRiskLevel = (paymentBehavior) => {
         const {
-            totalScheduled,
             totalPaid,
             overdueCount,
-            completionRate,
             latePaymentCount,
-            currentOverduePayments
+            onTimePaymentRate
         } = paymentBehavior;
 
-        if (totalScheduled === 0) {
+        // No payment history
+        if (totalPaid === 0 && overdueCount === 0) {
             return {
                 level: 'unknown',
                 color: 'secondary',
@@ -498,13 +524,9 @@ const PaymentBehavior = () => {
             };
         }
 
-        const combinedOverdueCount = overdueCount + latePaymentCount;
-        const combinedOverdueRate = totalScheduled > 0 ? ((combinedOverdueCount / totalScheduled) * 100) : 0;
-        const latePaymentRate = totalPaid > 0 ? ((latePaymentCount / totalPaid) * 100) : 0;
-
-        if (currentOverduePayments >= 3 ||
-            combinedOverdueRate >= 40 ||
-            latePaymentRate >= 50) {
+        // BAD PAYER: Has a streak of 3 or more (past grace period + late paid)
+        const combinedBadPayments = overdueCount + latePaymentCount;
+        if (combinedBadPayments >= 3) {
             return {
                 level: 'bad',
                 color: 'danger',
@@ -514,22 +536,8 @@ const PaymentBehavior = () => {
             };
         }
 
-        if (combinedOverdueRate >= 20 ||
-            latePaymentRate >= 25 ||
-            (currentOverduePayments >= 1 && currentOverduePayments < 3)) {
-            return {
-                level: 'average',
-                color: 'warning',
-                label: 'Average Payer',
-                payerType: 'Average Payer',
-                payerColor: 'warning'
-            };
-        }
-
-        if (completionRate >= 80 &&
-            combinedOverdueRate < 20 &&
-            latePaymentRate < 25 &&
-            currentOverduePayments === 0) {
+        // GOOD PAYER: 70% or more of payments are on time (paid within 3 days of due date)
+        if (totalPaid > 0 && onTimePaymentRate >= 70) {
             return {
                 level: 'good',
                 color: 'success',
@@ -539,16 +547,7 @@ const PaymentBehavior = () => {
             };
         }
 
-        if (totalScheduled <= 3 && combinedOverdueRate < 20 && currentOverduePayments === 0) {
-            return {
-                level: 'new',
-                color: 'info',
-                label: 'New Customer',
-                payerType: 'New Customer',
-                payerColor: 'info'
-            };
-        }
-
+        // AVERAGE PAYER: Everything in between
         return {
             level: 'average',
             color: 'warning',
@@ -633,6 +632,10 @@ const PaymentBehavior = () => {
                 schedule.status.toLowerCase() === 'paid' ? sum + parseFloat(schedule.amount_due || 0) : sum, 0
             );
 
+            // Calculate on-time payments (paid within 3 days of due date)
+            const onTimePaymentCount = totalPaid - latePaymentCount;
+            const onTimePaymentRate = totalPaid > 0 ? ((onTimePaymentCount / totalPaid) * 100) : 0;
+
             const paymentBehavior = {
                 totalScheduled,
                 totalPaid,
@@ -640,6 +643,8 @@ const PaymentBehavior = () => {
                 pendingOverdueCount,
                 latePaymentCount,
                 currentOverduePayments,
+                onTimePaymentCount,
+                onTimePaymentRate: parseFloat(onTimePaymentRate.toFixed(1)),
                 completionRate: parseFloat(completionRate.toFixed(1)),
                 overdueRate: parseFloat(overdueRate.toFixed(1)),
                 totalDebt,
@@ -809,6 +814,105 @@ const PaymentBehavior = () => {
                             box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6);
                         }
                     }
+
+                    /* Mobile Responsiveness */
+                    @media (max-width: 768px) {
+                        .mobile-record-btn {
+                            font-size: 13px !important;
+                            padding: 10px 16px !important;
+                        }
+                        
+                        .mobile-record-btn svg {
+                            width: 16px !important;
+                            height: 16px !important;
+                        }
+                        
+                        .mobile-view-pay-btn {
+                            font-size: 13px !important;
+                            padding: 10px !important;
+                        }
+                        
+                        .mobile-view-pay-btn svg {
+                            width: 16px !important;
+                            height: 16px !important;
+                        }
+                        
+                        .mobile-modal-title svg {
+                            width: 16px !important;
+                            height: 16px !important;
+                        }
+
+                        .mobile-plan-record-btn {
+                            font-size: 14px !important;
+                            padding: 10px 18px !important;
+                        }
+
+                        .mobile-plan-record-btn svg {
+                            width: 18px !important;
+                            height: 18px !important;
+                        }
+
+                        .modal-title {
+                            font-size: 16px !important;
+                        }
+
+                        .modal-header svg,
+                        .modal-body svg {
+                            max-width: 18px !important;
+                            max-height: 18px !important;
+                        }
+                    }
+
+                    @media (max-width: 576px) {
+                        .mobile-record-btn {
+                            font-size: 12px !important;
+                            padding: 8px 12px !important;
+                        }
+                        
+                        .mobile-record-btn svg {
+                            width: 14px !important;
+                            height: 14px !important;
+                        }
+                        
+                        .mobile-view-pay-btn {
+                            font-size: 12px !important;
+                            padding: 8px !important;
+                        }
+                        
+                        .mobile-view-pay-btn svg {
+                            width: 14px !important;
+                            height: 14px !important;
+                        }
+                        
+                        .mobile-modal-title svg {
+                            width: 14px !important;
+                            height: 14px !important;
+                        }
+
+                        .mobile-plan-record-btn {
+                            font-size: 12px !important;
+                            padding: 8px 14px !important;
+                        }
+
+                        .mobile-plan-record-btn svg {
+                            width: 16px !important;
+                            height: 16px !important;
+                        }
+
+                        .modal-title {
+                            font-size: 14px !important;
+                        }
+
+                        .modal-header svg,
+                        .modal-body svg {
+                            max-width: 16px !important;
+                            max-height: 16px !important;
+                        }
+
+                        .form-control-lg {
+                            font-size: 1rem !important;
+                        }
+                    }
                 `}
             </style>
 
@@ -880,6 +984,11 @@ const PaymentBehavior = () => {
                                 <div className="p-3 bg-light rounded">
                                     <div><strong>Installment ID:</strong> {lastTransaction.customer.installment_sales_id}</div>
                                     <div><strong>Customer:</strong> {lastTransaction.customer.cust_name}</div>
+                                    {lastTransaction.wasAdjusted && (
+                                        <div className="mt-2">
+                                            <span className="badge bg-info">Amount Manually Adjusted by Clerk</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="mb-3">
@@ -1028,12 +1137,65 @@ const PaymentBehavior = () => {
                                     </table>
                                 </div>
 
-                                <div className="p-3 bg-light rounded">
-                                    <div className="d-flex justify-content-between">
-                                        <strong>
-                                            {payAllUnpaid ? `All Unpaid (${unpaidPayments.length})` : `Selected (${selectedPayments.length})`}
-                                        </strong>
-                                        <strong className="text-success">Total: {formatCurrency(selectedPaymentTotal)}</strong>
+                                <div className="mb-3">
+                                    <div className="p-3 bg-light rounded">
+                                        <div className="d-flex justify-content-between mb-2">
+                                            <strong>
+                                                {payAllUnpaid ? `All Unpaid (${unpaidPayments.length})` : `Selected (${selectedPayments.length})`}
+                                            </strong>
+                                            <strong className={manualAdjustment ? 'text-muted text-decoration-line-through' : 'text-success'}>
+                                                {manualAdjustment ? 'Calculated: ' : 'Total: '}{formatCurrency(selectedPaymentTotal)}
+                                            </strong>
+                                        </div>
+                                        
+                                        <div className="form-check mb-2">
+                                            <input 
+                                                type="checkbox" 
+                                                className="form-check-input" 
+                                                id="manualAdjustment"
+                                                checked={manualAdjustment}
+                                                onChange={(e) => {
+                                                    setManualAdjustment(e.target.checked);
+                                                    if (!e.target.checked) {
+                                                        setAdjustedAmount('');
+                                                    } else {
+                                                        setAdjustedAmount(selectedPaymentTotal.toFixed(2));
+                                                    }
+                                                }}
+                                            />
+                                            <label className="form-check-label" htmlFor="manualAdjustment">
+                                                <strong>Manual Amount Adjustment</strong> <small className="text-muted">(For early payoff or interest adjustment)</small>
+                                            </label>
+                                        </div>
+
+                                        {manualAdjustment && (
+                                            <div>
+                                                <label className="form-label fw-bold">Adjusted Total Amount:</label>
+                                                <input 
+                                                    type="number" 
+                                                    className="form-control form-control-lg"
+                                                    value={adjustedAmount}
+                                                    onChange={(e) => setAdjustedAmount(e.target.value)}
+                                                    placeholder="Enter adjusted amount"
+                                                    step="0.01"
+                                                    min="0"
+                                                    style={{ fontSize: '1.2rem', fontWeight: 'bold' }}
+                                                />
+                                                <small className="text-info d-block mt-2">
+                                                    💡 <strong>Tip:</strong> Adjust this amount for early full payment to reduce interest charges. 
+                                                    The amount will be distributed proportionally across selected payments.
+                                                </small>
+                                            </div>
+                                        )}
+
+                                        {manualAdjustment && adjustedAmount && (
+                                            <div className="mt-3 p-2 bg-success bg-opacity-10 border border-success rounded">
+                                                <div className="d-flex justify-content-between">
+                                                    <strong className="text-success">Final Amount to Record:</strong>
+                                                    <strong className="text-success fs-5">{formatCurrency(parseFloat(adjustedAmount))}</strong>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </>
@@ -1041,9 +1203,21 @@ const PaymentBehavior = () => {
                     })()}
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setRecordPaymentVisible(false)}>Cancel</Button>
-                    <Button variant="success" onClick={RecordPayment} disabled={!payAllUnpaid && selectedPayments.length === 0}>
+                    <Button variant="secondary" onClick={() => {
+                        setRecordPaymentVisible(false);
+                        setManualAdjustment(false);
+                        setAdjustedAmount('');
+                    }}>Cancel</Button>
+                    <Button 
+                        variant="success" 
+                        onClick={RecordPayment} 
+                        disabled={
+                            (!payAllUnpaid && selectedPayments.length === 0) || 
+                            (manualAdjustment && (!adjustedAmount || parseFloat(adjustedAmount) <= 0))
+                        }
+                    >
                         Record Payment{(payAllUnpaid || selectedPayments.length > 1) ? 's' : ''}
+                        {manualAdjustment && adjustedAmount && ` (${formatCurrency(parseFloat(adjustedAmount))})`}
                     </Button>
                 </Modal.Footer>
             </Modal>
@@ -1111,7 +1285,7 @@ const PaymentBehavior = () => {
             <Modal show={showCustomerModal} onHide={closeCustomerModal} size="xl" centered>
                 <Modal.Header closeButton>
                     <Modal.Title>
-                        <User className="me-2" size={24} />
+                        <User className="me-2 mobile-modal-title" size={24} />
                         {selectedCustomer?.cust_name} - Payment Analysis
                     </Modal.Title>
                 </Modal.Header>
@@ -1132,7 +1306,7 @@ const PaymentBehavior = () => {
                                                 variant="success" 
                                                 size="lg" 
                                                 onClick={openPlanSelectionModal}
-                                                className="w-100 fw-bold shadow-lg"
+                                                className="w-100 fw-bold shadow-lg mobile-record-btn"
                                                 style={{
                                                     fontSize: '16px',
                                                     padding: '14px 20px',
@@ -1142,7 +1316,7 @@ const PaymentBehavior = () => {
                                                     animation: 'pulse 2s infinite'
                                                 }}
                                             >
-                                                <Banknote size={22} className="me-2" />
+                                                {/* <Banknote size={22} className="me-2" /> */}
                                                 RECORD PAYMENT
                                             </Button>
                                         </div>
@@ -1247,7 +1421,7 @@ const PaymentBehavior = () => {
                                                                     size="lg" 
                                                                     variant="success" 
                                                                     onClick={() => handleRecordPaymentClick(installment)}
-                                                                    className="mt-2 fw-bold shadow-lg"
+                                                                    className="mt-2 fw-bold shadow-lg mobile-plan-record-btn"
                                                                     style={{
                                                                         fontSize: '16px',
                                                                         padding: '12px 24px',
@@ -1256,7 +1430,7 @@ const PaymentBehavior = () => {
                                                                         boxShadow: '0 4px 15px rgba(40, 167, 69, 0.4)'
                                                                     }}
                                                                 >
-                                                                    <Banknote size={20} className="me-2" />
+                                                                    {/* <Banknote size={20} className="me-2" /> */}
                                                                     RECORD PAYMENT
                                                                 </Button>
                                                             )}
@@ -1451,7 +1625,7 @@ const PaymentBehavior = () => {
                                                 variant="success" 
                                                 size="lg" 
                                                 onClick={() => openCustomerModal(customer)} 
-                                                className="w-100 fw-bold shadow"
+                                                className="w-100 fw-bold shadow mobile-view-pay-btn"
                                                 style={{
                                                     fontSize: '15px',
                                                     padding: '12px',
@@ -1469,7 +1643,7 @@ const PaymentBehavior = () => {
                                                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.3)';
                                                 }}
                                             >
-                                                <Banknote size={18} className="me-2" />
+                                                {/* <Banknote size={18} className="me-2" /> */}
                                                 VIEW & PAY
                                             </Button>
                                         </div>

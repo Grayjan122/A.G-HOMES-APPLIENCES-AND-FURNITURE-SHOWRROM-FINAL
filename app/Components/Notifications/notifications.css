@@ -1,6 +1,7 @@
 .notification-bell-container {
     position: relative;
     display: inline-block;
+    z-index: 1500;
 }
 
 .notification-bell-button {
@@ -38,15 +39,13 @@
 }
 
 .notification-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
+    /* position is set via inline style (fixed) */
     width: 380px;
     max-height: 500px;
     background: white;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
+    z-index: 9999 !important;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -220,17 +219,18 @@
 @media (max-width: 768px) {
     .notification-dropdown {
         width: 320px;
-        right: -20px;
+        z-index: 9999 !important;
     }
 }
 
 @media (max-width: 480px) {
     .notification-dropdown {
-        position: fixed;
-        top: 60px;
-        left: 10px;
-        right: 10px;
-        width: auto;
+        position: fixed !important;
+        top: 60px !important;
+        left: 10px !important;
+        right: 10px !important;
+        width: auto !important;
+        z-index: 9999 !important;
     }
 }
 

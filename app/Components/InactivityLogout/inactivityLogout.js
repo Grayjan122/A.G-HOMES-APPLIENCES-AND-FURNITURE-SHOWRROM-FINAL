@@ -176,16 +176,61 @@ export default function InactivityLogout() {
     };
   }, []);
 
-  // Handle browser/tab close
+  // Handle browser/tab close ONLY (not navigation)
   useEffect(() => {
-    const handleBeforeUnload = async (e) => {
-      // Log out when browser/tab is closed
-      await setUserOffline();
+    const userId = sessionStorage.getItem('user_id');
+    const baseURL = sessionStorage.getItem('baseURL');
+
+    if (!userId || !baseURL) {
+      // Don't attach event listeners if not logged in
+      return;
+    }
+
+    // Use sendBeacon for reliable logout on page close
+    const sendLogoutBeacon = () => {
+      const currentUserId = sessionStorage.getItem('user_id');
+      const currentBaseURL = sessionStorage.getItem('baseURL');
       
-      // Store flag to indicate unclean exit
-      sessionStorage.setItem('uncleanExit', 'true');
+      if (!currentUserId || !currentBaseURL) return;
+
+      try {
+        const url = currentBaseURL + 'login.php';
+        
+        // Create FormData for POST request
+        const formData = new FormData();
+        formData.append('operation', 'actStatus');
+        formData.append('json', JSON.stringify({
+          userID: currentUserId,
+          state: 'Offline'
+        }));
+        
+        // sendBeacon sends POST with FormData
+        navigator.sendBeacon(url, formData);
+        console.log('🚀 Tab closing - User will be set offline');
+      } catch (error) {
+        console.error('Error sending logout beacon:', error);
+      }
     };
 
+    // Use pagehide event - fires ONLY when tab/window is actually closed
+    // Does NOT fire during normal Next.js navigation
+    const handlePageHide = (e) => {
+      // e.persisted is true if the page is going into bfcache (back/forward cache)
+      // We only logout if NOT going to cache (actual close)
+      if (!e.persisted) {
+        sendLogoutBeacon();
+      }
+    };
+
+    // Handle back button navigation
+    const handlePopState = () => {
+      // User clicked back button - log them out
+      sendLogoutBeacon();
+      sessionStorage.clear();
+      // The browser will navigate back automatically
+    };
+
+    // Handle visibility change for tab switching
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // Tab is hidden, record the time
@@ -204,16 +249,17 @@ export default function InactivityLogout() {
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Check if there was an unclean exit on mount
-    if (sessionStorage.getItem('uncleanExit') === 'true') {
-      sessionStorage.removeItem('uncleanExit');
-    }
+    // Add event listeners with a small delay to avoid initial navigation issues
+    const timeoutId = setTimeout(() => {
+      window.addEventListener('pagehide', handlePageHide);
+      window.addEventListener('popstate', handlePopState);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }, 1000); // Wait 1 second after mount before attaching listeners
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      clearTimeout(timeoutId);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('popstate', handlePopState);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);

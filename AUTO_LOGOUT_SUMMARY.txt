@@ -10,11 +10,14 @@
 ✅ Automatic logout after 1 hour of inactivity
 ✅ Warning modal with 60-second countdown (appears at 59 minutes)
 ✅ Browser close detection (sets user offline)
+✅ Tab close (X button) instant logout - NEW!
+✅ Back button navigation logout - NEW!
 ✅ Tab visibility tracking (logout if hidden for 1 hour)
 ✅ User activity tracking (mouse, keyboard, scroll, touch, clicks)
 ✅ Backend integration (offline status + audit logs)
 ✅ "Stay Logged In" button to reset timer
 ✅ Beautiful warning UI with countdown
+✅ Reliable sendBeacon API for guaranteed logout - NEW!
 
 
 📁 NEW FILES CREATED
@@ -32,6 +35,12 @@
 
 ✅ AUTO_LOGOUT_SUMMARY.txt
    - Quick reference (this file)
+
+✅ TAB_AND_BACK_BUTTON_LOGOUT.md - NEW!
+   - Tab close logout guide
+   - Back button logout details
+   - sendBeacon implementation
+   - Testing instructions
 
 
 📝 FILES UPDATED
@@ -114,9 +123,11 @@ To Change Timeout:
   - Touch events
 
 ✓ Browser Events
-  - Browser/tab close detection
+  - Browser/tab close detection (sendBeacon API)
+  - Back button navigation detection (popstate event)
   - Tab visibility tracking
   - Unclean exit handling
+  - Mobile pagehide support
 
 ✓ Warning System
   - 60-second countdown
@@ -154,10 +165,13 @@ Quick Tests:
   3. When warning appears, wait for countdown to reach 0
      → Auto logout to login page
 
-  4. Close browser tab while logged in
-     → User status should be "Offline" in database
+  4. Close browser tab while logged in (click X)
+     → User status should be "Offline" in database immediately
 
-  5. Move mouse, type, or scroll
+  5. Click browser back button while logged in
+     → Should logout and redirect to login page
+
+  6. Move mouse, type, or scroll
      → Timer should reset (no warning)
 
 
@@ -174,6 +188,12 @@ The following activities are logged:
 
   "Manual Logout - From Warning"
   → User clicked "Logout Now" in warning modal
+
+  "Tab Close - Auto Logout"
+  → User closed browser tab (X button)
+
+  "Back Navigation - Auto Logout"
+  → User pressed browser back button
 
 
 🎨 WARNING MODAL DESIGN
@@ -276,7 +296,8 @@ Browser close will automatically set users to "Offline" status.
 1. Test the feature:
    - Log in and wait 59 minutes
    - Try the "Stay Logged In" button
-   - Test browser close detection
+   - Test browser close detection (X button) - NEW!
+   - Test back button navigation - NEW!
 
 2. Adjust timing if needed:
    - Edit INACTIVITY_TIMEOUT constant
@@ -288,6 +309,12 @@ Browser close will automatically set users to "Offline" status.
 4. Monitor audit logs:
    - Check for auto logout entries
    - Verify users are being set offline
+   - Check tab close and back button logs - NEW!
+
+5. Review new documentation:
+   - Read TAB_AND_BACK_BUTTON_LOGOUT.md for complete details
+   - Test on mobile devices (uses pagehide event)
+   - Verify sendBeacon requests in Network tab
 
 
 📞 SUPPORT

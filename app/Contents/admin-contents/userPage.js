@@ -57,6 +57,10 @@ const User = () => {
     const [viewUserVisible, setViewUserVisible] = useState(true);
     const [editUserVisible, setEditUserVisible] = useState(true);
 
+    // Loading states for email operations
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+    const [isResendingEmail, setIsResendingEmail] = useState(false);
+
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -362,6 +366,8 @@ const User = () => {
             locationID: location_
         }
 
+        setIsSendingEmail(true); // Start loading animation
+
         try {
             const response = await axios.get(url, {
                 params: {
@@ -381,6 +387,13 @@ const User = () => {
                     true,
                     'Okay'
                 );
+            } else if (response.data === 'InvalidEmail') {
+                showAlertError({
+                    icon: "error",
+                    title: "Invalid Email Format!",
+                    text: 'The email address format is invalid. Please enter a valid email address (e.g., user@example.com).',
+                    button: 'Try Again'
+                });
             } else if (response.data === 'EmailExists') {
                 showAlertError({
                     icon: "warning",
@@ -404,6 +417,8 @@ const User = () => {
                 text: 'An error occurred while adding the user.',
                 button: 'Try Again'
             });
+        } finally {
+            setIsSendingEmail(false); // Stop loading animation
         }
     }
 
@@ -472,6 +487,37 @@ const User = () => {
     const UpdateUser = async (e) => {
         e.preventDefault();
 
+        // Validate required fields
+        if (
+            !f_name.trim() ||
+            !m_name.trim() ||
+            !l_name.trim() ||
+            !phonne_.trim() ||
+            !email_.trim() ||
+            !address_.trim() ||
+            !bdate_.trim()
+        ) {
+            showAlertError({
+                icon: "warning",
+                title: "Incomplete Details!",
+                text: 'Please fill all the required fields!',
+                button: 'Try Again'
+            });
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email_)) {
+            showAlertError({
+                icon: "warning",
+                title: "Invalid Email!",
+                text: 'Please enter a valid email address!',
+                button: 'Try Again'
+            });
+            return;
+        }
+
         const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
         if (!baseURL) return;
         const url = baseURL + 'users.php';
@@ -506,19 +552,84 @@ const User = () => {
                     true,
                     'Okay'
                 );
+            } else if (response.data === 'InvalidEmail') {
+                showAlertError({
+                    icon: "error",
+                    title: "Invalid Email Format!",
+                    text: 'The email address format is invalid. Please enter a valid email address (e.g., user@example.com).',
+                    button: 'Try Again'
+                });
+            } else if (response.data === 'EmailExists') {
+                showAlertError({
+                    icon: "warning",
+                    title: "Email Already Exists!",
+                    text: 'This email is already used by another user. Please use a different email address.',
+                    button: 'Try Again'
+                });
             } else {
                 showAlertError({
                     icon: "warning",
                     title: "Oppsss!",
-                    text: 'response.data',
+                    text: typeof response.data === 'string' ? response.data : 'Failed to update user',
                     button: 'Okay'
                 });
 
             }
         } catch (error) {
             console.error("Error updating user information:", error);
+            showAlertError({
+                icon: "error",
+                title: "Error!",
+                text: 'An error occurred while updating the user.',
+                button: 'Try Again'
+            });
         }
     }
+
+    const resendSetupEmail = async (accountId, userEmail) => {
+        const baseURL = typeof window !== 'undefined' ? sessionStorage.getItem('baseURL') : null;
+        if (!baseURL) return;
+        
+        const url = baseURL + 'users.php';
+        
+        setIsResendingEmail(true); // Start loading animation
+        
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify({ accountId: accountId }),
+                    operation: "ResendSetupEmail"
+                }
+            });
+
+            if (response.data.success) {
+                AlertSucces(
+                    response.data.message || "Setup email has been resent successfully!",
+                    "success",
+                    true,
+                    'Okay'
+                );
+                GetUser(); // Refresh user list
+            } else {
+                showAlertError({
+                    icon: "error",
+                    title: "Failed to Resend Email",
+                    text: response.data.message || 'Failed to resend setup email. Please try again.',
+                    button: 'OK'
+                });
+            }
+        } catch (error) {
+            console.error("Error resending setup email:", error);
+            showAlertError({
+                icon: "error",
+                title: "Error!",
+                text: 'An error occurred while resending the setup email.',
+                button: 'Try Again'
+            });
+        } finally {
+            setIsResendingEmail(false); // Stop loading animation
+        }
+    };
 
     const role_change = (e) => {
         const selectedRoleName = e.target.value;
@@ -625,7 +736,7 @@ const User = () => {
                     <Modal.Title >Add User</Modal.Title>
                 </Modal.Header>
                 <Modal.Body className='modal-add-product-body' >
-                    <label className='add-cust-label-1'>*Name</label>
+                      <label className='div-input-add-prod' style={{fontSize: '25px', fontWeight: 'bold'}}>*Name</label>
                     <div className='div-input-add-prod'>
                         <label className='add-prod-label'>First Name</label>
                         <input
@@ -700,6 +811,10 @@ const User = () => {
                             className='prod-name-input'
                             value={email_}
                             onChange={(e) => setEmail_(e.target.value)}
+                            placeholder='user@example.com'
+                            pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                            title="Please enter a valid email address (e.g., user@example.com)"
+                            required
                         />
                     </div>
                     <div className='div-input-add-cat'>
@@ -726,13 +841,40 @@ const User = () => {
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={close_modal}>
+                    <Button variant="secondary" onClick={close_modal} disabled={isSendingEmail}>
                         Close
                     </Button>
-                    <Button variant="primary" onClick={register_account}>
-                        Save
+                    <Button 
+                        variant="primary" 
+                        onClick={register_account}
+                        disabled={isSendingEmail}
+                        style={{
+                            position: 'relative',
+                            minWidth: '100px'
+                        }}
+                    >
+                        {isSendingEmail ? (
+                            <>
+                                <span style={{
+                                    display: 'inline-block',
+                                    marginRight: '8px',
+                                    animation: 'spin 1s linear infinite'
+                                }}>
+                                    ⏳
+                                </span>
+                                Sending Email...
+                            </>
+                        ) : (
+                            'Save'
+                        )}
                     </Button>
                 </Modal.Footer>
+                <style jsx>{`
+                    @keyframes spin {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
+                    }
+                `}</style>
             </Modal>
 
             <Modal show={!viewUserVisible} onHide={close_modal} size='lg'>
@@ -748,7 +890,7 @@ const User = () => {
                             disabled={true}
                         />
                     </div>
-                    <label className='add-cust-label-1'>*Name</label>
+                    <label className='div-input-add-prod' style={{fontSize: '25px', fontWeight: 'bold'}}>*Name</label>
                     <div className='div-input-add-prod'>
                         <label className='add-prod-label'>First Name</label>
                         <input
@@ -840,6 +982,63 @@ const User = () => {
                             <option>{status_}</option>
                         </select>
                     </div>
+                    
+                    {/* Resend Setup Email Button for Pending Users */}
+                    {status_ === 'Pending' && (
+                        <div style={{
+                            marginTop: '20px',
+                            padding: '15px',
+                            backgroundColor: '#fff3cd',
+                            border: '1px solid #ffc107',
+                            borderLeft: '4px solid #ffc107',
+                            borderRadius: '4px'
+                        }}>
+                            <p style={{ 
+                                margin: '0 0 10px 0', 
+                                fontSize: '14px', 
+                                color: '#856404', 
+                                fontWeight: '600'
+                            }}>
+                                ⚠️ Account Setup Pending
+                            </p>
+                            <p style={{ 
+                                margin: '0 0 15px 0', 
+                                fontSize: '13px', 
+                                color: '#856404', 
+                                lineHeight: '1.5' 
+                            }}>
+                                This user hasn't completed their account setup. You can resend the setup email to <strong>{email_}</strong>.
+                            </p>
+                            <Button 
+                                variant="warning" 
+                                onClick={() => {
+                                    resendSetupEmail(userID_, email_);
+                                    handleClose();
+                                }}
+                                disabled={isResendingEmail}
+                                style={{
+                                    width: '100%',
+                                    fontWeight: '600',
+                                    position: 'relative'
+                                }}
+                            >
+                                {isResendingEmail ? (
+                                    <>
+                                        <span style={{
+                                            display: 'inline-block',
+                                            marginRight: '8px',
+                                            animation: 'spin 1s linear infinite'
+                                        }}>
+                                            ⏳
+                                        </span>
+                                        Sending Email...
+                                    </>
+                                ) : (
+                                    '📧 Resend Setup Email'
+                                )}
+                            </Button>
+                        </div>
+                    )}
                 </Modal.Body>
             </Modal>
 
@@ -848,7 +1047,7 @@ const User = () => {
                     <Modal.Title >Edit User</Modal.Title>
                 </Modal.Header>
                 <Modal.Body className='modal-add-product-body' >
-                    <label className='add-cust-label-1'>*Name</label>
+                      <label className='div-input-add-prod' style={{fontSize: '25px', fontWeight: 'bold'}}>*Name</label>
                     <div className='div-input-add-prod'>
                         <label className='add-prod-label'>First Name</label>
                         <input
@@ -927,6 +1126,10 @@ const User = () => {
                             type='email'
                             value={email_}
                             onChange={(e) => setEmail_(e.target.value)}
+                            placeholder='user@example.com'
+                            pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                            title="Please enter a valid email address (e.g., user@example.com)"
+                            required
                         />
                     </div>
                     <div className='div-input-add-cat'>
@@ -1040,6 +1243,68 @@ const User = () => {
                             }}>
                                 This user has <strong>full access</strong> to the system and can log in normally.
                             </p>
+                        </div>
+                    )}
+
+                    {status_ === 'Pending' && (
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: '#fff3cd',
+                            border: '1px solid #ffc107',
+                            borderLeft: '4px solid #ffc107',
+                            borderRadius: '4px',
+                            marginTop: '10px'
+                        }}>
+                            <p style={{ 
+                                margin: 0, 
+                                fontSize: '14px', 
+                                color: '#856404', 
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                ⏳ Pending Setup
+                            </p>
+                            <p style={{ 
+                                margin: '8px 0 0 0', 
+                                fontSize: '13px', 
+                                color: '#856404', 
+                                lineHeight: '1.5' 
+                            }}>
+                                This user needs to complete their account setup. If the email was wrong or expired, you can update it and resend.
+                            </p>
+                            <Button 
+                                variant="warning" 
+                                onClick={() => {
+                                    UpdateUser(new Event('submit'));
+                                    setTimeout(() => {
+                                        resendSetupEmail(userID_, email_);
+                                    }, 1000);
+                                }}
+                                disabled={isResendingEmail}
+                                style={{
+                                    width: '100%',
+                                    marginTop: '10px',
+                                    fontWeight: '600',
+                                    position: 'relative'
+                                }}
+                            >
+                                {isResendingEmail ? (
+                                    <>
+                                        <span style={{
+                                            display: 'inline-block',
+                                            marginRight: '8px',
+                                            animation: 'spin 1s linear infinite'
+                                        }}>
+                                            ⏳
+                                        </span>
+                                        Sending Email...
+                                    </>
+                                ) : (
+                                    '💾 Save Changes & Resend Setup Email'
+                                )}
+                            </Button>
                         </div>
                     )}
                 </Modal.Body>
