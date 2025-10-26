@@ -7,6 +7,7 @@ export default function SessionValidator() {
   const router = useRouter();
   const checkIntervalRef = useRef(null);
   const hasShownAlertRef = useRef(false);
+  const isLoggingOutRef = useRef(false);
 
   useEffect(() => {
     const userId = sessionStorage.getItem('user_id');
@@ -15,6 +16,14 @@ export default function SessionValidator() {
     if (!userId || !baseURL) {
       // Not logged in, don't check
       return;
+    }
+
+    // Set global flag that can be checked by logout functions
+    if (typeof window !== 'undefined') {
+      window.isSessionValidatorActive = true;
+      window.preventSessionAlert = function() {
+        isLoggingOutRef.current = true;
+      };
     }
 
     // Store the login timestamp when this session started
@@ -40,6 +49,12 @@ export default function SessionValidator() {
           // Check if session is invalid (explicitly offline)
           if (response.data.valid === false) {
             console.log('🔴 Session invalidated:', response.data.reason);
+            
+            // Don't show alert if user is logging out themselves
+            if (isLoggingOutRef.current) {
+              console.log('✓ Self-initiated logout, skipping alert');
+              return;
+            }
             
             // Show alert only once
             if (!hasShownAlertRef.current) {
@@ -111,6 +126,11 @@ export default function SessionValidator() {
       }
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
+      }
+      // Clean up global flag
+      if (typeof window !== 'undefined') {
+        window.isSessionValidatorActive = false;
+        delete window.preventSessionAlert;
       }
     };
   }, [router]);

@@ -151,6 +151,10 @@ export default function Header() {
   };
 
   const logout = () => {
+    // Prevent SessionValidator from showing alert during self-initiated logout
+    if (typeof window !== 'undefined' && window.preventSessionAlert) {
+      window.preventSessionAlert();
+    }
 
     Logs(user_id, 'Log Out');
     OfflineState(user_id);

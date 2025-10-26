@@ -69,6 +69,11 @@ export default function InactivityLogout() {
 
   // Function to handle logout
   const handleLogout = async (reason = 'Manual Logout') => {
+    // Prevent SessionValidator from showing alert during self-initiated logout
+    if (typeof window !== 'undefined' && window.preventSessionAlert) {
+      window.preventSessionAlert();
+    }
+    
     await logActivity(reason);
     await setUserOffline();
     
