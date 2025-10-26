@@ -55,7 +55,7 @@ const NotificationBell = () => {
         try {
             const locationId = sessionStorage.getItem('location_id');
             const role = sessionStorage.getItem('user_role');
-            const accountId = sessionStorage.getItem('account_id');
+            const accountId = sessionStorage.getItem('user_id');  // Fixed: was 'account_id', should be 'user_id'
             
             console.log('Fetching notifications with:', { locationId, role, accountId });
             
@@ -74,7 +74,8 @@ const NotificationBell = () => {
 
             if (response.data && Array.isArray(response.data)) {
                 setNotifications(response.data);
-                const unread = response.data.filter(n => !n.is_read).length;
+                // Fix: is_read comes from DB as "0" or "1" (string), so use == 0 instead of !n.is_read
+                const unread = response.data.filter(n => n.is_read == 0 || n.is_read === false).length;
                 setUnreadCount(unread);
                 console.log(`Found ${response.data.length} notifications, ${unread} unread`);
             }
@@ -119,7 +120,7 @@ const NotificationBell = () => {
                     operation: 'MarkAllAsRead',
                     json: JSON.stringify({
                         locationId: sessionStorage.getItem('location_id'),
-                        accountId: sessionStorage.getItem('account_id')
+                        accountId: sessionStorage.getItem('user_id')  // Fixed: was 'account_id', should be 'user_id'
                     })
                 }
             });
@@ -144,6 +145,8 @@ const NotificationBell = () => {
                 return '💰';
             case 'overdue':
                 return '🔴';
+            case 'user_setup':
+                return '👤';
             default:
                 return '🔔';
         }
@@ -161,6 +164,8 @@ const NotificationBell = () => {
                 return '#17a2b8';
             case 'overdue':
                 return '#dc3545';
+            case 'user_setup':
+                return '#6f42c1';
             default:
                 return '#6c757d';
         }
@@ -242,30 +247,34 @@ const NotificationBell = () => {
                                 <p>No notifications</p>
                             </div>
                         ) : (
-                            notifications.map((notif) => (
-                                <div 
-                                    key={notif.notification_id}
-                                    className={`notification-item ${!notif.is_read ? 'unread' : ''}`}
-                                    onClick={() => {
-                                        if (!notif.is_read) {
-                                            markAsRead(notif.notification_id);
-                                        }
-                                    }}
-                                >
+                            notifications.map((notif) => {
+                                // Fix: is_read comes from DB as "0" or "1" (string), convert to boolean
+                                const isUnread = notif.is_read == 0 || notif.is_read === false;
+                                return (
                                     <div 
-                                        className="notification-icon"
-                                        style={{ backgroundColor: getNotificationColor(notif.type) }}
+                                        key={notif.notification_id}
+                                        className={`notification-item ${isUnread ? 'unread' : ''}`}
+                                        onClick={() => {
+                                            if (isUnread) {
+                                                markAsRead(notif.notification_id);
+                                            }
+                                        }}
                                     >
-                                        {getNotificationIcon(notif.type)}
+                                        <div 
+                                            className="notification-icon"
+                                            style={{ backgroundColor: getNotificationColor(notif.type) }}
+                                        >
+                                            {getNotificationIcon(notif.type)}
+                                        </div>
+                                        <div className="notification-content">
+                                            <div className="notification-title">{notif.title}</div>
+                                            <div className="notification-message">{notif.message}</div>
+                                            <div className="notification-time">{formatTimeAgo(notif.created_at)}</div>
+                                        </div>
+                                        {isUnread && <div className="unread-dot"></div>}
                                     </div>
-                                    <div className="notification-content">
-                                        <div className="notification-title">{notif.title}</div>
-                                        <div className="notification-message">{notif.message}</div>
-                                        <div className="notification-time">{formatTimeAgo(notif.created_at)}</div>
-                                    </div>
-                                    {!notif.is_read && <div className="unread-dot"></div>}
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
 
