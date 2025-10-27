@@ -736,6 +736,39 @@ export default function CombinedSalePage() {
             showReceiptModal(transaction);
             GetInventory();
 
+            // Send notification to Inventory Manager about products sold
+            try {
+              const notificationUrl = baseURL + 'notifications.php';
+              
+              // Create a detailed message with all products sold
+              const productDetails = cart.map(item => 
+                `${item.product_name} (Qty: ${item.quantity})`
+              ).join(', ');
+              
+              const notificationData = {
+                type: 'inventory_sold',
+                title: 'Products Sold',
+                message: `Products sold at ${locName}. Invoice #${response.data}. Customer: ${selectedCustomer.cust_name}. Items: ${productDetails}`,
+                locationId: locId,
+                targetRole: 'Inventory Manager',
+                productId: cart[0]?.product_id || null,
+                customerId: selectedCustomer.cust_id,
+                referenceId: response.data
+              };
+
+              await axios.get(notificationUrl, {
+                params: {
+                  json: JSON.stringify(notificationData),
+                  operation: "CreateNotification"
+                }
+              });
+
+              console.log('Inventory Manager notification sent successfully');
+            } catch (notificationError) {
+              console.error("Error sending inventory notification:", notificationError);
+              // Don't block the sale if notification fails
+            }
+
             // Reset form
             resetForm();
 
@@ -840,6 +873,39 @@ export default function CombinedSalePage() {
 
             showReceiptModal(transaction);
             GetInventory();
+
+            // Send notification to Inventory Manager about products sold
+            try {
+              const notificationUrl = baseURL + 'notifications.php';
+              
+              // Create a detailed message with all products sold
+              const productDetails = cart.map(item => 
+                `${item.product_name} (Qty: ${item.quantity})`
+              ).join(', ');
+              
+              const notificationData = {
+                type: 'inventory_sold',
+                title: 'Products Sold (Installment)',
+                message: `Products sold via installment at ${locName}. Invoice #${response.data}. Customer: ${selectedCustomer.cust_name}. Items: ${productDetails}`,
+                locationId: locId,
+                targetRole: 'Inventory Manager',
+                productId: cart[0]?.product_id || null,
+                customerId: selectedCustomer.cust_id,
+                referenceId: response.data
+              };
+
+              await axios.get(notificationUrl, {
+                params: {
+                  json: JSON.stringify(notificationData),
+                  operation: "CreateNotification"
+                }
+              });
+
+              console.log('Inventory Manager notification sent successfully for installment sale');
+            } catch (notificationError) {
+              console.error("Error sending inventory notification:", notificationError);
+              // Don't block the sale if notification fails
+            }
 
             // Reset form
             resetForm();

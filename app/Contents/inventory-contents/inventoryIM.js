@@ -37,6 +37,52 @@ const InventoryIM = () => {
     const [message, setMessage] = useState('');
     const [inventReportVisible, setInventReportVisible] = useState(true);
 
+    // Adjust Stock Modal States
+    const [showAdjustModal, setShowAdjustModal] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [adjustmentType, setAdjustmentType] = useState('add'); // 'add' or 'subtract'
+    const [adjustmentQty, setAdjustmentQty] = useState('');
+    const [adjustmentReason, setAdjustmentReason] = useState('');
+
+    // Date and Time formatting functions
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('en-US', options);
+    };
+
+    const formatTime = (timeString) => {
+        if (!timeString) return '';
+        
+        // If time is already in HH:MM:SS format
+        const timeParts = timeString.split(':');
+        if (timeParts.length >= 2) {
+            let hours = parseInt(timeParts[0]);
+            const minutes = timeParts[1];
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${hours}:${minutes} ${ampm}`;
+        }
+        
+        return timeString;
+    };
+
+    const formatDateTime = (dateString, timeString) => {
+        if (!dateString && !timeString) return '';
+        
+        const formattedDate = formatDate(dateString);
+        const formattedTime = formatTime(timeString);
+        
+        if (formattedDate && formattedTime) {
+            return `${formattedDate} • ${formattedTime}`;
+        }
+        
+        return formattedDate || formattedTime || '';
+    };
+
     const handleSort = (field) => {
         let direction = 'asc';
         if (sortField === field && sortDirection === 'asc') {
@@ -185,6 +231,84 @@ const InventoryIM = () => {
         setCurrentPage(1);
     };
 
+    const openAdjustModal = (item) => {
+        setSelectedProduct(item);
+        setAdjustmentType('add');
+        setAdjustmentQty('');
+        setAdjustmentReason('');
+        setShowAdjustModal(true);
+    };
+
+    const closeAdjustModal = () => {
+        setShowAdjustModal(false);
+        setSelectedProduct(null);
+        setAdjustmentType('add');
+        setAdjustmentQty('');
+        setAdjustmentReason('');
+    };
+
+    const handleAdjustStock = async () => {
+        if (!adjustmentQty || parseInt(adjustmentQty) <= 0) {
+            setMessage('Please enter a valid quantity');
+            setAlertVariant('danger');
+            setAlertBG('#f8d7da');
+            setAlert1(true);
+            setTimeout(() => setAlert1(false), 3000);
+            return;
+        }
+
+        try {
+            const baseURL = sessionStorage.getItem('baseURL');
+            const accountID = sessionStorage.getItem('user_id');
+            const locName = sessionStorage.getItem('location_name');
+
+            const adjustmentData = {
+                product_id: selectedProduct.product_id,
+                location_id: selectedProduct.location_id,
+                adjustment_type: adjustmentType,
+                quantity: parseInt(adjustmentQty),
+                reason: adjustmentReason,
+                user_id: accountID
+            };
+
+            const response = await axios.get(`${baseURL}inventory.php`, {
+                params: {
+                    json: JSON.stringify(adjustmentData),
+                    operation: "AdjustStock"
+                }
+            });
+
+            if (response.data.success) {
+                setMessage(`Stock adjusted successfully for ${selectedProduct.product_name}`);
+                setAlertVariant('success');
+                setAlertBG('#d1e7dd');
+                setAlert1(true);
+                setTimeout(() => setAlert1(false), 3000);
+
+                // Log the activity
+                const activityText = `${adjustmentType === 'add' ? 'Added' : 'Subtracted'} ${adjustmentQty} units ${adjustmentType === 'add' ? 'to' : 'from'} ${selectedProduct.product_name} - Reason: ${adjustmentReason}`;
+                Logs(accountID, activityText);
+
+                // Refresh inventory
+                GetInventory();
+                closeAdjustModal();
+            } else {
+                setMessage(response.data.message || 'Failed to adjust stock');
+                setAlertVariant('danger');
+                setAlertBG('#f8d7da');
+                setAlert1(true);
+                setTimeout(() => setAlert1(false), 3000);
+            }
+        } catch (error) {
+            console.error("Error adjusting stock:", error);
+            setMessage('Error adjusting stock. Please try again.');
+            setAlertVariant('danger');
+            setAlertBG('#f8d7da');
+            setAlert1(true);
+            setTimeout(() => setAlert1(false), 3000);
+        }
+    };
+
     return (
         <>
             <Alert
@@ -307,8 +431,8 @@ const InventoryIM = () => {
                                                         {displayQty > 0 ? '+' : ''}{displayQty}
                                                     </td>
                                                     <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600' }}>{item.current_balance}</td>
-                                                    <td style={{ padding: '12px', fontSize: '14px', color: '#6c757d' }}>{item.date}</td>
-                                                    <td style={{ padding: '12px', fontSize: '14px', color: '#6c757d' }}>{item.time}</td>
+                                                    <td style={{ padding: '12px', fontSize: '14px', color: '#6c757d' }}>{formatDate(item.date)}</td>
+                                                    <td style={{ padding: '12px', fontSize: '14px', color: '#6c757d' }}>{formatTime(item.time)}</td>
                                                     <td style={{ padding: '12px', fontSize: '14px', color: '#495057' }}>
                                                         {`${item.fname} ${item.mname} ${item.lname}`.trim()}
                                                     </td>
@@ -362,6 +486,208 @@ const InventoryIM = () => {
                         }}
                     >
                         Close
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Adjust Stock Modal */}
+            <Modal show={showAdjustModal} onHide={closeAdjustModal} centered>
+                <Modal.Header closeButton style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                    <Modal.Title style={{ fontWeight: '700', fontSize: '20px', color: '#212529' }}>
+                        Adjust Stock
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body style={{ padding: '30px' }}>
+                    {selectedProduct && (
+                        <>
+                            <div style={{
+                                padding: '16px',
+                                backgroundColor: '#f8f9fa',
+                                borderRadius: '8px',
+                                marginBottom: '24px',
+                                border: '1px solid #dee2e6'
+                            }}>
+                                <div style={{ marginBottom: '12px' }}>
+                                    <strong style={{ color: '#495057', fontSize: '13px' }}>Product:</strong>
+                                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#212529', marginTop: '4px' }}>
+                                        {selectedProduct.product_name}
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: '12px' }}>
+                                    <strong style={{ color: '#495057', fontSize: '13px' }}>Description:</strong>
+                                    <div style={{ fontSize: '14px', color: '#495057', marginTop: '4px' }}>
+                                        {selectedProduct.description}
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: '12px' }}>
+                                    <strong style={{ color: '#495057', fontSize: '13px' }}>Store:</strong>
+                                    <div style={{ fontSize: '14px', color: '#495057', marginTop: '4px' }}>
+                                        {selectedProduct.location_name}
+                                    </div>
+                                </div>
+                                <div>
+                                    <strong style={{ color: '#495057', fontSize: '13px' }}>Current Stock:</strong>
+                                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#0d6efd', marginTop: '4px' }}>
+                                        {selectedProduct.qty} units
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ 
+                                    display: 'block', 
+                                    marginBottom: '8px', 
+                                    fontWeight: '600', 
+                                    fontSize: '14px',
+                                    color: '#495057'
+                                }}>
+                                    Adjustment Type <span style={{ color: '#dc3545' }}>*</span>
+                                </label>
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <label style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        border: `2px solid ${adjustmentType === 'add' ? '#198754' : '#dee2e6'}`,
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        backgroundColor: adjustmentType === 'add' ? '#d1e7dd' : 'white',
+                                        transition: 'all 0.2s',
+                                        textAlign: 'center',
+                                        fontWeight: '600'
+                                    }}>
+                                        <input
+                                            type="radio"
+                                            name="adjustmentType"
+                                            value="add"
+                                            checked={adjustmentType === 'add'}
+                                            onChange={(e) => setAdjustmentType(e.target.value)}
+                                            style={{ marginRight: '8px' }}
+                                        />
+                                        <span style={{ color: adjustmentType === 'add' ? '#0f5132' : '#495057' }}>
+                                            Add Stock
+                                        </span>
+                                    </label>
+                                    <label style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        border: `2px solid ${adjustmentType === 'subtract' ? '#dc3545' : '#dee2e6'}`,
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        backgroundColor: adjustmentType === 'subtract' ? '#f8d7da' : 'white',
+                                        transition: 'all 0.2s',
+                                        textAlign: 'center',
+                                        fontWeight: '600'
+                                    }}>
+                                        <input
+                                            type="radio"
+                                            name="adjustmentType"
+                                            value="subtract"
+                                            checked={adjustmentType === 'subtract'}
+                                            onChange={(e) => setAdjustmentType(e.target.value)}
+                                            style={{ marginRight: '8px' }}
+                                        />
+                                        <span style={{ color: adjustmentType === 'subtract' ? '#721c24' : '#495057' }}>
+                                            Remove Stock
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ 
+                                    display: 'block', 
+                                    marginBottom: '8px', 
+                                    fontWeight: '600', 
+                                    fontSize: '14px',
+                                    color: '#495057'
+                                }}>
+                                    Quantity <span style={{ color: '#dc3545' }}>*</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={adjustmentQty}
+                                    onChange={(e) => setAdjustmentQty(e.target.value)}
+                                    placeholder="Enter quantity to adjust"
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        border: '1px solid #dee2e6',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        backgroundColor: '#ffffff'
+                                    }}
+                                />
+                                {adjustmentQty && (
+                                    <div style={{ 
+                                        marginTop: '8px', 
+                                        fontSize: '13px',
+                                        color: adjustmentType === 'add' ? '#198754' : '#dc3545',
+                                        fontWeight: '600'
+                                    }}>
+                                        New stock will be: {adjustmentType === 'add' 
+                                            ? parseInt(selectedProduct.qty) + parseInt(adjustmentQty)
+                                            : parseInt(selectedProduct.qty) - parseInt(adjustmentQty)} units
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ 
+                                    display: 'block', 
+                                    marginBottom: '8px', 
+                                    fontWeight: '600', 
+                                    fontSize: '14px',
+                                    color: '#495057'
+                                }}>
+                                    Reason for Adjustment <span style={{ color: '#6c757d', fontWeight: '400' }}>(Optional)</span>
+                                </label>
+                                <textarea
+                                    value={adjustmentReason}
+                                    onChange={(e) => setAdjustmentReason(e.target.value)}
+                                    placeholder="Add a note about this adjustment (optional)..."
+                                    rows="3"
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        border: '1px solid #dee2e6',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        backgroundColor: '#ffffff',
+                                        resize: 'vertical'
+                                    }}
+                                />
+                            </div>
+                        </>
+                    )}
+                </Modal.Body>
+                <Modal.Footer style={{ 
+                    backgroundColor: '#f8f9fa',
+                    border: 'none',
+                    padding: '20px 30px',
+                    gap: '10px'
+                }}>
+                    <Button 
+                        variant="secondary" 
+                        onClick={closeAdjustModal}
+                        style={{
+                            padding: '10px 24px',
+                            fontWeight: '600',
+                            borderRadius: '8px'
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        variant={adjustmentType === 'add' ? 'success' : 'danger'}
+                        onClick={handleAdjustStock}
+                        style={{
+                            padding: '10px 24px',
+                            fontWeight: '600',
+                            borderRadius: '8px'
+                        }}
+                    >
+                        {adjustmentType === 'add' ? 'Add Stock' : 'Remove Stock'}
                     </Button>
                 </Modal.Footer>
             </Modal>
@@ -797,24 +1123,41 @@ const InventoryIM = () => {
                                                     {item.location_name}
                                                 </td>
                                                 <td style={{ padding: '14px' }}>
-                                                    <button
-                                                        onClick={() => {
-                                                            setInventReportVisible(false);
-                                                            GetInventoryReport(item.product_id, item.location_id, item.product_name, item.description);
-                                                        }}
-                                                        style={{
-                                                            padding: '6px 14px',
-                                                            backgroundColor: 'white',
-                                                            color: '#0d6efd',
-                                                            border: '1px solid #0d6efd',
-                                                            borderRadius: '4px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '13px',
-                                                            fontWeight: '500'
-                                                        }}
-                                                    >
-                                                        View Report
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                        <button
+                                                            onClick={() => {
+                                                                setInventReportVisible(false);
+                                                                GetInventoryReport(item.product_id, item.location_id, item.product_name, item.description);
+                                                            }}
+                                                            style={{
+                                                                padding: '6px 14px',
+                                                                backgroundColor: 'white',
+                                                                color: '#0d6efd',
+                                                                border: '1px solid #0d6efd',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '13px',
+                                                                fontWeight: '500'
+                                                            }}
+                                                        >
+                                                            View Report
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openAdjustModal(item)}
+                                                            style={{
+                                                                padding: '6px 14px',
+                                                                backgroundColor: '#198754',
+                                                                color: 'white',
+                                                                border: '1px solid #198754',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '13px',
+                                                                fontWeight: '500'
+                                                            }}
+                                                        >
+                                                            Adjust Stock
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

@@ -111,7 +111,10 @@ const ReceiveCustomizeSC = () => {
             const data = await response.json();
             const filtered = data.filter(item => item.status === "On Delivery");
             setCustomizeDeliveryList(filtered);
-            console.log('Customize Delivery List:', filtered);
+            console.log('=== DELIVERY LIST ===');
+            console.log('All Deliveries:', data);
+            console.log('Filtered (On Delivery):', filtered);
+            console.log('Sample delivery object:', filtered[0]);
         } catch (error) {
             console.error("Error fetching customize delivery list:", error);
         }
@@ -121,10 +124,16 @@ const ReceiveCustomizeSC = () => {
         const locationID = parseInt(sessionStorage.getItem('location_id'));
         const baseURL = sessionStorage.getItem('baseURL');
         try {
-            const response = await fetch(`${baseURL}customizeProducts.php?json=${encodeURIComponent(JSON.stringify({ locID: locationID }))}&operation=GetCustomizeRequestFrom`);
+            // Use 'From' because we're fetching requests that originated FROM this store
+            const response = await fetch(`${baseURL}customizeProducts.php?json=${encodeURIComponent(JSON.stringify({ locID: locationID, requestType: 'From' }))}&operation=GetCustomizeRequest`);
             const data = await response.json();
             setRequestList(data);
+            console.log('=== REQUEST LIST ===');
             console.log('Request List:', data);
+            console.log('Request List Length:', data.length);
+            if (data.length > 0) {
+                console.log('Sample request:', data[0]);
+            }
         } catch (error) {
             console.error("Error fetching request list:", error);
         }
@@ -136,7 +145,10 @@ const ReceiveCustomizeSC = () => {
             const response = await fetch(`${baseURL}customizeProducts.php?json=${encodeURIComponent(JSON.stringify([]))}&operation=GetCustomizeRequestDetailSemi`);
             const data = await response.json();
             setSemiDetails(data);
+            console.log('=== SEMI DETAILS ===');
             console.log('Semi Details:', data);
+            console.log('Semi Details Count:', data.length);
+            console.log('Sample semi detail:', data[0]);
         } catch (error) {
             console.error("Error fetching semi details:", error);
         }
@@ -148,7 +160,10 @@ const ReceiveCustomizeSC = () => {
             const response = await fetch(`${baseURL}customizeProducts.php?json=${encodeURIComponent(JSON.stringify([]))}&operation=GetCustomizeRequestDetailFull`);
             const data = await response.json();
             setFullDetails(data);
+            console.log('=== FULL DETAILS ===');
             console.log('Full Details:', data);
+            console.log('Full Details Count:', data.length);
+            console.log('Sample full detail:', data[0]);
         } catch (error) {
             console.error("Error fetching full details:", error);
         }
@@ -157,16 +172,36 @@ const ReceiveCustomizeSC = () => {
     // Get delivery details by connecting related data
     const getDeliveryDetails = (delivery) => {
         const request = requestList.find(r => r.customize_req_id === delivery.customize_request_id);
-        if (!request) return { semi: [], full: [], request: null };
+        
+        // Use customize_sales_id from delivery object directly, or fall back to request
+        const customizeSalesId = delivery.customize_sales_id || (request ? request.customize_sales_id : null);
+        
+        if (!customizeSalesId) {
+            console.log('No customize_sales_id found for delivery:', delivery);
+            return { semi: [], full: [], request };
+        }
 
-        const semi = semiDetails.filter(s => s.customize_sales_id === request.customize_sales_id);
-        const full = fullDetails.filter(f => f.customize_sales_id === request.customize_sales_id);
+        const semi = semiDetails.filter(s => s.customize_sales_id === customizeSalesId);
+        const full = fullDetails.filter(f => f.customize_sales_id === customizeSalesId);
+
+        console.log('Customize Sales ID:', customizeSalesId);
+        console.log('Semi details found:', semi.length);
+        console.log('Full details found:', full.length);
 
         return { semi, full, request };
     };
 
     const viewDeliveryDetails = (delivery) => {
+        console.log('=== VIEW DELIVERY DETAILS ===');
+        console.log('Clicked Delivery:', delivery);
+        console.log('Delivery customize_request_id:', delivery.customize_request_id);
+        console.log('Delivery customize_sales_id:', delivery.customize_sales_id);
+        
         const details = getDeliveryDetails(delivery);
+        console.log('Retrieved Details:', details);
+        console.log('Semi items count:', details.semi?.length || 0);
+        console.log('Full items count:', details.full?.length || 0);
+        
         setSelectedDelivery(delivery);
         setDeliveryDetails(details);
         setCurrentPage(1); // Reset to first page when opening modal
@@ -182,9 +217,9 @@ const ReceiveCustomizeSC = () => {
     const allDeliveryItems = [
         ...(deliveryDetails.semi || []).map(item => ({
             type: 'Semi-Customized',
-            baseProductId: item.product_name,
-            description: item.description || 'No modifications specified',
-            additionalDescription: item.modifications,
+            baseProductId: item.product_name || item.baseProduct_id,
+            description: item.description || 'N/A',
+            additionalDescription: item.modifications || 'No modifications',
             qty: item.qty
         })),
         ...(deliveryDetails.full || []).map(item => ({

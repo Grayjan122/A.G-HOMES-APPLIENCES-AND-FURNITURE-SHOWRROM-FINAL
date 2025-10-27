@@ -191,13 +191,13 @@ export default function DeliveryTracking() {
     try {
       setSubmitting(true);
 
-      // Update delivery status to "On Delivery"
+      // Update delivery status to "On Delivery To Customer"
       const response = await axios.get(baseURL + 'delivery-management.php', {
         params: {
           operation: 'UpdateDeliveryStatus',
           json: JSON.stringify({
             dtc_id: selectedDelivery.dtc_id,
-            status: 'On Delivery',
+            status: 'On Delivery To Customer',
             driver_name: driverName.trim()
           })
         }
@@ -205,7 +205,7 @@ export default function DeliveryTracking() {
 
       if (response.data === 'Success') {
         // Send notification to customer
-        await sendCustomerNotification(selectedDelivery, 'On Delivery');
+        await sendCustomerNotification(selectedDelivery, 'On Delivery To Customer');
 
 
         AlertSucces(
@@ -253,7 +253,7 @@ export default function DeliveryTracking() {
         try {
           setSubmitting(true);
 
-          // Update delivery status to "Delivered"
+          // Update delivery status to "Delivered To Customer"
           const response = await axios.get(baseURL + 'delivery-management.php', {
             params: {
               operation: 'CompleteDelivery',
@@ -266,7 +266,7 @@ export default function DeliveryTracking() {
 
           if (response.data.status === 'Success' || response.data === 'Success') {
             // Send completion notification to customer with payment schedule
-            await sendCustomerNotification(delivery, 'Delivered', response.data);
+            await sendCustomerNotification(delivery, 'Delivered To Customer', response.data);
 
             AlertSucces(
               "Delivery completed successfully! Installment schedule has been activated (if applicable).",
@@ -304,7 +304,7 @@ export default function DeliveryTracking() {
       let message = '';
       let paymentSchedule = null;
       
-      if (status === 'On Delivery') {
+      if (status === 'On Delivery To Customer') {
         message = `Your order (Invoice #${delivery.invoice_id}) is now on the way! Driver: ${driverName}. Please prepare to receive your items.`;
       } else {
         message = `Your order (Invoice #${delivery.invoice_id}) has been successfully delivered. Thank you for your purchase! If you didn't receive any item, please contact us immediately.`;
@@ -325,7 +325,7 @@ export default function DeliveryTracking() {
       const notificationData = {
         invoice_id: delivery.invoice_id,
         message: message,
-        type: status === 'On Delivery' ? 'delivery_on_way' : 'delivery_complete'
+        type: status === 'On Delivery To Customer' ? 'delivery_on_way' : 'delivery_complete'
       };
       
       // Add payment schedule if available
@@ -367,9 +367,11 @@ export default function DeliveryTracking() {
   const getStatusBadge = (status) => {
     const badgeStyles = {
       'Pending': { bg: '#FEF3C7', color: '#92400E', text: 'In Production' },
+      'On Going': { bg: '#FEF3C7', color: '#92400E', text: 'In Production' },
+      'On Delivery': { bg: '#FEF3C7', color: '#92400E', text: 'In Production' },
       'Ready for Delivery': { bg: '#E0F7FA', color: '#006E7A', text: 'Ready' },
-      'On Delivery': { bg: '#EDE9FE', color: '#5B21B6', text: 'On the Way' },
-      'Delivered': { bg: '#D1FAE5', color: '#065F46', text: 'Completed' }
+      'On Delivery To Customer': { bg: '#EDE9FE', color: '#5B21B6', text: 'On the Way' },
+      'Delivered To Customer': { bg: '#D1FAE5', color: '#065F46', text: 'Completed' }
     };
 
     const badge = badgeStyles[status] || { bg: '#E5E7EB', color: '#374151', text: status };
@@ -429,9 +431,12 @@ export default function DeliveryTracking() {
     if (activeTab === 'ready') {
       matchesTab = delivery.status === 'Ready for Delivery';
     } else if (activeTab === 'onDelivery') {
-      matchesTab = delivery.status === 'On Delivery';
+      matchesTab = delivery.status === 'On Delivery To Customer';
     } else if (activeTab === 'pending') {
-      matchesTab = delivery.status === 'Pending';
+      // "In Production" includes: Pending, On Going, and On Delivery (production/warehouse stages)
+      matchesTab = delivery.status === 'Pending' || 
+                   delivery.status === 'On Going' || 
+                   delivery.status === 'On Delivery';
     }
 
     // If doesn't match tab, exclude it
@@ -456,7 +461,7 @@ export default function DeliveryTracking() {
 
   // Separate filter for completed deliveries
   const completedDeliveries = deliveries.filter(delivery => {
-    if (delivery.status !== 'Delivered') return false;
+    if (delivery.status !== 'Delivered To Customer') return false;
 
     if (!completedSearchTerm) return true;
 
@@ -477,9 +482,12 @@ export default function DeliveryTracking() {
   const getTabCount = (tab) => {
     return deliveries.filter(d => {
       if (tab === 'ready') return d.status === 'Ready for Delivery';
-      if (tab === 'onDelivery') return d.status === 'On Delivery';
-      if (tab === 'completed') return d.status === 'Delivered';
-      if (tab === 'pending') return d.status === 'Pending';
+      if (tab === 'onDelivery') return d.status === 'On Delivery To Customer';
+      if (tab === 'completed') return d.status === 'Delivered To Customer';
+      if (tab === 'pending') {
+        // "In Production" includes: Pending, On Going, On Delivery (customize production stages)
+        return d.status === 'Pending' || d.status === 'On Going' || d.status === 'On Delivery';
+      }
       return false;
     }).length;
   };
@@ -571,7 +579,7 @@ export default function DeliveryTracking() {
           }}
         >
           ✅ Completed Deliveries
-          {deliveries.filter(d => d.status === 'Delivered').length > 0 && (
+          {deliveries.filter(d => d.status === 'Delivered To Customer').length > 0 && (
             <span style={{
               background: 'rgba(255, 255, 255, 0.9)',
               color: '#10B981',
@@ -580,7 +588,7 @@ export default function DeliveryTracking() {
               fontSize: '12px',
               fontWeight: '700'
             }}>
-              {deliveries.filter(d => d.status === 'Delivered').length}
+              {deliveries.filter(d => d.status === 'Delivered To Customer').length}
             </span>
           )}
         </button>
@@ -704,7 +712,7 @@ export default function DeliveryTracking() {
             {activeTab === 'ready' && 'No items are ready for delivery yet.'}
             {activeTab === 'onDelivery' && 'No deliveries are currently on the way.'}
             {activeTab === 'completed' && 'No completed deliveries.'}
-            {activeTab === 'pending' && 'No items in production.'}
+            {activeTab === 'pending' && 'No items in production or transit to store.'}
           </p>
         </div>
       ) : (
@@ -982,7 +990,7 @@ export default function DeliveryTracking() {
                 background: '#f8f9fa',
                 borderTop: '1px solid #e1e8ed'
               }}>
-                {delivery.status === 'Pending' && (
+                {(delivery.status === 'Pending' || delivery.status === 'On Going') && (
                   <div style={{
                     textAlign: 'center',
                     padding: '10px',
@@ -992,7 +1000,8 @@ export default function DeliveryTracking() {
                     background: '#fff3cd',
                     color: '#856404'
                   }}>
-                    ⏳ Item is still in production
+                    {delivery.status === 'Pending' && '⏳ Waiting for production to start'}
+                    {delivery.status === 'On Going' && '🔨 Item is being produced'}
                   </div>
                 )}
 
@@ -1032,7 +1041,7 @@ export default function DeliveryTracking() {
                   </button>
                 )}
 
-                {delivery.status === 'On Delivery' && (
+                {delivery.status === 'On Delivery To Customer' && (
                   <button
                     onClick={() => handleCompleteDelivery(delivery)}
                     disabled={submitting}
@@ -1068,7 +1077,7 @@ export default function DeliveryTracking() {
                   </button>
                 )}
 
-                {delivery.status === 'Delivered' && (
+                {delivery.status === 'Delivered To Customer' && (
                   <div style={{
                     textAlign: 'center',
                     padding: '10px',
@@ -1596,6 +1605,20 @@ export default function DeliveryTracking() {
                       subtitle: 'Waiting for Production',
                       description: 'Item is in the production queue. This applies to customized products that need to be manufactured.'
                     },
+                    'On Going': {
+                      color: '#F59E0B',
+                      bgColor: '#FEF3C7',
+                      borderColor: '#F59E0B',
+                      subtitle: 'Currently in Production',
+                      description: 'Item is actively being produced by the warehouse. The customized product is being manufactured.'
+                    },
+                    'On Delivery': {
+                      color: '#F59E0B',
+                      bgColor: '#FEF3C7',
+                      borderColor: '#F59E0B',
+                      subtitle: 'In Transit to Store',
+                      description: 'Item is being delivered from warehouse to the showroom.'
+                    },
                     'Ready for Delivery': {
                       color: '#42CAD6',
                       bgColor: '#E0F7FA',
@@ -1603,14 +1626,14 @@ export default function DeliveryTracking() {
                       subtitle: 'Ready to Ship',
                       description: 'Item is ready and waiting for delivery assignment. Inventory items skip production and go directly to this status.'
                     },
-                    'On Delivery': {
+                    'On Delivery To Customer': {
                       color: '#8B5CF6',
                       bgColor: '#EDE9FE',
                       borderColor: '#8B5CF6',
-                      subtitle: 'In Transit',
+                      subtitle: 'On the Way to Customer',
                       description: 'Item is currently being delivered to the customer.'
                     },
-                    'Delivered': {
+                    'Delivered To Customer': {
                       color: '#10B981',
                       bgColor: '#D1FAE5',
                       borderColor: '#10B981',

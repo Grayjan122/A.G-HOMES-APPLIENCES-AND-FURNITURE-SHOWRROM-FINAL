@@ -386,7 +386,11 @@ export default function CustomizablePOSSystem() {
                 total: calculateTotal(),
                 paymentPlan: paymentPlan,
                 amountPaid: calculateAmountDueToday(),
-                remainingBalance: calculateRemainingBalance()
+                remainingBalance: calculateRemainingBalance(),
+                needsDelivery: true,
+                deliveryAddress: '',
+                preferredDeliveryTime: '',
+                warehouseID: 1
             };
 
             try {
@@ -519,7 +523,10 @@ export default function CustomizablePOSSystem() {
                 custID: selectedCustomer.cust_id,
                 locID: locId,
                 accID: accountID,
-                // prodID: firstProductId,
+                warehouseID: 1,
+                needsDelivery: true,
+                deliveryAddress: '',
+                preferredDeliveryTime: ''
             };
 
             console.log(installmentDetails1);

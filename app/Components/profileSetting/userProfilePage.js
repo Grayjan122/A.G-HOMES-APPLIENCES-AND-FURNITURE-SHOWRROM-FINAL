@@ -518,6 +518,23 @@ const ProfileSetting = () => {
 
     const fullName = `${userDetails.fname || ''} ${userDetails.mname || ''} ${userDetails.lname || ''}`.trim();
 
+    // Get status display information
+    const getStatusInfo = (status) => {
+        const statusMap = {
+            'Active': { text: 'Active', class: 'status-active', icon: '✅' },
+            'Inactive': { text: 'Inactive', class: 'status-inactive', icon: '⭕' },
+            'Pending': { text: 'Pending', class: 'status-pending', icon: '⏳' },
+            'Suspend': { text: 'Suspend', class: 'status-suspend', icon: '🚫' },
+            // Legacy support for numeric values
+            '1': { text: 'Active', class: 'status-active', icon: '✅' },
+            '0': { text: 'Inactive', class: 'status-inactive', icon: '⭕' },
+            '2': { text: 'Pending', class: 'status-pending', icon: '⏳' },
+            '3': { text: 'Suspend', class: 'status-suspend', icon: '🚫' }
+        };
+        
+        return statusMap[status] || { text: 'Unknown', class: 'status-inactive', icon: '❓' };
+    };
+
     return (
         <div className="dash-main" >
             <style jsx>{`
@@ -590,6 +607,14 @@ const ProfileSetting = () => {
                     color: #155724;
                 }
                 .status-inactive {
+                    background-color: #f8d7da;
+                    color: #721c24;
+                }
+                .status-pending {
+                    background-color: #fff3cd;
+                    color: #856404;
+                }
+                .status-suspend {
                     background-color: #f8d7da;
                     color: #721c24;
                 }
@@ -780,8 +805,8 @@ const ProfileSetting = () => {
                             <span>✨</span> Account Status
                         </div>
                         <div className="info-value">
-                            <span className={`status-badge ${userDetails.active_status === '1' ? 'status-active' : 'status-inactive'}`}>
-                                {userDetails.active_status === '1' ? '● Active' : '● Inactive'}
+                            <span className={`status-badge ${getStatusInfo(userDetails.status).class}`}>
+                                {getStatusInfo(userDetails.status).icon} {getStatusInfo(userDetails.status).text}
                             </span>
                         </div>
                     </div>

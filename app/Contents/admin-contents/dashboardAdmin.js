@@ -38,6 +38,12 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
     const [overdueCustomers, setOverdueCustomers] = useState([]);
     const [customerList, setCustomerList] = useState([]);
 
+    // Email notification states
+    const [sendingEmails, setSendingEmails] = useState(false);
+    const [emailResults, setEmailResults] = useState(null);
+    const [selectedCollection, setSelectedCollection] = useState(null); // 'daily', 'weekly', 'monthly'
+    const [showCollectionModal, setShowCollectionModal] = useState(false);
+
     const [counts, setCounts] = useState({
         prodCount: '0',
         categoryCount: '0',
@@ -84,6 +90,9 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
     const GetInstallment = async () => {
         try {
             const baseURL = sessionStorage.getItem('baseURL');
+            console.log("=== FETCHING INSTALLMENT DATA (ADMIN) ===");
+            console.log("Base URL:", baseURL);
+            
             const response = await axios.get(`${baseURL}installment.php`, {
                 params: {
                     json: JSON.stringify([]),
@@ -91,11 +100,34 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                 }
             });
 
-            setInstallmentList(response.data);
-            calculateCollections(response.data);
-            calculateOverdueCustomers(response.data);
+            console.log("=== RAW RESPONSE ===");
+            console.log("Response data:", response.data);
+            console.log("Data type:", typeof response.data);
+            console.log("Is array:", Array.isArray(response.data));
+            console.log("Number of installments:", response.data ? response.data.length : 0);
+            
+            if (response.data && response.data.length > 0) {
+                console.log("Sample installment structure:", response.data[0]);
+                console.log("Sample fields:", {
+                    status: response.data[0].status,
+                    due_date: response.data[0].due_date,
+                    amount_due: response.data[0].amount_due,
+                    cust_id: response.data[0].cust_id
+                });
+            }
+
+            const installmentData = response.data || [];
+            console.log("Setting installment list with", installmentData.length, "items");
+            
+            setInstallmentList(installmentData);
+            calculateCollections(installmentData);
+            calculateOverdueCustomers(installmentData);
         } catch (error) {
-            console.error("Error fetching installments:", error);
+            console.error("=== ERROR FETCHING INSTALLMENTS ===");
+            console.error("Error:", error);
+            console.error("Error message:", error.message);
+            console.error("Error response:", error.response);
+            setInstallmentList([]);
         }
     };
 
@@ -120,7 +152,8 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
         let totalCustomersWithDue = new Set();
 
         installments.forEach(installment => {
-            if (installment.status === 'UNPAID') {
+            // Only count UNPAID installments (case-insensitive check for not paid)
+            if (installment.status && installment.status.toLowerCase() !== 'paid') {
                 const dueDate = installment.due_date;
                 const amount = parseFloat(installment.amount_due) || 0;
 
@@ -158,24 +191,78 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
     };
 
     const calculateOverdueCustomers = (installments) => {
+        console.log("=== CALCULATING OVERDUE CUSTOMERS (ADMIN) ===");
+        console.log("Installments received:", installments ? installments.length : 0);
+        
         if (!installments || installments.length === 0) {
+            console.log("No installments to process");
             setOverdueCustomers([]);
+            setCounts(prev => ({
+                ...prev,
+                overdueAmount: '₱0.00'
+            }));
             return;
         }
 
         const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to midnight for accurate comparison
         const todayStr = today.toISOString().split('T')[0];
         const GRACE_PERIOD_DAYS = 3;
 
-        const overdue = installments.filter(installment => {
-            return installment.status === 'UNPAID' && installment.due_date < todayStr;
+        console.log("Today's date (for comparison):", todayStr);
+        console.log("All installments:", installments.map(inst => ({
+            status: inst.status,
+            due_date: inst.due_date,
+            amount: inst.amount_due
+        })));
+
+        // First, let's see all unpaid installments
+        const unpaidInstallments = installments.filter(installment => {
+            const isNotPaid = installment.status && installment.status.toLowerCase() !== 'paid';
+            if (isNotPaid) {
+                console.log("Unpaid installment found:", {
+                    cust_id: installment.cust_id,
+                    status: installment.status,
+                    due_date: installment.due_date,
+                    amount: installment.amount_due,
+                    isPastDue: installment.due_date < todayStr
+                });
+            }
+            return isNotPaid;
+        });
+
+        console.log("Total unpaid installments:", unpaidInstallments.length);
+
+        const overdue = unpaidInstallments.filter(installment => {
+            const isPastDue = installment.due_date < todayStr;
+            
+            if (isPastDue) {
+                console.log("✓ OVERDUE installment:", {
+                    cust_id: installment.cust_id,
+                    status: installment.status,
+                    due_date: installment.due_date,
+                    today: todayStr,
+                    amount: installment.amount_due
+                });
+            }
+            
+            return isPastDue;
         }).map(installment => {
             const dueDate = new Date(installment.due_date);
+            dueDate.setHours(0, 0, 0, 0);
             const daysPastDue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
             const hasPenalty = daysPastDue > GRACE_PERIOD_DAYS;
             const daysUntilPenalty = hasPenalty ? 0 : GRACE_PERIOD_DAYS - daysPastDue;
             const baseAmount = parseFloat(installment.amount_due) || 0;
             const amountWithPenalty = hasPenalty ? baseAmount * 1.05 : baseAmount;
+
+            console.log("Processing overdue customer:", {
+                cust_id: installment.cust_id,
+                daysPastDue,
+                hasPenalty,
+                baseAmount,
+                amountWithPenalty
+            });
 
             return {
                 ...installment,
@@ -187,16 +274,176 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
             };
         }).sort((a, b) => b.daysPastDue - a.daysPastDue);
 
+        console.log("=== OVERDUE SUMMARY ===");
+        console.log("Total overdue customers found:", overdue.length);
+        console.log("Overdue list:", overdue);
+        
         setOverdueCustomers(overdue);
 
         const totalOverdue = overdue.reduce((sum, customer) => {
             return sum + (customer.amountWithPenalty || 0);
         }, 0);
 
+        console.log("Total overdue amount:", totalOverdue);
+
         setCounts(prev => ({
             ...prev,
             overdueAmount: new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(totalOverdue)
         }));
+    };
+
+    // Email notification functions
+    const checkAndSendNotifications = async () => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        if (!baseURL) return;
+
+        // Check if we've already sent notifications today
+        const lastSent = localStorage.getItem('lastNotificationCheck');
+        const today = new Date().toDateString();
+
+        if (lastSent === today) {
+            console.log('Notifications already sent today');
+            return;
+        }
+
+        try {
+            // Send installment reminders (1 week, 3 days, 1 day before)
+            await sendInstallmentReminders();
+            
+            // Send overdue notifications (after grace period)
+            await sendOverdueNotifications();
+            
+            // Mark as sent for today
+            localStorage.setItem('lastNotificationCheck', today);
+        } catch (error) {
+            console.error('Error checking notifications:', error);
+        }
+    };
+
+    const sendInstallmentReminders = async () => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'installment-notifications.php';
+
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify({}),
+                    operation: 'SendInstallmentReminders'
+                }
+            });
+
+            console.log('Installment reminders sent:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error sending installment reminders:', error);
+            throw error;
+        }
+    };
+
+    const sendOverdueNotifications = async () => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'installment-notifications.php';
+
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify({}),
+                    operation: 'SendOverdueNotifications'
+                }
+            });
+
+            console.log('Overdue notifications sent:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error sending overdue notifications:', error);
+            throw error;
+        }
+    };
+
+    const manualSendNotifications = async () => {
+        console.log('=== MANUAL SEND NOTIFICATIONS STARTED ===');
+        setSendingEmails(true);
+        setEmailResults(null);
+
+        try {
+            console.log('Calling sendInstallmentReminders...');
+            const reminders = await sendInstallmentReminders();
+            console.log('Reminders response:', reminders);
+            
+            console.log('Calling sendOverdueNotifications...');
+            const overdue = await sendOverdueNotifications();
+            console.log('Overdue response:', overdue);
+
+            const results = {
+                one_week: reminders.one_week_reminders || 0,
+                three_day: reminders.three_day_reminders || 0,
+                one_day: reminders.one_day_reminders || 0,
+                overdue: overdue.overdue_notifications || 0,
+                total: (reminders.one_week_reminders || 0) + 
+                       (reminders.three_day_reminders || 0) + 
+                       (reminders.one_day_reminders || 0) + 
+                       (overdue.overdue_notifications || 0)
+            };
+
+            console.log('Final results:', results);
+            setEmailResults(results);
+            
+            // Update last sent timestamp
+            localStorage.setItem('lastNotificationCheck', new Date().toDateString());
+            
+            // Show success message
+            alert(`Email Notification Results:\n\n✅ 1 Week Reminders: ${results.one_week}\n✅ 3 Day Reminders: ${results.three_day}\n✅ 1 Day Reminders: ${results.one_day}\n✅ Overdue Notices: ${results.overdue}\n\nTotal Emails Sent: ${results.total}`);
+            
+            console.log('=== MANUAL SEND NOTIFICATIONS COMPLETED ===');
+        } catch (error) {
+            console.error('=== ERROR IN MANUAL SEND ===');
+            console.error('Error details:', error);
+            alert('Failed to send email notifications. Check console for details.');
+        } finally {
+            setSendingEmails(false);
+        }
+    };
+
+    // Collection modal functions
+    const handleCardClick = (path, collectionType = null) => {
+        if (collectionType) {
+            setSelectedCollection(collectionType);
+            setShowCollectionModal(true);
+        }
+    };
+
+    const getCollectionCustomers = () => {
+        if (!selectedCollection || !installmentList.length) return [];
+
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        let startDate, endDate;
+
+        if (selectedCollection === 'daily') {
+            startDate = endDate = todayStr;
+        } else if (selectedCollection === 'weekly') {
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay());
+            startDate = startOfWeek.toISOString().split('T')[0];
+
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            endDate = endOfWeek.toISOString().split('T')[0];
+        } else if (selectedCollection === 'monthly') {
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            startDate = startOfMonth.toISOString().split('T')[0];
+            endDate = endOfMonth.toISOString().split('T')[0];
+        }
+
+        return installmentList
+            .filter(installment => {
+                return installment.status && installment.status.toLowerCase() !== 'paid' && 
+                       installment.due_date >= startDate && 
+                       installment.due_date <= endDate;
+            })
+            .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
     };
 
     const countConfigs = [
@@ -209,17 +456,40 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
 
     const [salesByInvoice, setSalesByInvoice] = useState([]);
 
+    // Debug useEffect to monitor state changes
+    useEffect(() => {
+        console.log("=== STATE CHANGED ===");
+        console.log("Installment List:", installmentList.length);
+        console.log("Overdue Customers:", overdueCustomers.length);
+        console.log("Counts:", counts);
+    }, [installmentList, overdueCustomers, counts]);
+
     useEffect(() => {
         const user_id = sessionStorage.getItem("user_id");
-        if (!user_id) return;
+        console.log("=== ADMIN DASHBOARD USEEFFECT ===");
+        console.log("User ID:", user_id);
+        
+        if (!user_id) {
+            console.log("No user_id - exiting useEffect");
+            return;
+        }
 
         // Your existing calls
+        console.log("Calling GetSalesByInvoice...");
         GetSalesByInvoice();
+        
+        console.log("Fetching counts...");
         countConfigs.forEach(config => fetchCount(config));
 
         // ADD THESE NEW CALLS:
+        console.log("Calling GetCustomer...");
         GetCustomer();
+        
+        console.log("Calling GetInstallment...");
         GetInstallment();
+
+        // Auto-send notifications on dashboard load (optional - run once per day)
+        checkAndSendNotifications();
     }, []);
 
     // useEffect(() => {
@@ -2960,7 +3230,74 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
 
     return (
         <div className='dash-main'>
-            <h1 className='h-dashboard'>DASHBOARD</h1>
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '30px'
+            }}>
+                <h1 className='h-dashboard' style={{
+                    color: '#333',
+                    margin: 0,
+                    fontSize: '2.5em',
+                    fontWeight: 'bold'
+                }}>
+                    DASHBOARD
+                </h1>
+                
+                <button
+                    onClick={manualSendNotifications}
+                    disabled={sendingEmails}
+                    style={{
+                        padding: '12px 24px',
+                        backgroundColor: sendingEmails ? '#ccc' : '#667eea',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: sendingEmails ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                        if (!sendingEmails) {
+                            e.currentTarget.style.backgroundColor = '#5568d3';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        if (!sendingEmails) {
+                            e.currentTarget.style.backgroundColor = '#667eea';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                        }
+                    }}
+                >
+                    {sendingEmails ? (
+                        <>
+                            <span style={{ 
+                                display: 'inline-block',
+                                width: '16px',
+                                height: '16px',
+                                border: '2px solid white',
+                                borderTopColor: 'transparent',
+                                borderRadius: '50%',
+                                animation: 'spin 1s linear infinite'
+                            }}></span>
+                            Sending...
+                        </>
+                    ) : (
+                        <>
+                            📧 Send Payment Reminders
+                        </>
+                    )}
+                </button>
+            </div>
 
             <div className="container-fluid" >
                 {/* Sales Overview Cards - Now clickable */}
@@ -3269,6 +3606,51 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                     </div>
                 </div>
 
+                {/* Debug Info - Remove after testing */}
+                <div className="alert alert-info" style={{ margin: '20px 0' }}>
+                    <h6>🔧 Debug Info:</h6>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div>
+                            <p><strong>Installment List Length:</strong> {installmentList.length}</p>
+                            <p><strong>Overdue Customers Length:</strong> {overdueCustomers.length}</p>
+                            <p><strong>Daily Collection:</strong> {counts.dailyCollection}</p>
+                        </div>
+                        <div>
+                            <p><strong>Total Customers with Dues:</strong> {counts.totalCustomersWithDue}</p>
+                            <p><strong>Overdue Amount:</strong> {counts.overdueAmount}</p>
+                            <p><strong>Customer List Length:</strong> {customerList.length}</p>
+                        </div>
+                    </div>
+                    {installmentList.length === 0 && (
+                        <p style={{color: 'red', fontWeight: 'bold', marginTop: '10px'}}>
+                            ⚠️ No installment data loaded - check API response in console!
+                        </p>
+                    )}
+                    {installmentList.length > 0 && overdueCustomers.length === 0 && (
+                        <p style={{color: 'green', fontWeight: 'bold', marginTop: '10px'}}>
+                            ✅ {installmentList.length} installments loaded, but no overdue customers found (all up to date!)
+                        </p>
+                    )}
+                    <details style={{ marginTop: '10px' }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: '#007bff' }}>
+                            View Sample Installment Data
+                        </summary>
+                        {installmentList.length > 0 && (
+                            <pre style={{ 
+                                backgroundColor: '#f8f9fa', 
+                                padding: '10px', 
+                                borderRadius: '5px',
+                                fontSize: '12px',
+                                maxHeight: '200px',
+                                overflow: 'auto',
+                                marginTop: '10px'
+                            }}>
+                                {JSON.stringify(installmentList[0], null, 2)}
+                            </pre>
+                        )}
+                    </details>
+                </div>
+
                 {/* Collection Insights */}
                 <div className="row mb-4">
                     <div className="col-md-8">
@@ -3326,6 +3708,31 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                         </div>
                     </div>
                 </div>
+
+                {/* No Overdue Message */}
+                {installmentList.length > 0 && overdueCustomers.length === 0 && (
+                    <div style={{
+                        background: 'white',
+                        borderRadius: '12px',
+                        padding: '24px',
+                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                        marginTop: '20px',
+                        borderTop: '4px solid #4CAF50',
+                        textAlign: 'center'
+                    }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+                        <h2 style={{
+                            color: '#4CAF50',
+                            marginBottom: '12px',
+                            fontSize: '1.5em'
+                        }}>
+                            All Payments Are Up to Date!
+                        </h2>
+                        <p style={{ color: '#666', fontSize: '1.1em' }}>
+                            No overdue customers at this time. All installment payments are current or within the grace period.
+                        </p>
+                    </div>
+                )}
 
                 {/* Overdue Customers Board */}
                 {overdueCustomers.length > 0 && (
@@ -3588,6 +3995,301 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                         </div>
                     </div>
                 )}
+
+                {/* Collection Details Modal */}
+                {showCollectionModal && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000
+                    }}
+                        onClick={() => setShowCollectionModal(false)}
+                    >
+                        <div style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            padding: '30px',
+                            maxWidth: '1000px',
+                            width: '90%',
+                            maxHeight: '80vh',
+                            overflow: 'auto',
+                            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
+                        }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '20px'
+                            }}>
+                                <h2 style={{
+                                    margin: 0,
+                                    color: '#333',
+                                    fontSize: '1.8em'
+                                }}>
+                                    {selectedCollection === 'daily' && '💰 Daily Collection Details'}
+                                    {selectedCollection === 'weekly' && '📅 Weekly Collection Details'}
+                                    {selectedCollection === 'monthly' && '📊 Monthly Collection Details'}
+                                </h2>
+                                <button
+                                    onClick={() => setShowCollectionModal(false)}
+                                    style={{
+                                        background: '#f44336',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: '40px',
+                                        height: '40px',
+                                        fontSize: '20px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            {(() => {
+                                const collectionCustomers = getCollectionCustomers();
+                                const totalAmount = collectionCustomers.reduce((sum, inst) => 
+                                    sum + (parseFloat(inst.amount_due) || 0), 0
+                                );
+
+                                return (
+                                    <>
+                                        <div style={{
+                                            padding: '16px',
+                                            backgroundColor: '#f8f9fa',
+                                            borderRadius: '8px',
+                                            marginBottom: '20px',
+                                            borderLeft: '4px solid #46f436ff'
+                                        }}>
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <div>
+                                                    <strong style={{ fontSize: '1.1em', color: '#666' }}>
+                                                        Total Amount Due:
+                                                    </strong>
+                                                    <div style={{
+                                                        fontSize: '2em',
+                                                        fontWeight: 'bold',
+                                                        color: '#46f436ff',
+                                                        marginTop: '5px'
+                                                    }}>
+                                                        {new Intl.NumberFormat('en-PH', {
+                                                            style: 'currency',
+                                                            currency: 'PHP'
+                                                        }).format(totalAmount)}
+                                                    </div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <strong style={{ fontSize: '1.1em', color: '#666' }}>
+                                                        Total Customers:
+                                                    </strong>
+                                                    <div style={{
+                                                        fontSize: '2em',
+                                                        fontWeight: 'bold',
+                                                        color: '#46f436ff',
+                                                        marginTop: '5px'
+                                                    }}>
+                                                        {collectionCustomers.length}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {collectionCustomers.length === 0 ? (
+                                            <div style={{
+                                                textAlign: 'center',
+                                                padding: '40px',
+                                                color: '#999',
+                                                fontSize: '1.2em'
+                                            }}>
+                                                No customers with due payments for this period
+                                            </div>
+                                        ) : (
+                                            <div style={{
+                                                border: '1px solid #ddd',
+                                                borderRadius: '8px',
+                                                overflow: 'hidden'
+                                            }}>
+                                                <table style={{
+                                                    width: '100%',
+                                                    borderCollapse: 'collapse',
+                                                    fontSize: '0.9em'
+                                                }}>
+                                                    <thead>
+                                                        <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                                            <th style={{
+                                                                padding: '12px',
+                                                                textAlign: 'left',
+                                                                borderBottom: '2px solid #ddd',
+                                                                color: '#666',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                Customer Name
+                                                            </th>
+                                                            <th style={{
+                                                                padding: '12px',
+                                                                textAlign: 'left',
+                                                                borderBottom: '2px solid #ddd',
+                                                                color: '#666',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                Payment #
+                                                            </th>
+                                                            <th style={{
+                                                                padding: '12px',
+                                                                textAlign: 'left',
+                                                                borderBottom: '2px solid #ddd',
+                                                                color: '#666',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                Due Date
+                                                            </th>
+                                                            <th style={{
+                                                                padding: '12px',
+                                                                textAlign: 'right',
+                                                                borderBottom: '2px solid #ddd',
+                                                                color: '#666',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                Amount Due
+                                                            </th>
+                                                            <th style={{
+                                                                padding: '12px',
+                                                                textAlign: 'center',
+                                                                borderBottom: '2px solid #ddd',
+                                                                color: '#666',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                Status
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {collectionCustomers.map((installment, index) => {
+                                                            const dueDate = new Date(installment.due_date);
+                                                            const today = new Date();
+                                                            const isToday = installment.due_date === today.toISOString().split('T')[0];
+                                                            const daysUntilDue = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+                                                            return (
+                                                                <tr key={index} style={{
+                                                                    borderBottom: '1px solid #eee',
+                                                                    backgroundColor: isToday ? '#e8f5e9' : 'white'
+                                                                }}
+                                                                    onMouseEnter={(e) => {
+                                                                        e.currentTarget.style.backgroundColor = '#f5f5f5';
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        e.currentTarget.style.backgroundColor = isToday ? '#e8f5e9' : 'white';
+                                                                    }}
+                                                                >
+                                                                    <td style={{
+                                                                        padding: '12px',
+                                                                        fontWeight: '500',
+                                                                        color: '#333'
+                                                                    }}>
+                                                                        {GetCustName(installment.cust_id)}
+                                                                    </td>
+                                                                    <td style={{
+                                                                        padding: '12px',
+                                                                        color: '#666'
+                                                                    }}>
+                                                                        Payment {installment.payment_number || 'N/A'}
+                                                                    </td>
+                                                                    <td style={{
+                                                                        padding: '12px',
+                                                                        color: '#666'
+                                                                    }}>
+                                                                        <div>
+                                                                            {dueDate.toLocaleDateString('en-US', {
+                                                                                weekday: 'short',
+                                                                                year: 'numeric',
+                                                                                month: 'short',
+                                                                                day: 'numeric'
+                                                                            })}
+                                                                        </div>
+                                                                        {daysUntilDue === 0 && (
+                                                                            <div style={{
+                                                                                fontSize: '0.75em',
+                                                                                color: '#4CAF50',
+                                                                                fontWeight: 'bold'
+                                                                            }}>
+                                                                                Due Today
+                                                                            </div>
+                                                                        )}
+                                                                        {daysUntilDue > 0 && (
+                                                                            <div style={{
+                                                                                fontSize: '0.75em',
+                                                                                color: '#666'
+                                                                            }}>
+                                                                                In {daysUntilDue} {daysUntilDue === 1 ? 'day' : 'days'}
+                                                                            </div>
+                                                                        )}
+                                                                    </td>
+                                                                    <td style={{
+                                                                        padding: '12px',
+                                                                        textAlign: 'right',
+                                                                        fontWeight: 'bold',
+                                                                        color: '#46f436ff',
+                                                                        fontSize: '1.1em'
+                                                                    }}>
+                                                                        {new Intl.NumberFormat('en-PH', {
+                                                                            style: 'currency',
+                                                                            currency: 'PHP'
+                                                                        }).format(parseFloat(installment.amount_due))}
+                                                                    </td>
+                                                                    <td style={{
+                                                                        padding: '12px',
+                                                                        textAlign: 'center'
+                                                                    }}>
+                                                                        <span style={{
+                                                                            padding: '4px 8px',
+                                                                            borderRadius: '12px',
+                                                                            fontSize: '0.8em',
+                                                                            fontWeight: 'bold',
+                                                                            backgroundColor: isToday ? '#c8e6c9' : '#fff3e0',
+                                                                            color: isToday ? '#2e7d32' : '#f57c00'
+                                                                        }}>
+                                                                            {isToday ? 'DUE TODAY' : 'UPCOMING'}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                )}
+
+                {/* CSS Animations */}
+                <style jsx>{`
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                `}</style>
             </div>
         </div>
     );

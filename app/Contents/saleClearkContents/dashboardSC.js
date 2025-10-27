@@ -106,6 +106,7 @@ const DashboardSalesClerk = () => {
             const locationID = sessionStorage.getItem('location_id');
             const locName = sessionStorage.getItem('location_name');
 
+            console.log("=== FETCHING INSTALLMENT DATA ===");
             const response = await axios.get(`${baseURL}installment.php`, {
                 params: {
                     json: JSON.stringify([]),
@@ -113,22 +114,34 @@ const DashboardSalesClerk = () => {
                 }
             });
 
-            setInstallmentList(response.data);
+            console.log("Installment data received:", response.data);
+            console.log("Number of installments:", response.data ? response.data.length : 0);
+            
+            if (response.data && response.data.length > 0) {
+                console.log("Sample installment:", response.data[0]);
+            }
+
+            setInstallmentList(response.data || []);
 
             // Calculate collections after fetching installments
-            calculateCollections(response.data);
+            calculateCollections(response.data || []);
 
             // Calculate overdue customers
-            calculateOverdueCustomers(response.data);
+            calculateOverdueCustomers(response.data || []);
 
             // Logs(accountID, 'Viewed installment management for ' + locName);
         } catch (error) {
             console.error("Error fetching installments:", error);
+            setInstallmentList([]);
         }
     };
 
     const calculateOverdueCustomers = (installments) => {
+        console.log("=== CALCULATING OVERDUE CUSTOMERS ===");
+        console.log("Installments received:", installments ? installments.length : 0);
+        
         if (!installments || installments.length === 0) {
+            console.log("No installments to process");
             setOverdueCustomers([]);
             return;
         }
@@ -137,8 +150,22 @@ const DashboardSalesClerk = () => {
         const todayStr = today.toISOString().split('T')[0];
         const GRACE_PERIOD_DAYS = 3;
 
+        console.log("Today's date:", todayStr);
+
         const overdue = installments.filter(installment => {
-            return installment.status === 'UNPAID' && installment.due_date < todayStr;
+            const isNotPaid = installment.status && installment.status.toLowerCase() !== 'paid';
+            const isPastDue = installment.due_date < todayStr;
+            
+            if (isNotPaid && isPastDue) {
+                console.log("Found overdue:", {
+                    cust_id: installment.cust_id,
+                    status: installment.status,
+                    due_date: installment.due_date,
+                    amount: installment.amount_due
+                });
+            }
+            
+            return isNotPaid && isPastDue;
         }).map(installment => {
             const dueDate = new Date(installment.due_date);
             const daysPastDue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
@@ -157,11 +184,14 @@ const DashboardSalesClerk = () => {
             };
         }).sort((a, b) => b.daysPastDue - a.daysPastDue);
 
+        console.log("Total overdue customers found:", overdue.length);
         setOverdueCustomers(overdue);
 
         const totalOverdue = overdue.reduce((sum, customer) => {
             return sum + (customer.amountWithPenalty || 0);
         }, 0);
+
+        console.log("Total overdue amount:", totalOverdue);
 
         setCounts(prev => ({
             ...prev,
@@ -224,8 +254,8 @@ const DashboardSalesClerk = () => {
                 status: installment.status
             });
 
-            // Only count UNPAID installments
-            if (installment.status === 'UNPAID') {
+            // Only count UNPAID installments (case-insensitive check for not paid)
+            if (installment.status && installment.status.toLowerCase() !== 'paid') {
                 totalCustomersWithDue.add(installment.installment_id);
 
                 // Daily collection (due today)
@@ -485,7 +515,7 @@ const DashboardSalesClerk = () => {
 
         return installmentList
             .filter(installment => {
-                return installment.status === 'UNPAID' && 
+                return installment.status && installment.status.toLowerCase() !== 'paid' && 
                        installment.due_date >= startDate && 
                        installment.due_date <= endDate;
             })

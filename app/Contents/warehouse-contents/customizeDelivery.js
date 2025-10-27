@@ -267,7 +267,8 @@ const DeliveryCustomizeWR = () => {
 
         const semiMapped = semi.map(item => ({
             type: 'Semi-Customized',
-            baseProductId: item.baseProduct_id,
+            baseProductId: item.product_name || item.baseProduct_id,  // Include product_name
+            description: item.description || 'N/A',  // Include description from products table
             modifications: item.modifications || 'N/A',
             qty: item.qty
         }));
@@ -323,7 +324,14 @@ const DeliveryCustomizeWR = () => {
                 if (item.deliveryType === 'customize') {
                     return item.done_by?.toString() === driverFilter.toString();
                 } else {
-                    return item.account_id?.toString() === driverFilter.toString();
+                    // For normal deliveries, compare driverName with the full name from userList
+                    const selectedDriver = userList.find(user => user.account_id?.toString() === driverFilter.toString());
+                    if (selectedDriver) {
+                        const driverFullName = `${selectedDriver.fname} ${selectedDriver.mname} ${selectedDriver.lname}`.trim();
+                        return item.driverName?.toLowerCase().includes(driverFullName.toLowerCase()) || 
+                               driverFullName.toLowerCase().includes(item.driverName?.toLowerCase() || '');
+                    }
+                    return false;
                 }
             });
         }
@@ -354,14 +362,15 @@ const DeliveryCustomizeWR = () => {
                     return (
                         item.request_stock_id?.toString().includes(searchTerm) ||
                         item.location_name?.toLowerCase().includes(searchTerm) ||
-                        `${item.fname || ''} ${item.mname || ''} ${item.lname || ''}`.toLowerCase().includes(searchTerm)
+                        item.reqFrom?.toLowerCase().includes(searchTerm) ||
+                        item.driverName?.toLowerCase().includes(searchTerm)
                     );
                 }
             });
         }
 
         return filtered;
-    }, [customizeDeliveryList, normalDeliveryList, deliveryTypeFilter, deliverToFilter, driverFilter, statusFilter, searchFilter, requestList]);
+    }, [customizeDeliveryList, normalDeliveryList, deliveryTypeFilter, deliverToFilter, driverFilter, statusFilter, searchFilter, requestList, userList]);
 
     const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
     const currentItems = filteredData.slice(
@@ -389,8 +398,14 @@ const DeliveryCustomizeWR = () => {
     const handleViewDetails = async (delivery) => {
         if (delivery.deliveryType === 'customize') {
             const requestInfo = getRequestInfo(delivery.customize_request_id);
-            const details = getDeliveryDetailsBySalesId(requestInfo.customize_sales_id);
+            // Use customize_sales_id from delivery object directly, or fall back to requestInfo
+            const customizeSalesId = delivery.customize_sales_id || requestInfo.customize_sales_id;
+            const details = getDeliveryDetailsBySalesId(customizeSalesId);
             await GetStatsAndDate(delivery.status, delivery.customize_request_id);
+            
+            console.log('Customize Sales ID:', customizeSalesId);
+            console.log('Details:', details);
+            
             setSelectedDelivery({
                 ...delivery,
                 requestInfo
@@ -554,9 +569,14 @@ const DeliveryCustomizeWR = () => {
         return location ? location.location_name : '';
     };
 
-    const getDriverName = (id) => {
-        const driver = userList.find(user => user.account_id?.toString() === id?.toString());
-        return driver ? `${driver.fname || ''} ${driver.mname || ''} ${driver.lname || ''}`.trim() : '';
+    const getDriverName = (driverNameOrId) => {
+        // For normal deliveries, driverNameOrId is the actual driver name
+        // For customize deliveries, we need to look it up
+        if (typeof driverNameOrId === 'string') {
+            return driverNameOrId;
+        }
+        const driver = userList.find(user => user.account_id?.toString() === driverNameOrId?.toString());
+        return driver ? `${driver.fname} ${driver.mname} ${driver.lname}`.trim() : 'Unknown';
     };
 
     const getStatus = (item) => {
@@ -571,7 +591,8 @@ const DeliveryCustomizeWR = () => {
         if (item.deliveryType === 'customize') {
             return item.driver;
         } else {
-            return `${item.fname || ''} ${item.mname || ''} ${item.lname || ''}`.trim() || 'Not Assigned';
+            // Use driverName directly from the database
+            return item.driverName || 'Not Assigned';
         }
     };
 
@@ -648,8 +669,8 @@ const DeliveryCustomizeWR = () => {
                                             ...(deliveryDetails.semi || []).map(item => ({
                                                 type: 'Semi-Customized',
                                                 baseProductId: item.baseProductId,
-                                                description: item.modifications || 'No modifications specified',
-                                                additionalDescription: item.modifications,
+                                                description: item.description || 'N/A',
+                                                additionalDescription: item.modifications || 'No modifications',
                                                 qty: item.qty
                                             })),
                                             ...(deliveryDetails.full || []).map(item => ({
@@ -754,7 +775,7 @@ const DeliveryCustomizeWR = () => {
                                 <div><strong>DELIVER TO:</strong> {selectedDelivery.reqFrom}</div>
                                 <div><strong>DELIVER FROM:</strong> {selectedDelivery.reqTo}</div>
                                 <div><strong>REQUEST BY:</strong> {`${selectedDelivery.firstName || ''} ${selectedDelivery.middleName || ''} ${selectedDelivery.lastName || ''}`.trim()}</div>
-                                <div><strong>DRIVER:</strong> {`${selectedDelivery.fname || ''} ${selectedDelivery.mname || ''} ${selectedDelivery.lname || ''}`.trim()}</div>
+                                <div><strong>DRIVER:</strong> {selectedDelivery.driverName || 'Not Assigned'}</div>
                                 <div><strong>STATUS:</strong>
                                     <span style={{
                                         marginLeft: '8px',
@@ -1015,7 +1036,10 @@ const DeliveryCustomizeWR = () => {
                                 borderRadius: '16px',
                                 fontSize: '13px'
                             }}>
-                                Driver: {getDriverName(driverFilter)}
+                                Driver: {(() => {
+                                    const driver = userList.find(user => user.account_id?.toString() === driverFilter.toString());
+                                    return driver ? `${driver.fname} ${driver.mname} ${driver.lname}`.trim() : 'Unknown';
+                                })()}
                             </span>
                         )}
                         {statusFilter && (

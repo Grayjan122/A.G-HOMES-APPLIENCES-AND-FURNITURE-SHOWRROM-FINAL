@@ -189,9 +189,17 @@ const PaymentBehavior = () => {
                     operation: "GetInstallment"
                 }
             });
-            setInstallmentList(response.data);
+            
+            // Validate that response.data is an array
+            if (Array.isArray(response.data)) {
+                setInstallmentList(response.data);
+            } else {
+                console.error("Installments response is not an array:", response.data);
+                setInstallmentList([]);
+            }
         } catch (error) {
             console.error("Error fetching installments:", error);
+            setInstallmentList([]);
         }
     };
 
@@ -204,9 +212,17 @@ const PaymentBehavior = () => {
                     operation: "GetInstallmentD1"
                 }
             });
-            setInstallmentDList(response.data);
+            
+            // Validate that response.data is an array
+            if (Array.isArray(response.data)) {
+                setInstallmentDList(response.data);
+            } else {
+                console.error("Installment details response is not an array:", response.data);
+                setInstallmentDList([]);
+            }
         } catch (error) {
             console.error("Error fetching installment details:", error);
+            setInstallmentDList([]);
         }
     };
 
@@ -219,9 +235,17 @@ const PaymentBehavior = () => {
                     operation: "PaymentRecords"
                 }
             });
-            setPaymentRecord(response.data);
+            
+            // Validate that response.data is an array
+            if (Array.isArray(response.data)) {
+                setPaymentRecord(response.data);
+            } else {
+                console.error("Payment records response is not an array:", response.data);
+                setPaymentRecord([]); // Set empty array as fallback
+            }
         } catch (error) {
             console.error("Error fetching payment records:", error);
+            setPaymentRecord([]); // Set empty array on error
         }
     };
 
@@ -235,9 +259,17 @@ const PaymentBehavior = () => {
                     operation: "GetCustomer"
                 }
             });
-            setCustomerList(response.data);
+            
+            // Validate that response.data is an array
+            if (Array.isArray(response.data)) {
+                setCustomerList(response.data);
+            } else {
+                console.error("Customer list response is not an array:", response.data);
+                setCustomerList([]);
+            }
         } catch (error) {
             console.error("Error fetching customer list:", error);
+            setCustomerList([]);
         }
     };
 
@@ -254,9 +286,24 @@ const PaymentBehavior = () => {
     const RecordPayment = async () => {
         try {
             const baseURL = sessionStorage.getItem('baseURL');
-            const accountID = sessionStorage.getItem('user_id');
-            const locationID = sessionStorage.getItem('location_id');
+            const accountID = parseInt(sessionStorage.getItem('user_id'));
+            const locationID = parseInt(sessionStorage.getItem('location_id'));
             const locName = sessionStorage.getItem('location_name');
+
+            // Validation
+            if (!accountID || isNaN(accountID)) {
+                alert('Error: User session is invalid. Please log in again.');
+                console.error('Invalid account ID:', sessionStorage.getItem('user_id'));
+                return;
+            }
+
+            if (!locationID || isNaN(locationID)) {
+                alert('Error: Location information is missing. Please log in again.');
+                console.error('Invalid location ID:', sessionStorage.getItem('location_id'));
+                return;
+            }
+
+            console.log('Recording payment with Account ID:', accountID, 'Location ID:', locationID);
 
             const customerInstallmentSchedules = installmentDList.filter(schedule =>
                 schedule.installment_id === selectedInstallmentForPayment.installment_sales_id
@@ -269,19 +316,20 @@ const PaymentBehavior = () => {
 
             let paymentsToRecord = [];
 
-            // Manual adjustment mode - distribute adjusted amount
+            // Manual adjustment mode - distribute adjusted amount evenly
             if (manualAdjustment && adjustedAmount) {
                 const totalAdjusted = parseFloat(adjustedAmount);
                 const selectedPaymentsList = payAllUnpaid ? unpaidPayments : selectedPayments.map(ipsId =>
                     unpaidPayments.find(p => p.ips_id === ipsId)
                 );
                 
-                // Distribute the adjusted amount proportionally based on original amounts
-                const totalOriginal = selectedPaymentsList.reduce((sum, payment) => sum + payment.total_amount, 0);
+                // Distribute the adjusted amount EVENLY across all selected payments
+                const numberOfPayments = selectedPaymentsList.length;
+                const amountPerPayment = totalAdjusted / numberOfPayments;
                 
                 paymentsToRecord = selectedPaymentsList.map(payment => ({
                     ips_id: payment.ips_id,
-                    amount: (payment.total_amount / totalOriginal) * totalAdjusted
+                    amount: amountPerPayment
                 }));
             } else {
                 // Normal mode - use calculated amounts
@@ -351,6 +399,7 @@ const PaymentBehavior = () => {
                 setManualAdjustment(false);
                 setAdjustedAmount('');
             } else {
+                console.log('Error recording payment: ' + response.data);
                 alert('Error recording payment: ' + response.data);
             }
         } catch (error) {
@@ -510,7 +559,8 @@ const PaymentBehavior = () => {
             totalPaid,
             overdueCount,
             latePaymentCount,
-            onTimePaymentRate
+            onTimePaymentRate,
+            consecutiveBadPayments
         } = paymentBehavior;
 
         // No payment history
@@ -524,15 +574,16 @@ const PaymentBehavior = () => {
             };
         }
 
-        // BAD PAYER: Has a streak of 3 or more (past grace period + late paid)
-        const combinedBadPayments = overdueCount + latePaymentCount;
-        if (combinedBadPayments >= 3) {
+        // BAD PAYER: Has a CONSECUTIVE streak of 3 or more bad payments
+        // (consecutive past grace period or late paid payments)
+        if (consecutiveBadPayments >= 3) {
             return {
                 level: 'bad',
                 color: 'danger',
                 label: 'Bad Payer',
                 payerType: 'Bad Payer',
-                payerColor: 'danger'
+                payerColor: 'danger',
+                consecutiveStreak: consecutiveBadPayments
             };
         }
 
@@ -636,6 +687,48 @@ const PaymentBehavior = () => {
             const onTimePaymentCount = totalPaid - latePaymentCount;
             const onTimePaymentRate = totalPaid > 0 ? ((onTimePaymentCount / totalPaid) * 100) : 0;
 
+            // Calculate consecutive bad payments (straight overdue or late payments)
+            // Sort all schedules by payment number or due date
+            const sortedSchedules = [...customerPaymentSchedules].sort((a, b) => {
+                const numA = parseInt(a.payment_number) || 0;
+                const numB = parseInt(b.payment_number) || 0;
+                return numA - numB;
+            });
+
+            let maxConsecutiveBadPayments = 0;
+            let currentStreak = 0;
+
+            sortedSchedules.forEach(schedule => {
+                let isBadPayment = false;
+
+                // Check if currently overdue (past grace period)
+                if (schedule.status.toLowerCase() !== 'paid') {
+                    const dueDate = new Date(schedule.due_date);
+                    const daysDiff = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+                    if (daysDiff > 3) {
+                        isBadPayment = true; // Currently overdue past grace period
+                    }
+                } else {
+                    // Check if paid late (more than 3 days after due date)
+                    const paymentRecord = customerPaymentRecords.find(record => record.ips_id === schedule.ips_id);
+                    if (paymentRecord) {
+                        const dueDate = new Date(schedule.due_date);
+                        const paymentDate = new Date(paymentRecord.date);
+                        const daysDiff = Math.floor((paymentDate - dueDate) / (1000 * 60 * 60 * 24));
+                        if (daysDiff > 3) {
+                            isBadPayment = true; // Paid late
+                        }
+                    }
+                }
+
+                if (isBadPayment) {
+                    currentStreak++;
+                    maxConsecutiveBadPayments = Math.max(maxConsecutiveBadPayments, currentStreak);
+                } else {
+                    currentStreak = 0; // Reset streak if payment is on time
+                }
+            });
+
             const paymentBehavior = {
                 totalScheduled,
                 totalPaid,
@@ -651,7 +744,8 @@ const PaymentBehavior = () => {
                 totalPayments: totalPaymentsWithoutPenalties,
                 totalPenalties,
                 currentOverduePenalties,
-                totalPenaltiesAccrued: totalPenalties + currentOverduePenalties
+                totalPenaltiesAccrued: totalPenalties + currentOverduePenalties,
+                consecutiveBadPayments: maxConsecutiveBadPayments
             };
 
             const risk = getRiskLevel(paymentBehavior);
@@ -724,6 +818,7 @@ const PaymentBehavior = () => {
         if (schedule.status.toLowerCase() === 'paid' && paymentRecord) {
             const paymentDate = new Date(paymentRecord.date);
             const daysDifference = Math.floor((paymentDate - dueDate) / (1000 * 60 * 60 * 24));
+            const paidAmount = parseFloat(paymentRecord.amount || schedule.amount_due);
 
             if (daysDifference <= 3) {
                 return (
@@ -731,6 +826,9 @@ const PaymentBehavior = () => {
                         <span className="badge bg-success mb-1">PAID ON TIME</span>
                         <div className="small text-success">
                             <strong>Paid:</strong> {formatDate(paymentRecord.date)}
+                            <div className="mt-1 fw-bold">
+                                <strong>Amount:</strong> {formatCurrency(paidAmount)}
+                            </div>
                         </div>
                     </div>
                 );
@@ -742,6 +840,9 @@ const PaymentBehavior = () => {
                         <span className="badge bg-warning mb-1">PAID LATE</span>
                         <div className="small text-warning">
                             <strong>Paid:</strong> {formatDate(paymentRecord.date)}
+                            <div className="text-success mt-1 fw-bold">
+                                <strong>Amount:</strong> {formatCurrency(paidAmount)}
+                            </div>
                             <div className="text-danger mt-1">
                                 <strong>Penalty:</strong> {formatCurrency(penaltyAmount)}
                             </div>
@@ -755,10 +856,11 @@ const PaymentBehavior = () => {
             return <span className="badge bg-success">PAID</span>;
         }
 
+        // For unpaid/pending payments, check if overdue
         const daysDiff = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
-        const isOverdue = schedule.status.toLowerCase() === 'unpaid' && daysDiff > 3;
-
-        if (isOverdue) {
+        
+        // OVERDUE (more than 3 days past due) - applies to any non-paid status
+        if (daysDiff > 3) {
             const penaltyAmount = parseFloat(schedule.amount_due) * 0.05;
             const totalWithPenalty = parseFloat(schedule.amount_due) + penaltyAmount;
 
@@ -767,23 +869,42 @@ const PaymentBehavior = () => {
                     <span className="badge bg-danger mb-1">OVERDUE</span>
                     <div className="small text-danger">
                         <strong>Due:</strong> {formatDate(schedule.due_date)}
+                        <div className="text-muted mt-1">
+                            <strong>Original Amount:</strong> {formatCurrency(schedule.amount_due)}
+                        </div>
+                        <div className="text-danger mt-1">
+                            <strong>Penalty (5%):</strong> {formatCurrency(penaltyAmount)}
+                        </div>
                         <div className="text-danger mt-1 fw-bold">
-                            <strong>Amount:</strong> {formatCurrency(totalWithPenalty)}
+                            <strong>Total Amount:</strong> {formatCurrency(totalWithPenalty)}
                         </div>
                     </div>
                 </div>
             );
         }
 
+        // GRACE PERIOD (1-3 days past due) - applies to any non-paid status
         if (daysDiff > 0 && daysDiff <= 3) {
             const graceDaysLeft = 3 - daysDiff;
+            const potentialPenalty = parseFloat(schedule.amount_due) * 0.05;
+            const totalWithPenalty = parseFloat(schedule.amount_due) + potentialPenalty;
+            
             return (
                 <div>
-                    <span className="badge bg-warning mb-1">GRACE PERIOD</span>
+                    <span className="badge bg-warning mb-1">OVERDUE - GRACE PERIOD</span>
                     <div className="small text-warning">
                         <strong>Due:</strong> {formatDate(schedule.due_date)}
-                        <div className="text-warning fw-bold">
+                        <div className="text-warning fw-bold mt-1">
                             <small>{graceDaysLeft} day{graceDaysLeft > 1 ? 's' : ''} left</small>
+                        </div>
+                        <div className="text-muted mt-1">
+                            <strong>Current Amount:</strong> {formatCurrency(schedule.amount_due)}
+                        </div>
+                        <div className="text-danger mt-1">
+                            <strong>Penalty if not paid:</strong> {formatCurrency(potentialPenalty)}
+                        </div>
+                        <div className="text-danger fw-bold mt-1">
+                            <strong>Total after grace:</strong> {formatCurrency(totalWithPenalty)}
                         </div>
                     </div>
                 </div>
@@ -969,7 +1090,7 @@ const PaymentBehavior = () => {
                 <Modal.Header closeButton>
                     <Modal.Title>Payment Recorded Successfully</Modal.Title>
                 </Modal.Header>
-                <Modal.Body>
+                <Modal.Body className='request-modal-body'>
                     {lastTransaction && (
                         <>
                             <div className="text-center mb-4 p-3 bg-light rounded">
@@ -1183,8 +1304,13 @@ const PaymentBehavior = () => {
                                                 />
                                                 <small className="text-info d-block mt-2">
                                                     💡 <strong>Tip:</strong> Adjust this amount for early full payment to reduce interest charges. 
-                                                    The amount will be distributed proportionally across selected payments.
+                                                    The amount will be distributed <strong>evenly</strong> across all selected payments.
                                                 </small>
+                                                {(payAllUnpaid ? unpaidPayments.length : selectedPayments.length) > 0 && (
+                                                    <small className="text-muted d-block mt-1">
+                                                        Each payment will receive: <strong>{formatCurrency(parseFloat(adjustedAmount || 0) / (payAllUnpaid ? unpaidPayments.length : selectedPayments.length))}</strong>
+                                                    </small>
+                                                )}
                                             </div>
                                         )}
 

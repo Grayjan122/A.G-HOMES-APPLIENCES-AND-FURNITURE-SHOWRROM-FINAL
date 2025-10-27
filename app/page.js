@@ -349,6 +349,7 @@ export default function LoginPage() {
           // ⭐ Store session token for session validation
           if (userData.session_token) {
             sessionStorage.setItem('session_token', userData.session_token);
+            sessionStorage.setItem('freshLogin', 'true'); // Flag to indicate fresh login
             addDebugLog('✅ Session token stored:', userData.session_token.substring(0, 10) + '...');
           }
 
@@ -662,6 +663,7 @@ export default function LoginPage() {
             // ⭐ Store session token for session validation
             if (userData.session_token) {
               sessionStorage.setItem('session_token', userData.session_token);
+              sessionStorage.setItem('freshLogin', 'true'); // Flag to indicate fresh login
               addDebugLog('✅ Session token stored:', userData.session_token.substring(0, 10) + '...');
             }
 
@@ -946,6 +948,8 @@ export default function LoginPage() {
         timeout: 15000
       });
 
+      console.log('Password reset response:', response.data);
+
       if (response.data.success) {
         showAlertError({
           icon: "success",
@@ -955,14 +959,28 @@ export default function LoginPage() {
         });
         closeForgotPassword();
       } else {
-        throw new Error('Failed to reset password');
+        // Check for password history violation
+        if (response.data.error_code === 'PASSWORD_HISTORY_VIOLATION') {
+          setPasswordError(response.data.message || response.data.error);
+          showAlertError({
+            icon: "warning",
+            title: "🔒 Password Previously Used",
+            text: '⚠️ Security Policy ou cannot reuse any of your last 5 passwords.',
+            button: 'Okay'
+        });
+         
+        } else {
+          // Other errors
+          throw new Error(response.data.error || 'Failed to reset password');
+        }
       }
     } catch (error) {
       console.error('Error resetting password:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to reset password. Please try again.';
       showAlertError({
         icon: "error",
         title: "Error",
-        text: 'Failed to reset password. Please try again.',
+        text: errorMessage,
         button: 'OK'
       });
     }

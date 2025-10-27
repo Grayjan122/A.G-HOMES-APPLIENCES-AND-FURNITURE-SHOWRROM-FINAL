@@ -371,7 +371,7 @@ const CombinedRequests = () => {
     };
 
     const ApproveStockRequest = async () => {
-        const accountID = sessionStorage.getItem('user_id');
+        const accountID = parseInt(sessionStorage.getItem('user_id'));
         const updates = [];
 
         Object.keys(checkedItems).forEach(productId => {
@@ -394,7 +394,7 @@ const CombinedRequests = () => {
         const url = baseURL + 'requestStock.php';
         const reqDetails1 = {
             reqID: s_reqID,
-            accID: user_id,
+            accID: accountID,
             reqFromID: reqFromId,
             reqToID: reqToId
         };
@@ -433,6 +433,10 @@ const CombinedRequests = () => {
                     referenceId: s_reqID
                 });
             } else {
+                console.log(accountID);
+                
+                console.log(response.data);
+                
                 showAlertError({
                     icon: "error",
                     title: "Something Went Wrong!",
@@ -535,7 +539,7 @@ const CombinedRequests = () => {
     };
 
     const ApproveCustomizeRequest = async () => {
-        const accountID = sessionStorage.getItem('user_id');
+        const accountID = parseInt(sessionStorage.getItem('user_id'));
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'customizeProducts.php';
         const reqDetails1 = { accID: accountID, customizeID: c_reqID };

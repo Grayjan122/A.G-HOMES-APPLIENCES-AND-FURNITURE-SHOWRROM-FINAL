@@ -179,6 +179,44 @@ const TrackRequestIM = () => {
     // Helper functions
     const getBaseURL = () => sessionStorage.getItem('baseURL') || '';
 
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('en-US', options);
+    };
+
+    const formatTime = (timeString) => {
+        if (!timeString) return '';
+        
+        // If time is already in HH:MM:SS format
+        const timeParts = timeString.split(':');
+        if (timeParts.length >= 2) {
+            let hours = parseInt(timeParts[0]);
+            const minutes = timeParts[1];
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${hours}:${minutes} ${ampm}`;
+        }
+        
+        return timeString;
+    };
+
+    const formatDateTime = (dateString, timeString) => {
+        if (!dateString && !timeString) return '';
+        
+        const formattedDate = formatDate(dateString);
+        const formattedTime = formatTime(timeString);
+        
+        if (formattedDate && formattedTime) {
+            return `${formattedDate} • ${formattedTime}`;
+        }
+        
+        return formattedDate || formattedTime || '';
+    };
+
     const handleError = (error, context) => {
         console.error(`Error ${context}:`, error);
         setMessage(`Error occurred while ${context}. Please try again.`);
@@ -391,7 +429,7 @@ const TrackRequestIM = () => {
             });
 
             if (response.data && response.data.length > 0) {
-                setReqDateTime(response.data[0].date + " • " + response.data[0].time);
+                setReqDateTime(formatDate(response.data[0].date) + " • " + formatTime(response.data[0].time));
             } else {
                 return "";
             }
@@ -497,6 +535,59 @@ const TrackRequestIM = () => {
 
     return (
         <>
+            <style>{`
+                .card-icon {
+                    width: 10px !important;
+                    height: 10px !important;
+                }
+                
+                @media (min-width: 780px) {
+                    .card-icon {
+                        width: 14px !important;
+                        height: 14px !important;
+                    }
+                }
+
+                /* Modal Responsive Styles */
+                @media (max-width: 768px) {
+                    .modal-dialog {
+                        margin: 0.5rem !important;
+                        max-width: calc(100% - 1rem) !important;
+                    }
+                    
+                    .modal-content {
+                        border-radius: 8px !important;
+                    }
+                    
+                    .modal-body {
+                        padding: 15px !important;
+                    }
+                    
+                    .modal-header {
+                        padding: 12px 15px !important;
+                    }
+                    
+                    .modal-title {
+                        font-size: 18px !important;
+                    }
+                    
+                    .modal-footer {
+                        padding: 10px 15px !important;
+                    }
+                }
+
+                @media (max-width: 576px) {
+                    .modal-dialog {
+                        margin: 0.25rem !important;
+                        max-width: calc(100% - 0.5rem) !important;
+                    }
+                    
+                    .modal-title {
+                        font-size: 16px !important;
+                    }
+                }
+            `}</style>
+            
             <Alert
                 variant={alertVariant}
                 show={alert1}
@@ -513,7 +604,7 @@ const TrackRequestIM = () => {
                 <Modal.Body>
                     {/* Archive Filters */}
                     <div style={{ padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', marginBottom: '15px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '10px' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Request From</label>
                                 <select
@@ -567,18 +658,18 @@ const TrackRequestIM = () => {
                                 />
                             </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #dee2e6' }}>
-                            <div style={{ fontSize: '14px', color: '#6c757d' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #dee2e6' }}>
+                            <div style={{ fontSize: '13px', color: '#6c757d', flexShrink: 0 }}>
                                 Showing {filteredArchiveData.length} of {archiveRequestList.length} completed requests
                             </div>
-                            <button onClick={clearAllArchiveFilters} style={{ padding: '6px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                            <button onClick={clearAllArchiveFilters} style={{ padding: '6px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap' }}>
                                 Clear All Filters
                             </button>
                         </div>
                     </div>
 
                     {/* Archive Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', maxHeight: '50vh', overflowY: 'auto', padding: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '15px', maxHeight: '50vh', overflowY: 'auto', padding: '10px' }}>
                         {archiveCurrentItems.length > 0 ? archiveCurrentItems.map((request, index) => (
                             <div
                                 key={index}
@@ -586,12 +677,13 @@ const TrackRequestIM = () => {
                                 style={{
                                     border: '1px solid #e0e0e0',
                                     borderRadius: '12px',
-                                    padding: '20px',
+                                    padding: '15px',
                                     backgroundColor: 'white',
                                     cursor: 'pointer',
                                     transition: 'all 0.3s ease',
                                     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                    ':hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 8px rgba(0,0,0,0.15)' }
+                                    minWidth: '0',
+                                    overflow: 'hidden'
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.transform = 'translateY(-2px)';
@@ -602,39 +694,39 @@ const TrackRequestIM = () => {
                                     e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
-                                    <div>
-                                        <h5 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>#{request.request_stock_id}</h5>
-                                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#666' }}>{request.date}</p>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', gap: '10px' }}>
+                                    <div style={{ flex: '1', minWidth: '0' }}>
+                                        <h5 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>#{request.request_stock_id}</h5>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>{formatDate(request.date)}</p>
                                     </div>
-                                    <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#007bff', color: 'white' }}>
+                                    <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', backgroundColor: '#007bff', color: 'white', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                         Complete
                                     </span>
                                 </div>
 
                                 <div style={{ marginBottom: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '8px' }}>
+                                        <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                                         </svg>
-                                        <span style={{ fontSize: '14px', color: '#333' }}><strong>From:</strong> {request.reqFrom}</span>
+                                        <span style={{ fontSize: '13px', color: '#333', wordBreak: 'break-word', lineHeight: '1.4' }}><strong>From:</strong> {request.reqFrom}</span>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                                        <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <circle cx="12" cy="10" r="3"/>
                                             <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
                                         </svg>
-                                        <span style={{ fontSize: '14px', color: '#333' }}><strong>To:</strong> {request.reqTo}</span>
+                                        <span style={{ fontSize: '13px', color: '#333', wordBreak: 'break-word', lineHeight: '1.4' }}><strong>To:</strong> {request.reqTo}</span>
                                     </div>
                                 </div>
 
                                 <div style={{ paddingTop: '12px', borderTop: '1px solid #eee' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                                        <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                                             <circle cx="12" cy="7" r="4"/>
                                         </svg>
-                                        <span style={{ fontSize: '13px', color: '#666' }}>
+                                        <span style={{ fontSize: '12px', color: '#666', wordBreak: 'break-word', lineHeight: '1.4' }}>
                                             {`${request.fname || ''} ${request.mname || ''} ${request.lname || ''}`.trim()}
                                         </span>
                                     </div>
@@ -671,21 +763,22 @@ const TrackRequestIM = () => {
                     <Modal.Title>Request Details</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', marginBottom: '20px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                            <div><strong>REQUEST ID:</strong> #{s_reqID}</div>
-                            <div><strong>REQUEST DATE:</strong> {s_reqDate}</div>
-                            <div><strong>REQUEST FROM:</strong> {s_reqFrom}</div>
-                            <div><strong>REQUEST TO:</strong> {s_reqTo}</div>
+                    <div style={{ padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', marginBottom: '15px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px', marginBottom: '12px' }}>
+                            <div style={{ fontSize: '14px' }}><strong>REQUEST ID:</strong> #{s_reqID}</div>
+                            <div style={{ fontSize: '14px' }}><strong>REQUEST DATE:</strong> {formatDate(s_reqDate)}</div>
+                            <div style={{ fontSize: '14px' }}><strong>REQUEST FROM:</strong> <span style={{ wordBreak: 'break-word' }}>{s_reqFrom}</span></div>
+                            <div style={{ fontSize: '14px' }}><strong>REQUEST TO:</strong> <span style={{ wordBreak: 'break-word' }}>{s_reqTo}</span></div>
                         </div>
-                        <div style={{ marginBottom: '10px' }}><strong>REQUEST BY:</strong> {s_reqBy}</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
+                        <div style={{ marginBottom: '12px', fontSize: '14px' }}><strong>REQUEST BY:</strong> {s_reqBy}</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ fontSize: '14px', minWidth: '200px' }}>
                                 <strong>STATUS:</strong>
                                 <span style={{
                                     marginLeft: '8px',
                                     color: s_reqStatus === "Pending" ? "red" : s_reqStatus === "Delivered" ? "green" : s_reqStatus === "On Going" ? "orange" : s_reqStatus === "On Delivery" ? "goldenrod" : s_reqStatus === "Complete" ? "blue" : "black",
-                                    fontWeight: 'bold'
+                                    fontWeight: 'bold',
+                                    fontSize: '13px'
                                 }}>
                                     {s_reqStatus} | {reqDateTime}
                                 </span>
@@ -693,12 +786,14 @@ const TrackRequestIM = () => {
                             <button
                                 onClick={() => setTrackReqVisible(false)}
                                 style={{
-                                    padding: '8px 16px',
+                                    padding: '8px 14px',
                                     backgroundColor: '#007bff',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '4px',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    fontSize: '13px',
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
                                 View Tracking History
@@ -706,28 +801,30 @@ const TrackRequestIM = () => {
                         </div>
                     </div>
 
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ backgroundColor: '#f8f9fa' }}>
-                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Product Code</th>
-                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Product Description</th>
-                                <th style={{ padding: '12px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>Requested QTY</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {currentItems1.length > 0 ? currentItems1.map((p, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid #dee2e6' }}>
-                                    <td style={{ padding: '12px' }}>{p.product_name || 'N/A'}</td>
-                                    <td style={{ padding: '12px' }}>{p.description || 'N/A'}</td>
-                                    <td style={{ padding: '12px', textAlign: 'center' }}>{p.qty || '0'}</td>
+                    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
+                            <thead>
+                                <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                    <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6', fontSize: '14px', whiteSpace: 'nowrap' }}>Product Code</th>
+                                    <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6', fontSize: '14px' }}>Product Description</th>
+                                    <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #dee2e6', fontSize: '14px', whiteSpace: 'nowrap' }}>Requested QTY</th>
                                 </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>No request details available</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {currentItems1.length > 0 ? currentItems1.map((p, i) => (
+                                    <tr key={i} style={{ borderBottom: '1px solid #dee2e6' }}>
+                                        <td style={{ padding: '10px', fontSize: '13px' }}>{p.product_name || 'N/A'}</td>
+                                        <td style={{ padding: '10px', fontSize: '13px' }}>{p.description || 'N/A'}</td>
+                                        <td style={{ padding: '10px', textAlign: 'center', fontSize: '13px' }}>{p.qty || '0'}</td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan="3" style={{ textAlign: 'center', padding: '20px', fontSize: '13px' }}>No request details available</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
 
                     {totalPages1 > 1 && (
                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
@@ -746,10 +843,10 @@ const TrackRequestIM = () => {
                     <Modal.Title>Tracking History - Request #{s_reqID}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <div style={{ padding: '20px' }}>
-                        <h4 style={{ marginBottom: '30px', textAlign: 'center', fontWeight: 'bold' }}>Request Progress Tracker</h4>
+                    <div style={{ padding: '15px' }}>
+                        <h4 style={{ marginBottom: '25px', textAlign: 'center', fontWeight: 'bold', fontSize: '18px' }}>Request Progress Tracker</h4>
                         
-                        <div style={{ position: 'relative', paddingLeft: '40px' }}>
+                        <div style={{ position: 'relative', paddingLeft: '30px' }}>
                             {merged.map((label, index) => (
                                 <div key={index} style={{ position: 'relative', paddingBottom: index < steps.length - 1 ? '40px' : '0' }}>
                                     {/* Vertical Line */}
@@ -767,10 +864,10 @@ const TrackRequestIM = () => {
                                     {/* Step Circle */}
                                     <div style={{
                                         position: 'absolute',
-                                        left: '-32px',
+                                        left: '-27px',
                                         top: '5px',
-                                        width: '18px',
-                                        height: '18px',
+                                        width: '16px',
+                                        height: '16px',
                                         borderRadius: '50%',
                                         backgroundColor: index <= currentStep ? '#28a745' : '#e0e0e0',
                                         border: '3px solid white',
@@ -779,27 +876,27 @@ const TrackRequestIM = () => {
                                     
                                     {/* Step Content */}
                                     <div style={{
-                                        padding: '15px',
+                                        padding: '12px',
                                         backgroundColor: index <= currentStep ? '#f8fff9' : '#f8f9fa',
                                         borderRadius: '8px',
                                         border: '1px solid ' + (index <= currentStep ? '#28a745' : '#e0e0e0'),
                                         opacity: index <= currentStep ? 1 : 0.6
                                     }}>
-                                        <h6 style={{ margin: '0 0 8px 0', fontWeight: 'bold', color: index <= currentStep ? '#28a745' : '#666' }}>
+                                        <h6 style={{ margin: '0 0 6px 0', fontWeight: 'bold', color: index <= currentStep ? '#28a745' : '#666', fontSize: '15px' }}>
                                             {label.stepName}
                                         </h6>
                                         {label.data && label.data.status && (
                                             <>
-                                                <p style={{ margin: '4px 0', fontSize: '14px', color: '#333' }}>
+                                                <p style={{ margin: '4px 0', fontSize: '13px', color: '#333' }}>
                                                     <strong>Status:</strong> {label.data.status}
                                                 </p>
-                                                <p style={{ margin: '4px 0', fontSize: '13px', color: '#666' }}>
-                                                    <strong>Date:</strong> {label.data.date} at {label.data.time}
+                                                <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}>
+                                                    <strong>Date:</strong> {formatDateTime(label.data.date, label.data.time)}
                                                 </p>
                                             </>
                                         )}
                                         {(!label.data || !label.data.status) && index > currentStep && (
-                                            <p style={{ margin: '4px 0', fontSize: '13px', color: '#999', fontStyle: 'italic' }}>
+                                            <p style={{ margin: '4px 0', fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
                                                 Pending...
                                             </p>
                                         )}
@@ -838,8 +935,8 @@ const TrackRequestIM = () => {
                 }}>
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: '15px',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                        gap: '10px',
                         alignItems: 'end'
                     }}>
                         <div>
@@ -931,8 +1028,8 @@ const TrackRequestIM = () => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #dee2e6' }}>
-                        <div style={{ fontSize: '14px', color: '#6c757d' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #dee2e6' }}>
+                        <div style={{ fontSize: '13px', color: '#6c757d', flexShrink: 0 }}>
                             Showing {filteredData.length} of {nonCompleteRequests.length} active requests
                         </div>
                         <button
@@ -945,7 +1042,8 @@ const TrackRequestIM = () => {
                                 border: "none",
                                 borderRadius: "6px",
                                 cursor: "pointer",
-                                fontSize: "14px"
+                                fontSize: "13px",
+                                whiteSpace: "nowrap"
                             }}
                         >
                             Clear All Filters
@@ -956,8 +1054,8 @@ const TrackRequestIM = () => {
                 {/* Request Cards Grid */}
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                    gap: '20px',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
+                    gap: '15px',
                     padding: '10px',
                     maxHeight: '60vh',
                     overflowY: 'auto'
@@ -973,11 +1071,13 @@ const TrackRequestIM = () => {
                                 style={{
                                     border: '1px solid #e0e0e0',
                                     borderRadius: '12px',
-                                    padding: '20px',
+                                    padding: '15px',
                                     backgroundColor: 'white',
                                     cursor: 'pointer',
                                     transition: 'all 0.3s ease',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                    minWidth: '0',
+                                    overflow: 'hidden'
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.transform = 'translateY(-4px)';
@@ -989,23 +1089,25 @@ const TrackRequestIM = () => {
                                 }}
                             >
                                 {/* Header */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
-                                    <div>
-                                        <h5 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', gap: '10px' }}>
+                                    <div style={{ flex: '1', minWidth: '0' }}>
+                                        <h5 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
                                             #{request.request_stock_id}
                                         </h5>
-                                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#666' }}>{request.date}</p>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>{formatDate(request.date)}</p>
                                     </div>
                                     <span style={{
-                                        padding: '4px 12px',
+                                        padding: '4px 10px',
                                         borderRadius: '20px',
-                                        fontSize: '12px',
+                                        fontSize: '11px',
                                         fontWeight: 'bold',
                                         backgroundColor: request.request_status === "Pending" ? "#dc3545" :
                                             request.request_status === "Delivered" ? "#28a745" :
                                             request.request_status === "On Going" ? "#fd7e14" :
                                             request.request_status === "On Delivery" ? "#ffc107" : "#6c757d",
-                                        color: 'white'
+                                        color: 'white',
+                                        whiteSpace: 'nowrap',
+                                        flexShrink: 0
                                     }}>
                                         {request.request_status}
                                     </span>
@@ -1052,20 +1154,20 @@ const TrackRequestIM = () => {
 
                                 {/* Location Info */}
                                 <div style={{ marginBottom: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '8px' }}>
+                                        <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                                         </svg>
-                                        <span style={{ fontSize: '14px', color: '#333' }}>
+                                        <span style={{ fontSize: '13px', color: '#333', wordBreak: 'break-word', lineHeight: '1.4' }}>
                                             <strong>From:</strong> {request.reqFrom}
                                         </span>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                                        <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <circle cx="12" cy="10" r="3"/>
                                             <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
                                         </svg>
-                                        <span style={{ fontSize: '14px', color: '#333' }}>
+                                        <span style={{ fontSize: '13px', color: '#333', wordBreak: 'break-word', lineHeight: '1.4' }}>
                                             <strong>To:</strong> {request.reqTo}
                                         </span>
                                     </div>
@@ -1074,17 +1176,17 @@ const TrackRequestIM = () => {
                                 
                                 {/* User Info */}
                                 <div style={{ paddingTop: '12px', borderTop: '1px solid #eee' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '8px' }}>
+                                        <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                                             <circle cx="12" cy="7" r="4"/>
                                         </svg>
-                                        <span style={{ fontSize: '13px', color: '#666' }}>
+                                        <span style={{ fontSize: '12px', color: '#666', wordBreak: 'break-word', lineHeight: '1.4' }}>
                                             {`${request.fname || ''} ${request.mname || ''} ${request.lname || ''}`.trim()}
                                         </span>
                                     </div>
                                     <div style={{ textAlign: 'center', marginTop: '8px' }}>
-                                        <span style={{ fontSize: '12px', color: '#007bff', fontStyle: 'italic' }}>
+                                        <span style={{ fontSize: '11px', color: '#007bff', fontStyle: 'italic' }}>
                                             Click to view details
                                         </span>
                                     </div>

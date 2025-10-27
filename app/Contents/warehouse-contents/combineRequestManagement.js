@@ -229,11 +229,11 @@ const UnifiedRequestManagement = () => {
     };
 
     const DeliverNormalStock = async () => {
-        if (normalTransferDriver === '') {
+        if (normalTransferDriver === '' || normalTransferDriver.trim().length === 0) {
             showAlertError({
                 icon: "error",
                 title: "Wait!",
-                text: "Please choose a driver first.",
+                text: "Please enter a driver name first.",
                 button: 'Okay'
             });
             return;
@@ -241,7 +241,7 @@ const UnifiedRequestManagement = () => {
         const accountID = parseInt(sessionStorage.getItem('user_id'));
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'requestStock.php';
-        const ID = { accID: accountID, reqID: normalRID, driverID: normalTransferDriver };
+        const ID = { accID: accountID, reqID: normalRID, driverName: normalTransferDriver };
         try {
             const response = await axios.get(url, {
                 params: { json: JSON.stringify(ID), operation: "DeliverStock" }
@@ -259,13 +259,10 @@ const UnifiedRequestManagement = () => {
                 Logs(accountID, 'Deliver the request #' + normalRID);
                 
                 // Send notification to requesting location (Inventory Manager)
-                const driverName = userList.find(d => d.account_id?.toString() === normalTransferDriver.toString());
-                const driverFullName = driverName ? `${driverName.fname} ${driverName.lname}` : 'Driver';
-                
                 await createNotification({
                     type: 'delivery',
                     title: 'Stock On Delivery',
-                    message: `Your stock request #${normalRID} is now on delivery. Driver: ${driverFullName}`,
+                    message: `Your stock request #${normalRID} is now on delivery. Driver: ${normalTransferDriver}`,
                     locationId: normalRequestFromID, // Send to requesting location
                     targetRole: 'Inventory Manager',
                     productId: null,
@@ -672,7 +669,7 @@ const UnifiedRequestManagement = () => {
                     <Button variant="secondary" onClick={() => setNormalDeliveriesDataVisible(true)}>
                         Close
                     </Button>
-                    <Button variant="primary" onClick={() => { setNormalAppointDriverVisible(false); setNormalTransferDriver('') }}>
+                    <Button variant="primary" onClick={() => { setNormalAppointDriverVisible(false); setNormalTransferDriver(''); }}>
                         Deliver The Stock
                     </Button>
                 </Modal.Footer>
@@ -682,59 +679,43 @@ const UnifiedRequestManagement = () => {
             <Modal show={!normalAppointDriverVisible} onHide={() => setNormalAppointDriverVisible(true)} size='md' centered>
                 <Modal.Header closeButton style={{ borderBottom: '2px solid #dee2e6' }}>
                     <Modal.Title style={{ fontSize: '1.25rem', fontWeight: '600', color: '#2c3e50' }}>
-                        Appoint Driver To Deliver
+                        Enter The Driver Name
                     </Modal.Title>
                 </Modal.Header>
                 <Modal.Body style={{ padding: '20px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <label style={{ fontSize: '1rem', fontWeight: '500', color: '#34495e' }}>
-                            Choose Driver:
+                            Enter Driver name:
                         </label>
-                        <Dropdown>
-                            <Dropdown.Toggle variant="primary" size="sm" style={{
-                                width: '100%', height: '50px', textAlign: 'left', backgroundColor: '#fff',
-                                color: 'black', display: 'flex', alignItems: 'center', border: '1px solid #ced4da',
-                                borderRadius: '8px', fontSize: '0.95rem', padding: '10px 15px'
-                            }}>
-                                {normalTransferDriver ?
-                                    userList.find(driver => driver.account_id?.toString() === normalTransferDriver.toString())?.fname + " " +
-                                    userList.find(driver => driver.account_id?.toString() === normalTransferDriver.toString())?.mname + " " +
-                                    userList.find(driver => driver.account_id?.toString() === normalTransferDriver.toString())?.lname
-                                    : '-- Select a Driver --'
-                                }
-                            </Dropdown.Toggle>
-                            <Dropdown.Menu style={{ maxHeight: '300px', overflowY: 'auto', width: '100%', borderRadius: '8px', border: '1px solid #ced4da' }}>
-                                <Dropdown.Item onClick={() => setNormalTransferDriver('')} style={{ padding: '10px 15px', fontSize: '0.95rem', color: '#6c757d', fontStyle: 'italic' }}>
-                                    -- Select a Driver --
-                                </Dropdown.Item>
-                                {userList.filter(role => role.role_name?.toLowerCase() === 'driver').map((driver) => (
-                                    <Dropdown.Item key={driver.account_id} onClick={() => setNormalTransferDriver(driver.account_id.toString())} style={{ padding: '10px 15px', fontSize: '0.95rem' }}>
-                                        {driver.fname + " " + driver.mname + " " + driver.lname}
-                                    </Dropdown.Item>
-                                ))}
-                            </Dropdown.Menu>
-                        </Dropdown>
-                        {normalTransferDriver && (
-                            <div style={{ padding: '10px 15px', backgroundColor: '#e8f5e8', borderRadius: '8px', border: '1px solid #28a745', fontSize: '0.9rem' }}>
-                                <strong>Selected Driver: </strong>
-                                <span style={{ color: '#28a745' }}>
-                                    {userList.find(driver => driver.account_id?.toString() === normalTransferDriver.toString())?.fname + " " +
-                                        userList.find(driver => driver.account_id?.toString() === normalTransferDriver.toString())?.mname + " " +
-                                        userList.find(driver => driver.account_id?.toString() === normalTransferDriver.toString())?.lname}
-                                </span>
-                            </div>
-                        )}
+                        <input
+                            type="text"
+                            value={normalTransferDriver}
+                            onChange={(e) => setNormalTransferDriver(e.target.value)}
+                            placeholder="Enter driver name"
+                            style={{
+                                padding: '10px',
+                                border: '1px solid #ced4da',
+                                borderRadius: '8px',
+                                fontSize: '0.95rem',
+                                color: '#34495e'
+                            }}
+                        />
                     </div>
                 </Modal.Body>
                 <Modal.Footer style={{ borderTop: '1px solid #dee2e6', padding: '15px' }}>
                     <Button variant="outline-secondary" onClick={() => setNormalAppointDriverVisible(true)}>
                         Cancel
                     </Button>
-                    <Button variant="primary" onClick={DeliverNormalStock} disabled={!normalTransferDriver} style={{
-                        backgroundColor: normalTransferDriver ? '#2563eb' : '#6c757d',
-                        border: 'none',
-                        opacity: normalTransferDriver ? 1 : 0.6
-                    }}>
+                    <Button
+                        variant="primary"
+                        onClick={DeliverNormalStock}
+                        disabled={!normalTransferDriver || normalTransferDriver.trim().length === 0}
+                        style={{
+                            backgroundColor: normalTransferDriver && normalTransferDriver.trim().length > 0 ? '#2563eb' : '#6c757d',
+                            border: 'none',
+                            opacity: normalTransferDriver && normalTransferDriver.trim().length > 0 ? 1 : 0.6
+                        }}
+                    >
                         Confirm Appointment
                     </Button>
                 </Modal.Footer>

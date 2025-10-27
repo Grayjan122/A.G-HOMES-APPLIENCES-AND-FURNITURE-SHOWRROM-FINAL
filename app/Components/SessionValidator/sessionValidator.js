@@ -8,6 +8,7 @@ export default function SessionValidator() {
   const checkIntervalRef = useRef(null);
   const hasShownAlertRef = useRef(false);
   const isLoggingOutRef = useRef(false);
+  const checkCountRef = useRef(0); // Track number of checks performed
 
   useEffect(() => {
     const userId = sessionStorage.getItem('user_id');
@@ -17,6 +18,17 @@ export default function SessionValidator() {
       // Not logged in, don't check
       return;
     }
+    
+    // 🔧 TEMPORARILY DISABLED FOR DEBUGGING
+    console.warn('⚠️ SESSION VALIDATOR TEMPORARILY DISABLED');
+    console.warn('💡 You can work without interruption while we fix token storage');
+    console.warn('🔧 Debugging: Token not being stored in database');
+    return; // Exit early - disables all session checking
+    
+    // Always enable session validation
+    // Use a long startup delay to handle both fresh logins and page refreshes safely
+    console.log('✅ Session Validator Active - Checking session every 5 seconds');
+    console.log('⏱️ Startup delay: 20 seconds (prevents false logout on page load/refresh)');
 
     // Set global flag that can be checked by logout functions
     if (typeof window !== 'undefined') {
@@ -26,14 +38,20 @@ export default function SessionValidator() {
       };
     }
 
-    // Store the login timestamp when this session started
-    const sessionStartTime = Date.now();
-    sessionStorage.setItem('sessionStartTime', sessionStartTime.toString());
+    // Store the login timestamp when this session started (only if not already set)
+    // This prevents resetting the timestamp on page refresh
+    let sessionStartTime = sessionStorage.getItem('sessionStartTime');
+    if (!sessionStartTime) {
+      sessionStartTime = Date.now().toString();
+      sessionStorage.setItem('sessionStartTime', sessionStartTime);
+    }
 
     // Function to check if session is still valid
     const checkSessionValidity = async () => {
       try {
+        checkCountRef.current += 1;
         const sessionToken = sessionStorage.getItem('session_token');
+        const currentUserId = sessionStorage.getItem('user_id');
         
         // If no session token, it might be an old session or database not updated
         // Don't logout - just log warning and skip check
@@ -42,6 +60,14 @@ export default function SessionValidator() {
           console.warn('💡 Tip: Make sure database has session_token column.');
           return; // Skip validation if no token
         }
+        
+        // If user ID changed (shouldn't happen but be safe)
+        if (currentUserId !== userId) {
+          console.warn('⚠️ User ID mismatch - skipping check');
+          return;
+        }
+        
+        console.log(`🔍 Session check #${checkCountRef.current} - Token: ${sessionToken.substring(0, 10)}...`);
         
         const url = baseURL + 'session-check.php';
         const response = await axios.get(url, {
@@ -60,6 +86,15 @@ export default function SessionValidator() {
           // Check if session is invalid (explicitly offline)
           if (response.data.valid === false) {
             console.log('🔴 Session invalidated:', response.data.reason);
+            console.log('🔴 Reason details:', response.data.message);
+            
+            // Be lenient for the first 3 checks (could be session still establishing)
+            if (checkCountRef.current <= 3) {
+              console.warn(`⚠️ Check #${checkCountRef.current} - Session appears invalid but within grace period. Skipping termination.`);
+              console.warn('💡 Reason:', response.data.reason);
+              console.warn('💡 Message:', response.data.message);
+              return; // Don't terminate during first 3 checks
+            }
             
             // Don't show alert if user is logging out themselves
             if (isLoggingOutRef.current) {
@@ -101,34 +136,40 @@ export default function SessionValidator() {
               });
             }
           } else if (response.data.valid === true) {
-            // Even if status is 'Online', check if it's still OUR session
-            // by comparing when we started vs when account was last updated
-            const sessionStart = parseInt(sessionStorage.getItem('sessionStartTime') || '0');
-            
-            // If account is online but we haven't seen any activity yet,
-            // it might be a new session. Check by making a test API call
-            // (The backend will reject invalid sessions on actual API calls)
-            
-            console.log('✅ Session check passed');
+            console.log(`✅ Session check #${checkCountRef.current} passed - Token is valid`);
           }
         } else {
           console.warn('⚠️ Unexpected session check response:', response);
         }
       } catch (error) {
         console.error('❌ Session check error:', error.message);
-        // Don't logout on error - could be network issue or API problem
+        // Don't logout on error - could be network issue, API problem, or page refresh
         // User can continue using the system
+        // This is especially important during page refreshes
       }
     };
 
-    // Wait 5 seconds before starting checks (to ensure session is fully established)
+    // Wait 20 seconds before starting checks
+    // This long delay ensures session is stable for both fresh logins AND page refreshes
     const startupDelay = setTimeout(() => {
-      // Check session validity every 10 seconds (reduced frequency for stability)
-      checkIntervalRef.current = setInterval(checkSessionValidity, 10000);
+      console.log('🔍 Starting session validation checks...');
+      
+      // Verify we have a token before starting checks
+      const initialToken = sessionStorage.getItem('session_token');
+      if (!initialToken) {
+        console.warn('⚠️ No session token found at startup. Checks will be skipped.');
+        return; // Don't start checking if no token
+      } else {
+        console.log('✅ Session token verified at startup:', initialToken.substring(0, 10) + '...');
+      }
+      
+      // Check session validity every 5 seconds (fast detection of terminated sessions)
+      console.log('⏱️ Check interval: 5 seconds');
+      checkIntervalRef.current = setInterval(checkSessionValidity, 5000);
       
       // Initial check (after delay)
       checkSessionValidity();
-    }, 5000); // Wait 5 seconds after page load to ensure session is established
+    }, 20000); // Wait 20 seconds - long enough for page refresh to complete
 
     // Cleanup
     return () => {

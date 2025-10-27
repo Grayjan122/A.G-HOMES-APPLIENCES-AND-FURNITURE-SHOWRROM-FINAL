@@ -41,6 +41,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
     const [requestList1, setRequestList1] = useState([]);
     const [requestList, setRequestList] = useState([]);
     const [deleveredList, setDeliveredList] = useState([]);
+    const [customizeRequestList, setCustomizeRequestList] = useState([]);
     const [lowStockCount, setLowStockCount] = useState(0);
     const [outOfStockCount, setOutOfStockCount] = useState(0);
     const [totalInventoryValue, setTotalInventoryValue] = useState('0.00');
@@ -54,6 +55,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
         }
         countConfigs.forEach(config => fetchCount(config));
         GetRequest();
+        GetCustomizeRequest();
         GetOngoingReq();
         GetDelivered();
         GetInventoryStats();
@@ -63,6 +65,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
         // Refresh data every 10 seconds for more responsive updates
         const interval = setInterval(() => {
             GetRequest();
+            GetCustomizeRequest();
             GetOngoingReq();
             GetDelivered();
             GetInventoryStats();
@@ -92,6 +95,33 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
             setRequestList1(response.data);
         } catch (error) {
             console.error("Error fetching request list:", error);
+        }
+    };
+
+    const GetCustomizeRequest = async () => {
+        const LocationID = parseInt(sessionStorage.getItem('location_id'));
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'customizeProducts.php';
+        const ID = {
+            locID: LocationID,
+            requestType: 'To'  // req_to requests (requests coming TO this warehouse)
+        };
+
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify(ID),
+                    operation: "GetCustomizeRequest"
+                }
+            });
+            // Filter only Pending status
+            const pendingCustomizeRequests = Array.isArray(response.data) 
+                ? response.data.filter(req => req.status === 'Pending')
+                : [];
+            setCustomizeRequestList(pendingCustomizeRequests);
+        } catch (error) {
+            console.error("Error fetching customize request list:", error);
+            setCustomizeRequestList([]);
         }
     };
 
@@ -280,7 +310,9 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
     };
 
     // Calculate the counts from the respective arrays
-    const pendingRequestCount = Array.isArray(requestList1) ? requestList1.length.toString() : '0';
+    const normalRequestCount = Array.isArray(requestList1) ? requestList1.length : 0;
+    const customizeRequestCount = Array.isArray(customizeRequestList) ? customizeRequestList.length : 0;
+    const pendingRequestCount = (normalRequestCount + customizeRequestCount).toString();
     const ongoingCount = Array.isArray(requestList) ? requestList.length.toString() : '0';
     const deliveredCount = Array.isArray(deleveredList)
         ? deleveredList.filter(item => item.delivery_status === 'Delivered').length.toString()

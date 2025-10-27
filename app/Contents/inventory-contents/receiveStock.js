@@ -178,7 +178,44 @@ const ReceiveStockIM = () => {
     const [dFrom, setDFrom] = useState('');
     const [driver, setDriver] = useState('');
 
+    // Date and Time formatting functions
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('en-US', options);
+    };
 
+    const formatTime = (timeString) => {
+        if (!timeString) return '';
+        
+        // If time is already in HH:MM:SS format
+        const timeParts = timeString.split(':');
+        if (timeParts.length >= 2) {
+            let hours = parseInt(timeParts[0]);
+            const minutes = timeParts[1];
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${hours}:${minutes} ${ampm}`;
+        }
+        
+        return timeString;
+    };
+
+    const formatDateTime = (dateString, timeString) => {
+        if (!dateString && !timeString) return '';
+        
+        const formattedDate = formatDate(dateString);
+        const formattedTime = formatTime(timeString);
+        
+        if (formattedDate && formattedTime) {
+            return `${formattedDate} • ${formattedTime}`;
+        }
+        
+        return formattedDate || formattedTime || '';
+    };
 
     const GetRequestDetails = async (req_id) => {
         // setProdId(id);
@@ -236,14 +273,13 @@ const ReceiveStockIM = () => {
             });
 
             if (response.data && response.data.length > 0) {
-                // format "12-01-2025 • 10:30"
-                setReqDateTime(response.data[0].date + " • " + response.data[0].time);
-                // alert('hell');
+                // format "Jan 12, 2025 • 10:30 AM"
+                setReqDateTime(formatDateTime(response.data[0].date, response.data[0].time));
             } else {
                 return "";
             }
         } catch (error) {
-            handleError(error, "fetching request data");
+            console.error("Error fetching request data:", error);
             return "";
         }
     };
@@ -281,7 +317,7 @@ const ReceiveStockIM = () => {
             setS_ReqStatus(response.data[0].request_status);
             setReqFromId(response.data[0].request_from);
             setReqToId(response.data[0].request_to);
-            setDriver(response.data[0].F + " " + response.data[0].M + " " + response.data[0].L);
+            setDriver(response.data[0].driverName || 'Not Assigned');
             setDFrom(response.data[0].reqTo);
             setRs_StoreID(data.request_from);
             GetTrackRequestTimeandDate(data.request_stock_id, data.request_status);
@@ -573,7 +609,7 @@ const ReceiveStockIM = () => {
                     <div className="r-details-head">
                         <div className='r-d-div'>
                             <div className='r-1'><strong>REQUEST ID:</strong> {s_reqID}</div>
-                            <div><strong>REQUEST DATE:</strong> {s_reqDate}</div>
+                            <div><strong>REQUEST DATE:</strong> {formatDate(s_reqDate)}</div>
 
                         </div>
                         <div><strong>DELIVERY FROM:</strong> {dFrom}</div>
@@ -684,7 +720,9 @@ const ReceiveStockIM = () => {
                             <select className='new' value={rs_StoreID} onChange={(e) => setRs_StoreID(e.target.value)} id='c-loc'>
                                 <option value={' '}> Select All Location</option>
 
-                                {locationList.map((r) => (
+                                {locationList.
+                                filter(r => r.name !== "Warehouse")
+                                .map((r) => (
                                     <option key={r.location_id} value={r.location_id}>
                                         {r.location_name}
                                     </option>
@@ -735,7 +773,7 @@ const ReceiveStockIM = () => {
                                         </div>
                                         <div className="cardRow">
                                             <span className="cardLabel">DELIVER BY:</span>
-                                            <span className="cardValue">{p.F} {p.M} {p.L}</span>
+                                            <span className="cardValue">{p.driverName || 'Not Assigned'}</span>
                                         </div>
                                         <div className="cardRow">
                                             <span className="cardLabel">STATUS:</span>

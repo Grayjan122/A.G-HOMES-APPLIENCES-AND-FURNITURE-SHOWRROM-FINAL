@@ -34,6 +34,45 @@ const InventoryLedgerIM = () => {
     const [alertVariant, setAlertVariant] = useState('');
     const [message, setMessage] = useState('');
 
+    // Date and Time formatting functions
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString('en-US', options);
+    };
+
+    const formatTime = (timeString) => {
+        if (!timeString) return '';
+        
+        // If time is already in HH:MM:SS format
+        const timeParts = timeString.split(':');
+        if (timeParts.length >= 2) {
+            let hours = parseInt(timeParts[0]);
+            const minutes = timeParts[1];
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${hours}:${minutes} ${ampm}`;
+        }
+        
+        return timeString;
+    };
+
+    const formatDateTime = (dateString, timeString) => {
+        if (!dateString && !timeString) return '';
+        
+        const formattedDate = formatDate(dateString);
+        const formattedTime = formatTime(timeString);
+        
+        if (formattedDate && formattedTime) {
+            return `${formattedDate} • ${formattedTime}`;
+        }
+        
+        return formattedDate || formattedTime || '';
+    };
+
     // Apply filters to the data
     const filteredData = useMemo(() => {
         let filtered = [...invenReport];
@@ -528,7 +567,7 @@ const InventoryLedgerIM = () => {
                                 fontSize: '13px',
                                 border: '1px solid #dee2e6'
                             }}>
-                                Date: {filterDate}
+                                Date: {formatDate(filterDate)}
                                 <button
                                     type="button"
                                     onClick={() => setFilterDate('')}
@@ -684,8 +723,8 @@ const InventoryLedgerIM = () => {
                                                 {isNegative ? '-' : isPositive ? '+' : ''}{p.qty}
                                             </td>
                                             <td style={{textAlign: 'center', fontWeight: '500'}}>{p.current_balance}</td>
-                                            <td>{p.date}</td>
-                                            <td>{p.time}</td>
+                                            <td>{formatDate(p.date)}</td>
+                                            <td>{formatTime(p.time)}</td>
                                             <td>{`${p.fname || ''} ${p.mname || ''} ${p.lname || ''}`}</td>
                                         </tr>
                                     );

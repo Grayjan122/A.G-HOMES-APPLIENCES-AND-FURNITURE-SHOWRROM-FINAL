@@ -21,6 +21,7 @@ import UnifiedRequestManagement from '@/app/Contents/warehouse-contents/combineR
 import DeliveryCustomizeWR from '@/app/Contents/warehouse-contents/customizeDelivery';
 import ProfileSetting from '@/app/Components/profileSetting/userProfilePage';
 import InventoryIM from '@/app/Contents/inventory-contents/inventoryIM';
+import InventoryLedgerIM from '@/app/Contents/inventory-contents/inventoryAudit';
 
 const SidebarWarehouseRep = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -63,12 +64,12 @@ const SidebarWarehouseRep = () => {
       key: 'inventory',
       label: 'Inventory',
       icon: '/assets/images/dash-icons/last-inventory.png',
-      component: <InventoryWR />,
+      component: <InventoryIM />,
       children: [
         {
           key: 'inventory-ledger',
           label: 'Inventory Ledger',
-          component: <InventoryLedgerWR />,
+          component: <InventoryLedgerIM/>,
         },
       ],
      

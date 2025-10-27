@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Adjust Stock Backend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #198754;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #157347;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            max-width: 300px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Adjust Stock Backend</h1>
+    <p>This will test if your backend code is working.</p>
+
+    <div>
+        <label>Your API Base URL:</label>
+        <input type="text" id="baseURL" value="http://localhost/capstone-api/api/" placeholder="http://localhost/capstone-api/api/">
+        <small>Usually: http://localhost/capstone-api/api/ or similar</small>
+    </div>
+
+    <div>
+        <label>Product ID:</label>
+        <input type="number" id="productId" value="1" placeholder="1">
+        <small>Get this from your products table</small>
+    </div>
+
+    <div>
+        <label>Location ID:</label>
+        <input type="number" id="locationId" value="1" placeholder="1">
+        <small>Get this from your locations table</small>
+    </div>
+
+    <div>
+        <label>Adjustment Type:</label>
+        <select id="adjustmentType">
+            <option value="add">Add Stock</option>
+            <option value="subtract">Remove Stock</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Quantity:</label>
+        <input type="number" id="quantity" value="5" placeholder="5">
+    </div>
+
+    <div>
+        <label>User ID:</label>
+        <input type="number" id="userId" value="1" placeholder="1">
+        <small>Your account ID</small>
+    </div>
+
+    <button onclick="testAdjustStock()">🧪 Test Adjust Stock</button>
+
+    <div id="result"></div>
+
+    <script>
+        async function testAdjustStock() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing... Please wait...</p>';
+
+            const baseURL = document.getElementById('baseURL').value;
+            const productId = document.getElementById('productId').value;
+            const locationId = document.getElementById('locationId').value;
+            const adjustmentType = document.getElementById('adjustmentType').value;
+            const quantity = document.getElementById('quantity').value;
+            const userId = document.getElementById('userId').value;
+
+            const adjustmentData = {
+                product_id: parseInt(productId),
+                location_id: parseInt(locationId),
+                adjustment_type: adjustmentType,
+                quantity: parseInt(quantity),
+                user_id: parseInt(userId)
+            };
+
+            console.log('Sending request with data:', adjustmentData);
+
+            try {
+                const url = `${baseURL}inventory.php?operation=AdjustStock&json=${encodeURIComponent(JSON.stringify(adjustmentData))}`;
+                console.log('Request URL:', url);
+
+                const response = await fetch(url);
+                const text = await response.text();
+                
+                console.log('Raw response:', text);
+
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ Invalid JSON Response</h3>
+                            <p><strong>This means:</strong> Backend code has an error or not added.</p>
+                            <p><strong>Raw response:</strong></p>
+                            <pre>${text}</pre>
+                            <hr>
+                            <p><strong>Solution:</strong> Add the backend code from ADJUST_STOCK_BACKEND_CODE.php to your inventory.php file.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Success!</h3>
+                            <p>${data.message}</p>
+                            <p><strong>New Quantity:</strong> ${data.new_quantity}</p>
+                            <hr>
+                            <p>🎉 Your backend is working! The adjust stock feature should work in your app.</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ Backend Error</h3>
+                            <p><strong>Error:</strong> ${data.message}</p>
+                            <hr>
+                            <p><strong>Common causes:</strong></p>
+                            <ul>
+                                <li>"Inventory record not found" - Product doesn't exist in inventory table for this location</li>
+                                <li>"Insufficient stock" - Trying to remove more than available</li>
+                                <li>"Missing required fields" - Check your IDs are correct</li>
+                            </ul>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Network Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <hr>
+                        <p><strong>Possible causes:</strong></p>
+                        <ul>
+                            <li>Wrong API URL (check baseURL)</li>
+                            <li>XAMPP Apache not running</li>
+                            <li>inventory.php file doesn't exist</li>
+                            <li>CORS issue (open browser console for details)</li>
+                        </ul>
+                        <p><strong>Check browser console (F12) for more details.</strong></p>
+                    </div>
+                `;
+                console.error('Error details:', error);
+            }
+        }
+    </script>
+</body>
+</html>
+
