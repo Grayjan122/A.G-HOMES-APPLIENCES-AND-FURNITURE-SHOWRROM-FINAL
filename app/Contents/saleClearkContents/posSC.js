@@ -240,7 +240,8 @@ export default function CombinedSalePage() {
         price: parseFloat(item.price),
         stock: parseInt(item.qty),
         location_id: item.location_id,
-        store_inventory_id: item.store_inventory_id
+        store_inventory_id: item.store_inventory_id,
+        product_preview_image: item.product_preview_image || '/uploads/products/defualt.jpg'
       }));
 
       setProducts(inventoryData);
@@ -2553,15 +2554,41 @@ export default function CombinedSalePage() {
                           transition: 'box-shadow 0.3s',
                           display: 'flex',
                           flexDirection: 'column',
-                          minHeight: '200px',
-                          height: '200px'
+                          minHeight: '320px',
+                          height: '320px'
                         }}
                         onClick={() => addToCart(product)}
                         onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'}
                         onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <h3 style={{ fontWeight: '600', fontSize: '16px', margin: 0 }}>{product.product_name}</h3>
+                        {/* Product Image */}
+                        <div style={{
+                          width: '100%',
+                          height: '140px',
+                          marginBottom: '12px',
+                          borderRadius: '6px',
+                          overflow: 'hidden',
+                          backgroundColor: '#f3f4f6',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <img
+                            src={product.product_preview_image || '/uploads/products/defualt.jpg'}
+                            alt={product.product_name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              e.target.src = '/uploads/products/defualt.jpg';
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'flex-start' }}>
+                          <h3 style={{ fontWeight: '600', fontSize: '16px', margin: 0, flex: 1 }}>{product.product_name}</h3>
                           {saleMode === 'inventory' && (
                             <span style={{
                               padding: '2px 8px',
