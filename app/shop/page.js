@@ -436,34 +436,52 @@ export default function ShopPage() {
     setCartItemInventories(inventories);
   };
 
+  const normalizeId = (value) => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number.parseInt(value, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
   // Filter and sort products
   const filterAndSortProducts = () => {
+    const selectedCategoryId =
+      selectedCategory === 'all' ? null : normalizeId(selectedCategory);
+    const selectedProductTypeId =
+      selectedProductType === 'all' ? null : normalizeId(selectedProductType);
+    const selectedLocationId =
+      selectedLocation === 'all' ? null : normalizeId(selectedLocation);
+
     let filtered = products.filter(product => {
+      const productCategoryId = normalizeId(product.category_id);
+      const productTypeId = normalizeId(product.product_type_id);
+
       const matchesSearch = 
         product.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (product.color && product.color.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesCategory = 
-        selectedCategory === 'all' || 
-        product.category_id === parseInt(selectedCategory);
+        selectedCategoryId === null ||
+        (productCategoryId !== null && productCategoryId === selectedCategoryId);
       
       const matchesPrice = 
         parseFloat(product.price) >= priceRange.min && 
         parseFloat(product.price) <= priceRange.max;
 
       const matchesProductType =
-        selectedProductType === 'all' ||
-        (product.product_type_id && product.product_type_id === parseInt(selectedProductType));
+        selectedProductTypeId === null ||
+        (productTypeId !== null && productTypeId === selectedProductTypeId);
       
       // Check location-based availability
       let matchesLocation = true;
-      if (selectedLocation !== 'all') {
+      if (selectedLocationId !== null) {
         const inventory = productInventories[product.product_id];
         // If inventory data hasn't loaded yet, show all products (optimistic)
         if (inventory && Array.isArray(inventory)) {
           const locationInventory = inventory.find(inv => 
-            inv.location_id === parseInt(selectedLocation)
+            normalizeId(inv.location_id) === selectedLocationId
           );
           matchesLocation = locationInventory && locationInventory.qty > 0;
         }
