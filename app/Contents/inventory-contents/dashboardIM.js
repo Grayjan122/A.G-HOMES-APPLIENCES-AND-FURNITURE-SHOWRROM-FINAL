@@ -48,8 +48,15 @@ const DashboardIM = () => {
         outOfStock: 0,
         pendingRequests: 0,
         incomingDeliveries: 0,
-        totalValue: 0
+        totalValue: 0,
+        needsRestock: 0,
+        belowMinimum: 0,
+        lowStock: 0
     });
+
+    // Modal states
+    const [showRestockModal, setShowRestockModal] = useState(false);
+    const [restockItems, setRestockItems] = useState([]);
 
     useEffect(() => {
         const userId = sessionStorage.getItem('user_id');
@@ -335,20 +342,54 @@ const DashboardIM = () => {
             const price = parseFloat(item.price) || 0;
             return sum + (qty * price);
         }, 0);
+
+        // Calculate threshold-based statistics
+        let belowMinimum = 0;
+        let lowStock = 0;
+        let needsRestock = 0;
+        const itemsNeedingRestock = [];
+
+        data.forEach(item => {
+            const qty = parseInt(item.qty) || 0;
+            const minThreshold = item.min_threshold !== null && item.min_threshold !== undefined ? parseInt(item.min_threshold) : 1;
+            const maxThreshold = item.max_threshold !== null && item.max_threshold !== undefined ? parseInt(item.max_threshold) : 2;
+
+            let status = '';
+            let priority = 0;
+
+            if (qty === 0) {
+                status = 'Out of Stock';
+                priority = 1;
+                needsRestock++;
+                itemsNeedingRestock.push({ ...item, restockStatus: status, priority });
+            } else if (qty < minThreshold) {
+                status = 'Below Minimum';
+                priority = 2;
+                belowMinimum++;
+                needsRestock++;
+                itemsNeedingRestock.push({ ...item, restockStatus: status, priority });
+            } else if (qty <= maxThreshold) {
+                status = 'Low Stock';
+                priority = 3;
+                lowStock++;
+                needsRestock++;
+                itemsNeedingRestock.push({ ...item, restockStatus: status, priority });
+            }
+        });
+
+        // Sort restock items by priority (1 = most urgent)
+        itemsNeedingRestock.sort((a, b) => a.priority - b.priority);
+        setRestockItems(itemsNeedingRestock);
         
         console.log('Inventory Stats Calculation:', {
             totalProducts,
             inStock,
             outOfStock,
             totalValue,
-            sampleData: data.slice(0, 3).map(item => ({
-                name: item.product_name,
-                qty: item.qty,
-                price: item.price,
-                value: (parseInt(item.qty) || 0) * (parseFloat(item.price) || 0),
-                parsedQty: parseInt(item.qty),
-                type: typeof item.qty
-            }))
+            needsRestock,
+            belowMinimum,
+            lowStock,
+            itemsNeedingRestock: itemsNeedingRestock.length
         });
         
         setStats(prev => {
@@ -357,7 +398,10 @@ const DashboardIM = () => {
                 totalProducts,
                 inStock,
                 outOfStock,
-                totalValue
+                totalValue,
+                needsRestock,
+                belowMinimum,
+                lowStock
             };
             console.log('Setting new stats:', newStats);
             return newStats;
@@ -737,6 +781,17 @@ const DashboardIM = () => {
                         gap: 10px;
                     }
                 }
+
+                /* Restock Modal Styles */
+                .restock-modal-tip {
+                    display: block;
+                }
+
+                @media (max-width: 768px) {
+                    .restock-modal-tip {
+                        display: none;
+                    }
+                }
             `}</style>
 
             <div className="dashboard-container">
@@ -791,10 +846,26 @@ const DashboardIM = () => {
                         <div className="stat-label">In Stock</div>
                     </div>
 
-                    <div className="stat-card danger">
-                        <div className="stat-icon">🚫</div>
-                        <div className="stat-value">{stats.outOfStock}</div>
-                        <div className="stat-label">No Stock</div>
+                    <div 
+                        className="stat-card danger"
+                        style={{ cursor: stats.needsRestock > 0 ? 'pointer' : 'default' }}
+                        onClick={() => stats.needsRestock > 0 && setShowRestockModal(true)}
+                        title={stats.needsRestock > 0 ? 'Click to view items needing restock' : ''}
+                    >
+                        <div className="stat-icon">⚠️</div>
+                        <div className="stat-value">{stats.needsRestock}</div>
+                        <div className="stat-label">Needs Restock</div>
+                        {stats.needsRestock > 0 && (
+                            <div style={{ 
+                                fontSize: '11px', 
+                                marginTop: '8px', 
+                                color: '#dc3545', 
+                                fontWeight: '600',
+                                textTransform: 'uppercase'
+                            }}>
+                                Click to View →
+                            </div>
+                        )}
                     </div>
 
                     <div className="stat-card warning">
@@ -946,6 +1017,267 @@ const DashboardIM = () => {
                             ))
                     )}
                 </div>
+
+                {/* Restock Modal */}
+                {showRestockModal && (
+                    <div 
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: 9999,
+                            padding: '20px'
+                        }}
+                        onClick={() => setShowRestockModal(false)}
+                    >
+                        <div 
+                            style={{
+                                backgroundColor: 'white',
+                                borderRadius: '15px',
+                                maxWidth: '1200px',
+                                width: '100%',
+                                maxHeight: '90vh',
+                                overflow: 'hidden',
+                                boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                                display: 'flex',
+                                flexDirection: 'column'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Modal Header */}
+                            <div style={{
+                                padding: '25px 30px',
+                                borderBottom: '2px solid #e2e8f0',
+                                background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                                color: 'white',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <div>
+                                    <h3 style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span>⚠️</span> Items Needing Restock
+                                    </h3>
+                                    <p style={{ margin: 0, opacity: 0.9, fontSize: '14px' }}>
+                                        {location_name} - {restockItems.length} item{restockItems.length !== 1 ? 's' : ''} requiring attention
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setShowRestockModal(false)}
+                                    style={{
+                                        background: 'rgba(255,255,255,0.2)',
+                                        border: 'none',
+                                        color: 'white',
+                                        fontSize: '24px',
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '50%',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            {/* Modal Body */}
+                            <div style={{ padding: '20px 30px', overflowY: 'auto', flex: 1 }}>
+                                {/* Summary Cards */}
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                                    gap: '15px',
+                                    marginBottom: '25px'
+                                }}>
+                                    <div style={{
+                                        background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                                        color: 'white',
+                                        padding: '20px',
+                                        borderRadius: '10px',
+                                        textAlign: 'center'
+                                    }}>
+                                        <div style={{ fontSize: '32px', fontWeight: '700' }}>{stats.outOfStock}</div>
+                                        <div style={{ fontSize: '13px', opacity: 0.9, marginTop: '5px' }}>Out of Stock</div>
+                                    </div>
+                                    <div style={{
+                                        background: 'linear-gradient(135deg, #fd7e14 0%, #e36209 100%)',
+                                        color: 'white',
+                                        padding: '20px',
+                                        borderRadius: '10px',
+                                        textAlign: 'center'
+                                    }}>
+                                        <div style={{ fontSize: '32px', fontWeight: '700' }}>{stats.belowMinimum}</div>
+                                        <div style={{ fontSize: '13px', opacity: 0.9, marginTop: '5px' }}>Below Minimum</div>
+                                    </div>
+                                    <div style={{
+                                        background: 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)',
+                                        color: 'white',
+                                        padding: '20px',
+                                        borderRadius: '10px',
+                                        textAlign: 'center'
+                                    }}>
+                                        <div style={{ fontSize: '32px', fontWeight: '700' }}>{stats.lowStock}</div>
+                                        <div style={{ fontSize: '13px', opacity: 0.9, marginTop: '5px' }}>Low Stock</div>
+                                    </div>
+                                </div>
+
+                                {/* Items Table */}
+                                {restockItems.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '40px', color: '#a0aec0' }}>
+                                        <div style={{ fontSize: '60px', marginBottom: '15px' }}>✅</div>
+                                        <h4>All Items Are Well Stocked!</h4>
+                                        <p>No items currently need restocking.</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ 
+                                        background: 'white', 
+                                        borderRadius: '10px', 
+                                        overflow: 'hidden',
+                                        border: '1px solid #e2e8f0'
+                                    }}>
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ 
+                                                width: '100%', 
+                                                borderCollapse: 'collapse',
+                                                fontSize: '14px'
+                                            }}>
+                                                <thead>
+                                                    <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                                        <th style={{ padding: '14px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #dee2e6' }}>Status</th>
+                                                        <th style={{ padding: '14px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #dee2e6' }}>Product Code</th>
+                                                        <th style={{ padding: '14px', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #dee2e6' }}>Description</th>
+                                                        <th style={{ padding: '14px', textAlign: 'center', fontWeight: '600', borderBottom: '2px solid #dee2e6' }}>Current Qty</th>
+                                                        <th style={{ padding: '14px', textAlign: 'center', fontWeight: '600', borderBottom: '2px solid #dee2e6' }}>Min</th>
+                                                        <th style={{ padding: '14px', textAlign: 'center', fontWeight: '600', borderBottom: '2px solid #dee2e6' }}>Max</th>
+                                                        <th style={{ padding: '14px', textAlign: 'center', fontWeight: '600', borderBottom: '2px solid #dee2e6' }}>Need</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {restockItems.map((item, index) => {
+                                                        const qty = parseInt(item.qty) || 0;
+                                                        const minThreshold = parseInt(item.min_threshold) || 1;
+                                                        const maxThreshold = parseInt(item.max_threshold) || 2;
+                                                        const needQty = Math.max(0, maxThreshold - qty);
+                                                        
+                                                        let statusColor = '#28a745';
+                                                        let statusBg = '#d4edda';
+                                                        let statusIcon = '✓';
+                                                        
+                                                        if (item.restockStatus === 'Out of Stock') {
+                                                            statusColor = '#dc3545';
+                                                            statusBg = '#f8d7da';
+                                                            statusIcon = '🚫';
+                                                        } else if (item.restockStatus === 'Below Minimum') {
+                                                            statusColor = '#fd7e14';
+                                                            statusBg = '#ffe5d0';
+                                                            statusIcon = '⚠️';
+                                                        } else if (item.restockStatus === 'Low Stock') {
+                                                            statusColor = '#ffc107';
+                                                            statusBg = '#fff3cd';
+                                                            statusIcon = '⚡';
+                                                        }
+
+                                                        return (
+                                                            <tr 
+                                                                key={index}
+                                                                style={{ 
+                                                                    borderBottom: '1px solid #f1f3f5',
+                                                                    backgroundColor: index % 2 === 0 ? 'white' : '#fafafa'
+                                                                }}
+                                                            >
+                                                                <td style={{ padding: '12px' }}>
+                                                                    <span style={{
+                                                                        padding: '6px 12px',
+                                                                        borderRadius: '20px',
+                                                                        fontSize: '12px',
+                                                                        fontWeight: '600',
+                                                                        color: statusColor,
+                                                                        backgroundColor: statusBg,
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '5px',
+                                                                        whiteSpace: 'nowrap'
+                                                                    }}>
+                                                                        <span>{statusIcon}</span>
+                                                                        {item.restockStatus}
+                                                                    </span>
+                                                                </td>
+                                                                <td style={{ padding: '12px', color: '#495057', fontWeight: '500' }}>{item.product_name}</td>
+                                                                <td style={{ padding: '12px', color: '#495057' }}>{item.description}</td>
+                                                                <td style={{ 
+                                                                    padding: '12px', 
+                                                                    textAlign: 'center',
+                                                                    fontWeight: '700',
+                                                                    color: qty === 0 ? '#dc3545' : qty < minThreshold ? '#fd7e14' : '#ffc107'
+                                                                }}>
+                                                                    {qty}
+                                                                </td>
+                                                                <td style={{ padding: '12px', textAlign: 'center', color: '#6c757d', fontWeight: '500' }}>{minThreshold}</td>
+                                                                <td style={{ padding: '12px', textAlign: 'center', color: '#6c757d', fontWeight: '500' }}>{maxThreshold}</td>
+                                                                <td style={{ 
+                                                                    padding: '12px', 
+                                                                    textAlign: 'center',
+                                                                    fontWeight: '700',
+                                                                    fontSize: '16px',
+                                                                    color: needQty > 0 ? '#dc3545' : '#28a745'
+                                                                }}>
+                                                                    {needQty > 0 ? `+${needQty}` : '✓'}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div style={{
+                                padding: '20px 30px',
+                                borderTop: '2px solid #e2e8f0',
+                                background: '#f8f9fa',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <div className="restock-modal-tip" style={{ fontSize: '13px', color: '#6c757d' }}>
+                                    💡 Tip: Items are sorted by priority (Out of Stock → Below Minimum → Low Stock)
+                                </div>
+                                <button
+                                    onClick={() => setShowRestockModal(false)}
+                                    style={{
+                                        padding: '10px 24px',
+                                        backgroundColor: '#6c757d',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                        width: window.innerWidth < 768 ? '100%' : 'auto'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#5a6268'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#6c757d'}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -1,0 +1,35 @@
+╔════════════════════════════════════════════════════════════════╗
+║              SQL ERROR FIX - Duplicate Key Name                ║
+╚════════════════════════════════════════════════════════════════╝
+
+❌ ERROR YOU RECEIVED:
+   #1061 - Duplicate key name 'email'
+
+✅ FIXED!
+
+The issue was that 'email' was defined as UNIQUE twice:
+   1. In column definition: email varchar(100) NOT NULL UNIQUE
+   2. As separate key: UNIQUE KEY `email` (`email`)
+
+───────────────────────────────────────────────────────────────
+
+🔧 SOLUTION:
+
+I've updated the ecommerce_database_update.sql file.
+
+Now you can run it successfully!
+
+───────────────────────────────────────────────────────────────
+
+⚡ NEXT STEPS:
+
+1. Run the updated file: ecommerce_database_update.sql
+2. Should execute without errors now
+3. Continue with backend setup
+
+───────────────────────────────────────────────────────────────
+
+If you get any other errors, let me know!
+
+═══════════════════════════════════════════════════════════════
+

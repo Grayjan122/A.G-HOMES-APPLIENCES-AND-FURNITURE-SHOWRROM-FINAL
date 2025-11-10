@@ -7,7 +7,7 @@ import Modal from 'react-bootstrap/Modal';
 import Alert from 'react-bootstrap/Alert';
 import CustomPagination from '@/app/Components/Pagination/pagination';
 
-const ITEMS_PER_PAGE_TRACK_REQ = 9;
+const ITEMS_PER_PAGE_TRACK_REQ = 12;
 const ITEMS_PER_PAGE_DETAILS = 5;
 const ITEMS_PER_PAGE_ARCHIVE = 6;
 
@@ -61,6 +61,8 @@ const TrackRequestIM = () => {
     const [s_reqStatus, setS_ReqStatus] = useState('');
     const [reqReports, setReqReports] = useState([]);
     const [reqDateTime, setReqDateTime] = useState("");
+    const [declinedProducts, setDeclinedProducts] = useState([]);
+    const [deliveryBatches, setDeliveryBatches] = useState([]);
 
     // Alert state
     const [alert1, setAlert1] = useState(false);
@@ -73,9 +75,53 @@ const TrackRequestIM = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [currentPage1, setCurrentPage1] = useState(1);
 
-    // Filter main data to show only non-complete requests
+    // State to track declined request IDs
+    const [declinedRequestIds, setDeclinedRequestIds] = useState([]);
+
+    // Filter main data to show only non-complete requests (excluding declined ones)
     const nonCompleteRequests = useMemo(() => {
-        return myRequestList.filter(request => request.request_status !== 'Complete');
+        return myRequestList.filter(request => 
+            request.request_status !== 'Complete' && 
+            !declinedRequestIds.includes(request.request_stock_id)
+        );
+    }, [myRequestList, declinedRequestIds]);
+
+    // Check for declined requests when myRequestList changes
+    useEffect(() => {
+        const checkDeclinedRequests = async () => {
+            const declinedIds = [];
+            for (const request of myRequestList) {
+                if (request.request_status === 'Pending') {
+                    const declinedProductIds = await GetDeclinedProducts(request.request_stock_id);
+                    if (declinedProductIds.length > 0) {
+                        const baseURL = getBaseURL();
+                        try {
+                            const detailsResponse = await axios.get(baseURL + 'requestStock.php', {
+                                params: {
+                                    json: JSON.stringify({ reqID: request.request_stock_id }),
+                                    operation: "GetRequestDetails"
+                                }
+                            });
+                            
+                            const allProducts = Array.isArray(detailsResponse.data) ? detailsResponse.data : [];
+                            const allProductIds = allProducts.map(p => parseInt(p.product_id)).filter(id => !isNaN(id));
+                            
+                            // If all products are declined, add to declined list
+                            if (allProductIds.length > 0 && allProductIds.every(id => declinedProductIds.includes(id))) {
+                                declinedIds.push(request.request_stock_id);
+                            }
+                        } catch (error) {
+                            console.error('Error checking declined status:', error);
+                        }
+                    }
+                }
+            }
+            setDeclinedRequestIds(declinedIds);
+        };
+        
+        if (myRequestList.length > 0) {
+            checkDeclinedRequests();
+        }
     }, [myRequestList]);
 
     // Apply filters to the non-complete data
@@ -332,11 +378,236 @@ const TrackRequestIM = () => {
 
             const completeRequests = Array.isArray(response.data) ? 
                 response.data.filter(req => req.request_status === 'Complete') : [];
-            setArchiveRequestList(completeRequests);
+            
+            // Check for declined requests and add them to archive
+            const allRequests = await MyGetRequestForDeclined();
+            const declinedRequests = [];
+            
+            console.log('[GetArchiveRequests] ===== STARTING DECLINED REQUESTS CHECK =====');
+            console.log('[GetArchiveRequests] Checking for declined requests. Total requests:', allRequests.length);
+            
+            // First, get requests that already have status 'Declined' from database
+            const alreadyDeclinedRequests = allRequests.filter(req => req.request_status === 'Declined');
+            console.log('[GetArchiveRequests] Requests with status "Declined" in database:', alreadyDeclinedRequests.length);
+            
+            // Add them to declinedRequests with isDeclined flag
+            alreadyDeclinedRequests.forEach(req => {
+                declinedRequests.push({
+                    ...req,
+                    isDeclined: true,
+                    request_status: 'Declined'
+                });
+            });
+            console.log('[GetArchiveRequests] Added', alreadyDeclinedRequests.length, 'requests with "Declined" status to archive');
+            
+            // Process all pending requests to check if all products are declined
+            const pendingRequests = allRequests.filter(req => req.request_status === 'Pending');
+            console.log('[GetArchiveRequests] Pending requests to check:', pendingRequests.length);
+            
+            // First pass: Check which requests have ANY declined products
+            const requestsWithDeclinedProducts = [];
+            for (const request of pendingRequests) {
+                try {
+                    const declinedProductIds = await GetDeclinedProducts(request.request_stock_id);
+                    if (declinedProductIds && declinedProductIds.length > 0) {
+                        requestsWithDeclinedProducts.push({
+                            request: request,
+                            declinedCount: declinedProductIds.length
+                        });
+                    }
+                } catch (error) {
+                    // Skip errors in first pass
+                }
+            }
+            
+            console.log(`[GetArchiveRequests] Requests with ANY declined products: ${requestsWithDeclinedProducts.length}`);
+            requestsWithDeclinedProducts.forEach(({ request, declinedCount }) => {
+                console.log(`  - Request #${request.request_stock_id}: ${declinedCount} declined products`);
+            });
+            
+            // Second pass: Check if all products are declined
+            for (const request of pendingRequests) {
+                try {
+                    console.log(`[GetArchiveRequests] Processing request #${request.request_stock_id} (Status: ${request.request_status})`);
+                    
+                    // Check if all products in this request are declined
+                    const declinedProductIds = await GetDeclinedProducts(request.request_stock_id);
+                    
+                    console.log(`[GetArchiveRequests] Request #${request.request_stock_id} - Declined products result:`, declinedProductIds);
+                    
+                    if (!declinedProductIds || declinedProductIds.length === 0) {
+                        console.log(`[GetArchiveRequests] Request #${request.request_stock_id} has NO declined products - skipping`);
+                        continue;
+                    }
+                    
+                    console.log(`[GetArchiveRequests] Request #${request.request_stock_id} has ${declinedProductIds.length} declined products`);
+                    
+                    // Get request details to check if all products are declined
+                    const detailsUrl = `${getBaseURL()}requestStock.php`;
+                    const detailsResponse = await axios.get(detailsUrl, {
+                        params: {
+                            json: JSON.stringify({ reqID: request.request_stock_id }),
+                            operation: "GetRequestDetails"
+                        }
+                    });
+                    
+                    const allProducts = Array.isArray(detailsResponse.data) ? detailsResponse.data : [];
+                    console.log(`[GetArchiveRequests] Request #${request.request_stock_id} - Total products from details:`, allProducts.length);
+                    
+                    if (allProducts.length === 0) {
+                        console.log(`[GetArchiveRequests] Request #${request.request_stock_id} has NO products in details - skipping`);
+                        continue;
+                    }
+                    
+                    const allProductIds = allProducts.map(p => {
+                        const pid = p.product_id;
+                        const parsed = typeof pid === 'string' ? parseInt(pid) : pid;
+                        return parsed;
+                    }).filter(id => !isNaN(id) && id > 0);
+                    
+                    // Normalize declined product IDs to integers
+                    const normalizedDeclinedIds = declinedProductIds.map(id => {
+                        return typeof id === 'string' ? parseInt(id) : id;
+                    }).filter(id => !isNaN(id) && id > 0);
+                    
+                    // Sort both arrays for comparison
+                    const sortedAllProductIds = [...allProductIds].sort((a, b) => a - b);
+                    const sortedDeclinedIds = [...normalizedDeclinedIds].sort((a, b) => a - b);
+                    
+                    console.log(`[GetArchiveRequests] Request #${request.request_stock_id} - Product comparison:`);
+                    console.log(`  - Total products: ${allProductIds.length}`, sortedAllProductIds);
+                    console.log(`  - Declined products: ${normalizedDeclinedIds.length}`, sortedDeclinedIds);
+                    console.log(`  - Products NOT declined:`, allProductIds.filter(id => !normalizedDeclinedIds.includes(id)));
+                    console.log(`  - Raw product IDs from API:`, allProducts.map(p => ({ id: p.product_id, type: typeof p.product_id })));
+                    
+                    // Check if ALL products are declined - use multiple methods
+                    const lengthMatch = allProductIds.length === normalizedDeclinedIds.length;
+                    const everyMatch = allProductIds.length > 0 && allProductIds.every(id => normalizedDeclinedIds.includes(id));
+                    const setMatch = allProductIds.length > 0 && 
+                                   new Set(allProductIds).size === new Set(normalizedDeclinedIds).size &&
+                                   allProductIds.every(id => normalizedDeclinedIds.includes(id));
+                    
+                    // Also check if sorted arrays match (string comparison)
+                    const sortedMatch = sortedAllProductIds.length === sortedDeclinedIds.length &&
+                                      sortedAllProductIds.every((id, idx) => id === sortedDeclinedIds[idx]);
+                    
+                    const allDeclined = allProductIds.length > 0 && lengthMatch && everyMatch;
+                    
+                    console.log(`[GetArchiveRequests] Request #${request.request_stock_id} - All declined check:`);
+                    console.log(`  - hasProducts: ${allProductIds.length > 0}`);
+                    console.log(`  - lengthMatch: ${lengthMatch} (${allProductIds.length} === ${normalizedDeclinedIds.length})`);
+                    console.log(`  - everyMatch: ${everyMatch}`);
+                    console.log(`  - setMatch: ${setMatch}`);
+                    console.log(`  - sortedMatch: ${sortedMatch}`);
+                    console.log(`  - FINAL RESULT: ${allDeclined}`);
+                    
+                    if (!allDeclined) {
+                        console.log(`[GetArchiveRequests] Request #${request.request_stock_id} - Detailed mismatch:`);
+                        console.log(`  - Missing in declined:`, allProductIds.filter(id => !normalizedDeclinedIds.includes(id)));
+                        console.log(`  - Extra in declined:`, normalizedDeclinedIds.filter(id => !allProductIds.includes(id)));
+                    }
+                    
+                    if (allDeclined) {
+                        console.log(`[GetArchiveRequests] ✅✅✅ Request #${request.request_stock_id} is FULLY DECLINED - adding to archive`);
+                        declinedRequests.push({
+                            ...request,
+                            isDeclined: true,
+                            request_status: 'Declined'
+                        });
+                        console.log(`[GetArchiveRequests] Declined requests count now: ${declinedRequests.length}`);
+                    } else {
+                        console.log(`[GetArchiveRequests] ❌ Request #${request.request_stock_id} is NOT fully declined`);
+                        console.log(`  - Missing declined products:`, allProductIds.filter(id => !normalizedDeclinedIds.includes(id)));
+                    }
+                } catch (error) {
+                    console.error(`[GetArchiveRequests] ❌ Error checking request #${request.request_stock_id}:`, error);
+                    console.error(`[GetArchiveRequests] Error stack:`, error.stack);
+                    // Continue with next request
+                }
+            }
+            
+            console.log(`[GetArchiveRequests] ===== RESULTS =====`);
+            console.log(`[GetArchiveRequests] Found ${declinedRequests.length} declined requests`);
+            console.log(`[GetArchiveRequests] Total complete requests: ${completeRequests.length}`);
+            console.log(`[GetArchiveRequests] Declined request IDs:`, declinedRequests.map(r => r.request_stock_id));
+            
+            // Combine complete requests with declined requests
+            const combinedArchive = [...completeRequests, ...declinedRequests];
+            
+            // Sort by date and time (most recent first)
+            combinedArchive.sort((a, b) => {
+                // Parse dates
+                const dateA = a.date ? new Date(a.date) : new Date(0);
+                const dateB = b.date ? new Date(b.date) : new Date(0);
+                
+                // If dates are different, sort by date (descending - newest first)
+                if (dateA.getTime() !== dateB.getTime()) {
+                    return dateB.getTime() - dateA.getTime();
+                }
+                
+                // If dates are the same, sort by time if available
+                if (a.time && b.time) {
+                    const timeA = a.time.split(':').map(Number);
+                    const timeB = b.time.split(':').map(Number);
+                    const timeAValue = timeA[0] * 3600 + timeA[1] * 60 + (timeA[2] || 0);
+                    const timeBValue = timeB[0] * 3600 + timeB[1] * 60 + (timeB[2] || 0);
+                    return timeBValue - timeAValue; // Descending - newest first
+                }
+                
+                // If no time, maintain date order
+                return 0;
+            });
+            
+            console.log(`[GetArchiveRequests] Combined archive total: ${combinedArchive.length}`);
+            console.log(`[GetArchiveRequests] Archive breakdown:`, {
+                complete: completeRequests.length,
+                declined: declinedRequests.length,
+                total: combinedArchive.length
+            });
+            console.log(`[GetArchiveRequests] Declined requests in archive:`, declinedRequests.map(r => ({
+                id: r.request_stock_id,
+                isDeclined: r.isDeclined,
+                status: r.request_status
+            })));
+            console.log(`[GetArchiveRequests] Archive sorted by date/time (newest first)`);
+            console.log(`[GetArchiveRequests] ===== END =====`);
+            
+            // Force state update with the combined archive
+            setArchiveRequestList([...combinedArchive]); // Use spread to ensure new array reference
             setArchiveCurrentPage(1);
+            
+            // Double-check after state update (in next tick)
+            setTimeout(() => {
+                console.log(`[GetArchiveRequests] State check - archiveRequestList length: ${archiveRequestList.length}`);
+            }, 100);
         } catch (error) {
+            console.error('[GetArchiveRequests] Error:', error);
             handleError(error, 'fetching archive requests');
             setArchiveRequestList([]);
+        }
+    };
+
+    // Helper function to get all requests for declined check
+    const MyGetRequestForDeclined = async () => {
+        const url = `${getBaseURL()}requestStock.php`;
+        const ID = {
+            locID: location_id,
+            status: '',
+            reqType: 'ReqFrom',
+        };
+
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify(ID),
+                    operation: "GetRequest"
+                }
+            });
+
+            return Array.isArray(response.data) ? response.data : [];
+        } catch (error) {
+            console.error('Error fetching requests for declined check:', error);
+            return [];
         }
     };
 
@@ -358,6 +629,68 @@ const TrackRequestIM = () => {
         }
     };
 
+    // Helper function to fetch declined products from database
+    const GetDeclinedProducts = async (req_id) => {
+        if (!req_id) {
+            console.log(`[GetDeclinedProducts] No req_id provided`);
+            return [];
+        }
+        
+        const url = `${getBaseURL()}requestStock.php`;
+        const ID = { reqID: req_id };
+        
+        try {
+            console.log(`[GetDeclinedProducts] Fetching declined products for request #${req_id}`);
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify(ID),
+                    operation: "GetDeclinedProducts"
+                }
+            });
+            
+            console.log(`[GetDeclinedProducts] Raw response for request #${req_id}:`, response.data);
+            console.log(`[GetDeclinedProducts] Response type:`, typeof response.data);
+            console.log(`[GetDeclinedProducts] Is array:`, Array.isArray(response.data));
+            
+            // Handle various response formats - Axios should auto-parse JSON
+            let declinedProductIds = [];
+            let data = response.data;
+            
+            // If response is a string, parse it
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                    console.log(`[GetDeclinedProducts] Parsed JSON string:`, data);
+                } catch (e) {
+                    console.error(`[GetDeclinedProducts] Error parsing JSON string:`, e);
+                    data = [];
+                }
+            }
+            
+            // Ensure we have an array
+            if (Array.isArray(data)) {
+                declinedProductIds = data.map(id => parseInt(id)).filter(id => !isNaN(id));
+                console.log(`[GetDeclinedProducts] Extracted array of declined IDs:`, declinedProductIds);
+            } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+                declinedProductIds = Object.values(data).map(id => parseInt(id)).filter(id => !isNaN(id));
+                console.log(`[GetDeclinedProducts] Extracted object values as declined IDs:`, declinedProductIds);
+            } else if (data === null || data === undefined) {
+                console.log(`[GetDeclinedProducts] Response data is null/undefined`);
+                declinedProductIds = [];
+            } else {
+                console.log(`[GetDeclinedProducts] Unexpected data format:`, data);
+                declinedProductIds = [];
+            }
+            
+            console.log(`[GetDeclinedProducts] Final declined product IDs for request #${req_id}:`, declinedProductIds);
+            return declinedProductIds;
+        } catch (error) {
+            console.error(`[GetDeclinedProducts] Error fetching declined products for request #${req_id}:`, error);
+            console.error(`[GetDeclinedProducts] Error details:`, error.response?.data || error.message);
+            return [];
+        }
+    };
+
     const GetTrackRequestDetails = async (req_id) => {
         if (!req_id) return;
 
@@ -365,6 +698,10 @@ const TrackRequestIM = () => {
         const ID = { reqID: req_id };
 
         try {
+            // Fetch declined products first
+            const declinedProductIds = await GetDeclinedProducts(req_id);
+            setDeclinedProducts(declinedProductIds);
+            
             const response = await axios.get(url, {
                 params: {
                     json: JSON.stringify(ID),
@@ -439,6 +776,83 @@ const TrackRequestIM = () => {
         }
     };
 
+    const GetDeliveryBatches = async (req_id) => {
+        if (!req_id) {
+            console.log('[GetDeliveryBatches] No request ID provided');
+            return;
+        }
+
+        const url = `${getBaseURL()}requestStock.php`;
+        const ID = { reqID: req_id };
+
+        try {
+            console.log(`[GetDeliveryBatches] Fetching delivery batches for request #${req_id}`);
+            
+            // Fetch all delivery batches for this request using the new API
+            const batchesResponse = await axios.get(url, {
+                params: {
+                    json: JSON.stringify(ID),
+                    operation: "GetDeliveryBatchesByRequest"
+                }
+            });
+
+            console.log(`[GetDeliveryBatches] Raw response:`, batchesResponse.data);
+            console.log(`[GetDeliveryBatches] Response type:`, typeof batchesResponse.data);
+            console.log(`[GetDeliveryBatches] Is array:`, Array.isArray(batchesResponse.data));
+
+            if (batchesResponse.data && !batchesResponse.data.error) {
+                const batches = Array.isArray(batchesResponse.data) ? batchesResponse.data : [];
+                console.log(`[GetDeliveryBatches] Found ${batches.length} delivery batches`);
+                
+                if (batches.length === 0) {
+                    console.log(`[GetDeliveryBatches] No delivery batches found for request #${req_id}`);
+                    setDeliveryBatches([]);
+                    return;
+                }
+                
+                // For each batch, fetch its delivery details
+                const batchesWithDetails = await Promise.all(
+                    batches.map(async (batch, index) => {
+                        try {
+                            console.log(`[GetDeliveryBatches] Fetching details for batch #${batch.r_delivery_id} (${index + 1}/${batches.length})`);
+                            
+                            const detailsResponse = await axios.get(url, {
+                                params: {
+                                    json: JSON.stringify({ r_delivery_id: batch.r_delivery_id }),
+                                    operation: "GetNormalDeliveryDetailsFromBatch"
+                                }
+                            });
+                            
+                            const details = Array.isArray(detailsResponse.data) ? detailsResponse.data : [];
+                            console.log(`[GetDeliveryBatches] Batch #${batch.r_delivery_id} has ${details.length} products`);
+                            
+                            return {
+                                ...batch,
+                                products: details
+                            };
+                        } catch (error) {
+                            console.error(`[GetDeliveryBatches] Error fetching details for batch ${batch.r_delivery_id}:`, error);
+                            return {
+                                ...batch,
+                                products: []
+                            };
+                        }
+                    })
+                );
+                
+                console.log(`[GetDeliveryBatches] Final batches with details:`, batchesWithDetails);
+                setDeliveryBatches(batchesWithDetails);
+            } else {
+                console.log(`[GetDeliveryBatches] Error or empty response:`, batchesResponse.data);
+                setDeliveryBatches([]);
+            }
+        } catch (error) {
+            console.error('[GetDeliveryBatches] Error fetching delivery batches:', error);
+            console.error('[GetDeliveryBatches] Error details:', error.response?.data || error.message);
+            setDeliveryBatches([]);
+        }
+    };
+
     const MyGetProgressCount = async (id) => {
         if (!id) return;
 
@@ -469,6 +883,9 @@ const TrackRequestIM = () => {
             });
 
             setReqReports(Array.isArray(detailsResponse.data) ? detailsResponse.data : []);
+            
+            // Fetch delivery batches for partial delivery tracking
+            await GetDeliveryBatches(id);
         } catch (error) {
             handleError(error, 'fetching progress data');
             setReqReports([]);
@@ -499,6 +916,8 @@ const TrackRequestIM = () => {
     const triggerModal = (operation, id) => {
         if (operation === 'trackRequestDetails' && id) {
             setTrackRequestDetailsVisible(false);
+            setDeclinedProducts([]); // Reset declined products
+            setDeliveryBatches([]); // Reset delivery batches
             GetTrackRequestDetails(id);
             GetTrackRequestD(id);
             MyGetProgressCount(id);
@@ -509,6 +928,8 @@ const TrackRequestIM = () => {
         if (id) {
             setShowArchive(false);
             setTrackRequestDetailsVisible(false);
+            setDeclinedProducts([]); // Reset declined products
+            setDeliveryBatches([]); // Reset delivery batches
             GetTrackRequestDetails(id);
             GetTrackRequestD(id);
             MyGetProgressCount(id);
@@ -527,6 +948,19 @@ const TrackRequestIM = () => {
             MyGetRequest();
         }
     }, [location_id]);
+
+    // Debug: Log when archiveRequestList changes
+    useEffect(() => {
+        if (archiveRequestList.length > 0) {
+            const declinedCount = archiveRequestList.filter(r => r.isDeclined).length;
+            console.log('[Archive State Update] archiveRequestList updated:', {
+                total: archiveRequestList.length,
+                declined: declinedCount,
+                complete: archiveRequestList.filter(r => r.request_status === 'Complete').length,
+                declinedIds: archiveRequestList.filter(r => r.isDeclined).map(r => r.request_stock_id)
+            });
+        }
+    }, [archiveRequestList]);
 
     const merged = steps.map((step, index) => ({
         stepName: step,
@@ -660,7 +1094,12 @@ const TrackRequestIM = () => {
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #dee2e6' }}>
                             <div style={{ fontSize: '13px', color: '#6c757d', flexShrink: 0 }}>
-                                Showing {filteredArchiveData.length} of {archiveRequestList.length} completed requests
+                                Showing {filteredArchiveData.length} of {archiveRequestList.length} requests
+                                {archiveRequestList.filter(r => r.isDeclined).length > 0 && (
+                                    <span style={{ marginLeft: '8px', color: '#dc3545', fontWeight: 'bold' }}>
+                                        ({archiveRequestList.filter(r => r.isDeclined).length} declined)
+                                    </span>
+                                )}
                             </div>
                             <button onClick={clearAllArchiveFilters} style={{ padding: '6px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap' }}>
                                 Clear All Filters
@@ -669,7 +1108,7 @@ const TrackRequestIM = () => {
                     </div>
 
                     {/* Archive Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '15px', maxHeight: '50vh', overflowY: 'auto', padding: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: '18px', maxHeight: '50vh', overflowY: 'auto', padding: '12px' }}>
                         {archiveCurrentItems.length > 0 ? archiveCurrentItems.map((request, index) => (
                             <div
                                 key={index}
@@ -677,7 +1116,7 @@ const TrackRequestIM = () => {
                                 style={{
                                     border: '1px solid #e0e0e0',
                                     borderRadius: '12px',
-                                    padding: '15px',
+                                    padding: '20px',
                                     backgroundColor: 'white',
                                     cursor: 'pointer',
                                     transition: 'all 0.3s ease',
@@ -694,39 +1133,48 @@ const TrackRequestIM = () => {
                                     e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', gap: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '14px', gap: '10px' }}>
                                     <div style={{ flex: '1', minWidth: '0' }}>
-                                        <h5 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>#{request.request_stock_id}</h5>
-                                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>{formatDate(request.date)}</p>
+                                        <h5 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>#{request.request_stock_id}</h5>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#666' }}>{formatDate(request.date)}</p>
                                     </div>
-                                    <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', backgroundColor: '#007bff', color: 'white', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                        Complete
+                                    <span style={{ 
+                                        padding: '5px 12px', 
+                                        borderRadius: '20px', 
+                                        fontSize: '12px', 
+                                        fontWeight: 'bold', 
+                                        backgroundColor: (request.isDeclined || request.request_status === 'Declined') ? '#dc3545' : '#007bff', 
+                                        color: 'white', 
+                                        whiteSpace: 'nowrap', 
+                                        flexShrink: 0 
+                                    }}>
+                                        {(request.isDeclined || request.request_status === 'Declined') ? 'DECLINE' : 'Complete'}
                                     </span>
                                 </div>
 
-                                <div style={{ marginBottom: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '8px' }}>
+                                <div style={{ marginBottom: '14px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginBottom: '10px' }}>
                                         <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                                         </svg>
-                                        <span style={{ fontSize: '13px', color: '#333', wordBreak: 'break-word', lineHeight: '1.4' }}><strong>From:</strong> {request.reqFrom}</span>
+                                        <span style={{ fontSize: '14px', color: '#333', wordBreak: 'break-word', lineHeight: '1.5' }}><strong>From:</strong> {request.reqFrom}</span>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
                                         <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <circle cx="12" cy="10" r="3"/>
                                             <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
                                         </svg>
-                                        <span style={{ fontSize: '13px', color: '#333', wordBreak: 'break-word', lineHeight: '1.4' }}><strong>To:</strong> {request.reqTo}</span>
+                                        <span style={{ fontSize: '14px', color: '#333', wordBreak: 'break-word', lineHeight: '1.5' }}><strong>To:</strong> {request.reqTo}</span>
                                     </div>
                                 </div>
 
-                                <div style={{ paddingTop: '12px', borderTop: '1px solid #eee' }}>
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                                <div style={{ paddingTop: '14px', borderTop: '1px solid #eee' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
                                         <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                                             <circle cx="12" cy="7" r="4"/>
                                         </svg>
-                                        <span style={{ fontSize: '12px', color: '#666', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                                        <span style={{ fontSize: '13px', color: '#666', wordBreak: 'break-word', lineHeight: '1.5' }}>
                                             {`${request.fname || ''} ${request.mname || ''} ${request.lname || ''}`.trim()}
                                         </span>
                                     </div>
@@ -808,18 +1256,53 @@ const TrackRequestIM = () => {
                                     <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6', fontSize: '14px', whiteSpace: 'nowrap' }}>Product Code</th>
                                     <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6', fontSize: '14px' }}>Product Description</th>
                                     <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #dee2e6', fontSize: '14px', whiteSpace: 'nowrap' }}>Requested QTY</th>
+                                    <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #dee2e6', fontSize: '14px', whiteSpace: 'nowrap' }}>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {currentItems1.length > 0 ? currentItems1.map((p, i) => (
-                                    <tr key={i} style={{ borderBottom: '1px solid #dee2e6' }}>
-                                        <td style={{ padding: '10px', fontSize: '13px' }}>{p.product_name || 'N/A'}</td>
-                                        <td style={{ padding: '10px', fontSize: '13px' }}>{p.description || 'N/A'}</td>
-                                        <td style={{ padding: '10px', textAlign: 'center', fontSize: '13px' }}>{p.qty || '0'}</td>
-                                    </tr>
-                                )) : (
+                                {currentItems1.length > 0 ? currentItems1.map((p, i) => {
+                                    const isDeclined = declinedProducts.includes(parseInt(p.product_id));
+                                    return (
+                                        <tr 
+                                            key={i} 
+                                            style={{ 
+                                                borderBottom: '1px solid #dee2e6',
+                                                backgroundColor: isDeclined ? '#fff5f5' : 'transparent'
+                                            }}
+                                        >
+                                            <td style={{ padding: '10px', fontSize: '13px' }}>{p.product_name || 'N/A'}</td>
+                                            <td style={{ padding: '10px', fontSize: '13px' }}>{p.description || 'N/A'}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', fontSize: '13px' }}>{p.qty || '0'}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', fontSize: '13px' }}>
+                                                {isDeclined ? (
+                                                    <span style={{
+                                                        padding: '4px 8px',
+                                                        borderRadius: '4px',
+                                                        backgroundColor: '#dc3545',
+                                                        color: 'white',
+                                                        fontSize: '11px',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        DECLINE
+                                                    </span>
+                                                ) : (
+                                                    <span style={{
+                                                        padding: '4px 8px',
+                                                        borderRadius: '4px',
+                                                        backgroundColor: '#28a745',
+                                                        color: 'white',
+                                                        fontSize: '11px',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        ACTIVE
+                                                    </span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (
                                     <tr>
-                                        <td colSpan="3" style={{ textAlign: 'center', padding: '20px', fontSize: '13px' }}>No request details available</td>
+                                        <td colSpan="4" style={{ textAlign: 'center', padding: '20px', fontSize: '13px' }}>No request details available</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -846,63 +1329,254 @@ const TrackRequestIM = () => {
                     <div style={{ padding: '15px' }}>
                         <h4 style={{ marginBottom: '25px', textAlign: 'center', fontWeight: 'bold', fontSize: '18px' }}>Request Progress Tracker</h4>
                         
-                        <div style={{ position: 'relative', paddingLeft: '30px' }}>
-                            {merged.map((label, index) => (
-                                <div key={index} style={{ position: 'relative', paddingBottom: index < steps.length - 1 ? '40px' : '0' }}>
-                                    {/* Vertical Line */}
-                                    {index < steps.length - 1 && (
+                        <div style={{ position: 'relative', paddingLeft: '40px' }}>
+                            {merged.map((label, index) => {
+                                const circleSize = 20;
+                                const circleLeft = -28;
+                                const circleCenter = circleLeft + (circleSize / 2); // -18px
+                                const lineWidth = 3;
+                                const lineLeft = circleCenter - (lineWidth / 2); // -19.5px ≈ -20px
+                                const lineTop = circleSize; // 20px (start from bottom of circle)
+                                
+                                return (
+                                    <div key={index} style={{ position: 'relative', paddingBottom: index < steps.length - 1 ? '40px' : '0' }}>
+                                        {/* Vertical Line */}
+                                        {index < steps.length - 1 && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                left: `${lineLeft}px`,
+                                                top: `${lineTop}px`,
+                                                width: `${lineWidth}px`,
+                                                height: 'calc(100% - 4px)',
+                                                backgroundColor: index < currentStep ? '#28a745' : '#e0e0e0',
+                                                zIndex: 0
+                                            }} />
+                                        )}
+                                        
+                                        {/* Step Circle */}
                                         <div style={{
                                             position: 'absolute',
-                                            left: '-25px',
-                                            top: '25px',
-                                            width: '3px',
-                                            height: '100%',
-                                            backgroundColor: index < currentStep ? '#28a745' : '#e0e0e0'
+                                            left: `${circleLeft}px`,
+                                            top: '0px',
+                                            width: `${circleSize}px`,
+                                            height: `${circleSize}px`,
+                                            borderRadius: '50%',
+                                            backgroundColor: index <= currentStep ? '#28a745' : '#e0e0e0',
+                                            border: '3px solid white',
+                                            boxShadow: '0 0 0 2px ' + (index <= currentStep ? '#28a745' : '#e0e0e0'),
+                                            zIndex: 1
                                         }} />
-                                    )}
                                     
-                                    {/* Step Circle */}
-                                    <div style={{
-                                        position: 'absolute',
-                                        left: '-27px',
-                                        top: '5px',
-                                        width: '16px',
-                                        height: '16px',
-                                        borderRadius: '50%',
-                                        backgroundColor: index <= currentStep ? '#28a745' : '#e0e0e0',
-                                        border: '3px solid white',
-                                        boxShadow: '0 0 0 2px ' + (index <= currentStep ? '#28a745' : '#e0e0e0')
-                                    }} />
-                                    
-                                    {/* Step Content */}
-                                    <div style={{
-                                        padding: '12px',
-                                        backgroundColor: index <= currentStep ? '#f8fff9' : '#f8f9fa',
-                                        borderRadius: '8px',
-                                        border: '1px solid ' + (index <= currentStep ? '#28a745' : '#e0e0e0'),
-                                        opacity: index <= currentStep ? 1 : 0.6
-                                    }}>
-                                        <h6 style={{ margin: '0 0 6px 0', fontWeight: 'bold', color: index <= currentStep ? '#28a745' : '#666', fontSize: '15px' }}>
-                                            {label.stepName}
-                                        </h6>
-                                        {label.data && label.data.status && (
-                                            <>
-                                                <p style={{ margin: '4px 0', fontSize: '13px', color: '#333' }}>
-                                                    <strong>Status:</strong> {label.data.status}
+                                        {/* Step Content */}
+                                        <div style={{
+                                            padding: '12px',
+                                            backgroundColor: index <= currentStep ? '#f8fff9' : '#f8f9fa',
+                                            borderRadius: '8px',
+                                            border: '1px solid ' + (index <= currentStep ? '#28a745' : '#e0e0e0'),
+                                            opacity: index <= currentStep ? 1 : 0.6
+                                        }}>
+                                            <h6 style={{ margin: '0 0 6px 0', fontWeight: 'bold', color: index <= currentStep ? '#28a745' : '#666', fontSize: '15px' }}>
+                                                {label.stepName}
+                                            </h6>
+                                            {label.data && label.data.status && (
+                                                <>
+                                                    <p style={{ margin: '4px 0', fontSize: '13px', color: '#333' }}>
+                                                        <strong>Status:</strong> {label.data.status}
+                                                    </p>
+                                                    <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}>
+                                                        <strong>Date:</strong> {formatDateTime(label.data.date, label.data.time)}
+                                                    </p>
+                                                </>
+                                            )}
+                                            {(!label.data || !label.data.status) && index > currentStep && (
+                                                <p style={{ margin: '4px 0', fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
+                                                    Pending...
                                                 </p>
-                                                <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}>
-                                                    <strong>Date:</strong> {formatDateTime(label.data.date, label.data.time)}
-                                                </p>
-                                            </>
-                                        )}
-                                        {(!label.data || !label.data.status) && index > currentStep && (
-                                            <p style={{ margin: '4px 0', fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
-                                                Pending...
-                                            </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Delivery Batches Section */}
+                        <div style={{ marginTop: '40px', paddingTop: '30px', borderTop: '2px solid #dee2e6' }}>
+                            <h4 style={{ marginBottom: '20px', fontWeight: 'bold', fontSize: '18px', color: '#333' }}>
+                                Delivery Batches ({deliveryBatches ? deliveryBatches.length : 0})
+                            </h4>
+                            
+                            {deliveryBatches && deliveryBatches.length > 0 ? (
+                                <>
+                                
+                                {deliveryBatches.map((batch, batchIndex) => (
+                                    <div 
+                                        key={batchIndex} 
+                                        style={{
+                                            marginBottom: '25px',
+                                            padding: '20px',
+                                            backgroundColor: '#f8f9fa',
+                                            borderRadius: '8px',
+                                            border: '1px solid #dee2e6'
+                                        }}
+                                    >
+                                        {/* Batch Header */}
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            marginBottom: '15px',
+                                            flexWrap: 'wrap',
+                                            gap: '10px'
+                                        }}>
+                                            <div>
+                                                <h5 style={{ margin: '0 0 5px 0', fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                                                    Delivery Batch #{batch.r_delivery_id}
+                                                </h5>
+                                                <div style={{ fontSize: '13px', color: '#666' }}>
+                                                    <strong>Driver:</strong> {batch.driverName || 'Not Assigned'}
+                                                </div>
+                                            </div>
+                                            <span style={{
+                                                padding: '6px 12px',
+                                                borderRadius: '20px',
+                                                fontSize: '12px',
+                                                fontWeight: 'bold',
+                                                backgroundColor: 
+                                                    batch.delivery_status === 'Complete' ? '#007bff' :
+                                                    batch.delivery_status === 'Delivered' ? '#28a745' :
+                                                    batch.delivery_status === 'On Delivery' ? '#ffc107' :
+                                                    '#6c757d',
+                                                color: 'white'
+                                            }}>
+                                                {batch.delivery_status}
+                                            </span>
+                                        </div>
+
+                                        {/* Batch Timeline */}
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                                            gap: '15px',
+                                            marginBottom: '15px',
+                                            padding: '15px',
+                                            backgroundColor: 'white',
+                                            borderRadius: '6px',
+                                            border: '1px solid #dee2e6'
+                                        }}>
+                                            <div>
+                                                <div style={{ fontSize: '11px', color: '#6c757d', marginBottom: '4px', fontWeight: '600', textTransform: 'uppercase' }}>
+                                                    📦 Delivered On
+                                                </div>
+                                                <div style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>
+                                                    {formatDateTime(batch.delivery_date || batch.date, batch.delivery_time)}
+                                                </div>
+                                            </div>
+                                            
+                                            {batch.delivery_status === 'Delivered' && (
+                                                <div>
+                                                    <div style={{ fontSize: '11px', color: '#6c757d', marginBottom: '4px', fontWeight: '600', textTransform: 'uppercase' }}>
+                                                        ✅ Received
+                                                    </div>
+                                                    <div style={{ fontSize: '13px', color: '#28a745', fontWeight: '500' }}>
+                                                        Yes
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {batch.delivery_status === 'Complete' && (
+                                                <div>
+                                                    <div style={{ fontSize: '11px', color: '#6c757d', marginBottom: '4px', fontWeight: '600', textTransform: 'uppercase' }}>
+                                                        ✓ Completed
+                                                    </div>
+                                                    <div style={{ fontSize: '13px', color: '#007bff', fontWeight: '500' }}>
+                                                        Yes
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            <div>
+                                                <div style={{ fontSize: '11px', color: '#6c757d', marginBottom: '4px', fontWeight: '600', textTransform: 'uppercase' }}>
+                                                    📊 Products
+                                                </div>
+                                                <div style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>
+                                                    {batch.products?.length || 0} items
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Products in this Batch */}
+                                        {batch.products && batch.products.length > 0 && (
+                                            <div style={{
+                                                backgroundColor: 'white',
+                                                borderRadius: '6px',
+                                                border: '1px solid #dee2e6',
+                                                overflow: 'hidden'
+                                            }}>
+                                                <div style={{
+                                                    padding: '10px 15px',
+                                                    backgroundColor: '#f8f9fa',
+                                                    borderBottom: '1px solid #dee2e6',
+                                                    fontWeight: '600',
+                                                    fontSize: '13px',
+                                                    color: '#495057'
+                                                }}>
+                                                    Products in This Delivery
+                                                </div>
+                                                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                        <thead style={{ backgroundColor: '#f8f9fa', position: 'sticky', top: 0 }}>
+                                                            <tr>
+                                                                <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', borderBottom: '1px solid #dee2e6' }}>
+                                                                    Product Code
+                                                                </th>
+                                                                <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', borderBottom: '1px solid #dee2e6' }}>
+                                                                    Description
+                                                                </th>
+                                                                <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#666', borderBottom: '1px solid #dee2e6' }}>
+                                                                    Qty
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {batch.products.map((product, prodIndex) => (
+                                                                <tr key={prodIndex} style={{ borderBottom: '1px solid #f1f3f5' }}>
+                                                                    <td style={{ padding: '8px 12px', fontSize: '12px', color: '#495057' }}>
+                                                                        {product.product_name || 'N/A'}
+                                                                    </td>
+                                                                    <td style={{ padding: '8px 12px', fontSize: '12px', color: '#495057' }}>
+                                                                        {product.description || 'N/A'}
+                                                                    </td>
+                                                                    <td style={{ padding: '8px 12px', textAlign: 'center', fontSize: '12px', fontWeight: '500', color: '#495057' }}>
+                                                                        {product.qty || 0}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
+                                ))}
+                                </>
+                            ) : (
+                                <div style={{
+                                    padding: '30px',
+                                    textAlign: 'center',
+                                    backgroundColor: '#f8f9fa',
+                                    borderRadius: '8px',
+                                    border: '1px solid #dee2e6'
+                                }}>
+                                    <div style={{ fontSize: '48px', marginBottom: '15px', opacity: 0.3 }}>📦</div>
+                                    <h5 style={{ color: '#6c757d', marginBottom: '10px' }}>No Delivery Batches Yet</h5>
+                                    <p style={{ margin: 0, fontSize: '14px', color: '#999' }}>
+                                        Delivery batches will appear here once items from this request are delivered.
+                                    </p>
+                                    <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
+                                        Check console for debug info (Press F12)
+                                    </p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
                 </Modal.Body>
@@ -1054,13 +1728,15 @@ const TrackRequestIM = () => {
                 {/* Request Cards Grid */}
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
-                    gap: '15px',
-                    padding: '10px',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
+                    gap: '18px',
+                    padding: '12px',
                     maxHeight: '60vh',
                     overflowY: 'auto'
                 }}>
-                    {currentItems.length > 0 ? currentItems.map((request, index) => {
+                    {currentItems.length > 0 ? currentItems
+                        .filter(request => request.request_status !== 'Declined' && !request.isDeclined)
+                        .map((request, index) => {
                         const progressStep = getProgressStep(request.request_status);
                         const progressPercentage = (progressStep / 4) * 100;
 
@@ -1071,7 +1747,7 @@ const TrackRequestIM = () => {
                                 style={{
                                     border: '1px solid #e0e0e0',
                                     borderRadius: '12px',
-                                    padding: '15px',
+                                    padding: '20px',
                                     backgroundColor: 'white',
                                     cursor: 'pointer',
                                     transition: 'all 0.3s ease',
@@ -1089,17 +1765,17 @@ const TrackRequestIM = () => {
                                 }}
                             >
                                 {/* Header */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px', gap: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '14px', gap: '10px' }}>
                                     <div style={{ flex: '1', minWidth: '0' }}>
-                                        <h5 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#333' }}>
+                                        <h5 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
                                             #{request.request_stock_id}
                                         </h5>
-                                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>{formatDate(request.date)}</p>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#666' }}>{formatDate(request.date)}</p>
                                     </div>
                                     <span style={{
-                                        padding: '4px 10px',
+                                        padding: '5px 12px',
                                         borderRadius: '20px',
-                                        fontSize: '11px',
+                                        fontSize: '12px',
                                         fontWeight: 'bold',
                                         backgroundColor: request.request_status === "Pending" ? "#dc3545" :
                                             request.request_status === "Delivered" ? "#28a745" :
@@ -1114,10 +1790,10 @@ const TrackRequestIM = () => {
                                 </div>
 
                                 {/* Progress Bar */}
-                                <div style={{ marginBottom: '15px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                        <span style={{ fontSize: '12px', fontWeight: '500', color: '#666' }}>Progress</span>
-                                        <span style={{ fontSize: '12px', fontWeight: '500', color: '#666' }}>{progressPercentage}%</span>
+                                <div style={{ marginBottom: '16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: '500', color: '#666' }}>Progress</span>
+                                        <span style={{ fontSize: '13px', fontWeight: '500', color: '#666' }}>{progressPercentage}%</span>
                                     </div>
                                     <div style={{
                                         width: '100%',
@@ -1153,21 +1829,21 @@ const TrackRequestIM = () => {
                                 </div>
 
                                 {/* Location Info */}
-                                <div style={{ marginBottom: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '8px' }}>
+                                <div style={{ marginBottom: '14px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginBottom: '10px' }}>
                                         <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                                         </svg>
-                                        <span style={{ fontSize: '13px', color: '#333', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                                        <span style={{ fontSize: '14px', color: '#333', wordBreak: 'break-word', lineHeight: '1.5' }}>
                                             <strong>From:</strong> {request.reqFrom}
                                         </span>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
                                         <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <circle cx="12" cy="10" r="3"/>
                                             <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/>
                                         </svg>
-                                        <span style={{ fontSize: '13px', color: '#333', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                                        <span style={{ fontSize: '14px', color: '#333', wordBreak: 'break-word', lineHeight: '1.5' }}>
                                             <strong>To:</strong> {request.reqTo}
                                         </span>
                                     </div>
@@ -1175,18 +1851,18 @@ const TrackRequestIM = () => {
 
                                 
                                 {/* User Info */}
-                                <div style={{ paddingTop: '12px', borderTop: '1px solid #eee' }}>
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', marginBottom: '8px' }}>
+                                <div style={{ paddingTop: '14px', borderTop: '1px solid #eee' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginBottom: '10px' }}>
                                         <svg className="card-icon" viewBox="0 0 24 24" fill="none" stroke="#888" style={{ flexShrink: 0, marginTop: '3px' }}>
                                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                                             <circle cx="12" cy="7" r="4"/>
                                         </svg>
-                                        <span style={{ fontSize: '12px', color: '#666', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                                        <span style={{ fontSize: '13px', color: '#666', wordBreak: 'break-word', lineHeight: '1.5' }}>
                                             {`${request.fname || ''} ${request.mname || ''} ${request.lname || ''}`.trim()}
                                         </span>
                                     </div>
-                                    <div style={{ textAlign: 'center', marginTop: '8px' }}>
-                                        <span style={{ fontSize: '11px', color: '#007bff', fontStyle: 'italic' }}>
+                                    <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                                        <span style={{ fontSize: '12px', color: '#007bff', fontStyle: 'italic' }}>
                                             Click to view details
                                         </span>
                                     </div>

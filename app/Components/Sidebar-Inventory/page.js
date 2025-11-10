@@ -111,11 +111,11 @@ const SidebarInventory = () => {
         //   // label: 'Transfer Request',
         //   // component: <TransferRequestWR />,
         // },
-        {
-          key: 'inventory-ledger',
-          label: 'Inventory Ledger',
-          component: <InventoryLedgerIM />,
-        },
+        // {
+        //   key: 'inventory-ledger',
+        //   label: 'Inventory Ledger',
+        //   component: <InventoryLedgerIM />,
+        // },
         {
           key: 'customize-inventory',
           label: 'Customize Inventory',

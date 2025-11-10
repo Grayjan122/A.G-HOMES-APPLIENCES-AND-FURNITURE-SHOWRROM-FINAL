@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import '../css/login.css';
@@ -24,11 +24,22 @@ function SetupAccountContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [tokenValid, setTokenValid] = useState(true);
 
-
   // Dynamically set BASE_URL based on environment
-  const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost/capstone-api/api/'
-    : 'https://ag-home.site/backend/api/';
+  const BASE_URL = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return 'http://localhost/capstone-api/api/';
+    }
+    
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname.startsWith('192.168.')) {
+      return `http://${hostname}/capstone-api/api/`;
+    }
+    
+    return 'https://ag-home.site/backend/api/';
+  }, []);
+
+
+  // const BASE_URL = 'http://192.168.137.180/capstone-api/api/';
 
   useEffect(() => {
     const tokenParam = searchParams.get('token');

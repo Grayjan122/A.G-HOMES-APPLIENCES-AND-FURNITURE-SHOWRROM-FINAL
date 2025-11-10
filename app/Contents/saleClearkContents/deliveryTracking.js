@@ -18,6 +18,7 @@ export default function DeliveryTracking() {
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [driverName, setDriverName] = useState('');
+  const [deliveryReceipt, setDeliveryReceipt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [completedSearchTerm, setCompletedSearchTerm] = useState('');
@@ -174,6 +175,7 @@ export default function DeliveryTracking() {
   const handleStartDelivery = (delivery) => {
     setSelectedDelivery(delivery);
     setDriverName('');
+    setDeliveryReceipt('');
     setShowDriverModal(true);
   };
 
@@ -183,6 +185,16 @@ export default function DeliveryTracking() {
         icon: "error",
         title: "Required Field",
         text: 'Please enter driver name',
+        button: 'Okay'
+      });
+      return;
+    }
+
+    if (!deliveryReceipt.trim()) {
+      showAlertError({
+        icon: "error",
+        title: "Required Field",
+        text: 'Please enter delivery receipt number',
         button: 'Okay'
       });
       return;
@@ -198,7 +210,8 @@ export default function DeliveryTracking() {
           json: JSON.stringify({
             dtc_id: selectedDelivery.dtc_id,
             status: 'On Delivery To Customer',
-            driver_name: driverName.trim()
+            driver_name: driverName.trim(),
+            delivery_receipt: deliveryReceipt.trim()
           })
         }
       });
@@ -217,6 +230,7 @@ export default function DeliveryTracking() {
         setShowDriverModal(false);
         setSelectedDelivery(null);
         setDriverName('');
+        setDeliveryReceipt('');
         fetchDeliveries();
       } else {
         showAlertError({
@@ -941,6 +955,30 @@ export default function DeliveryTracking() {
                   </div>
                 )}
 
+                {delivery.delivery_receipt && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: '12px',
+                    gap: '10px'
+                  }}>
+                    <span style={{
+                      fontSize: '13px',
+                      color: '#7f8c8d',
+                      fontWeight: '500',
+                      flexShrink: '0'
+                    }}>📄 Receipt:</span>
+                    <span style={{
+                      fontSize: '14px',
+                      color: '#2c3e50',
+                      fontWeight: '600',
+                      textAlign: 'right',
+                      wordBreak: 'break-word'
+                    }}>{delivery.delivery_receipt}</span>
+                  </div>
+                )}
+
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -1253,6 +1291,41 @@ export default function DeliveryTracking() {
                 />
               </div>
 
+              <div style={{ marginBottom: '20px' }}>
+                <label htmlFor="delivery-receipt" style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '600',
+                  color: '#2c3e50',
+                  fontSize: '14px'
+                }}>Delivery Receipt Number *</label>
+                <input
+                  id="delivery-receipt"
+                  type="text"
+                  value={deliveryReceipt}
+                  onChange={(e) => setDeliveryReceipt(e.target.value)}
+                  placeholder="Enter delivery receipt number"
+                  disabled={submitting}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '2px solid #e1e8ed',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    transition: 'all 0.3s ease',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#42CAD6';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(66, 202, 214, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e1e8ed';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
               <div style={{
                 background: '#e7f3ff',
                 padding: '12px',
@@ -1297,27 +1370,27 @@ export default function DeliveryTracking() {
               </button>
               <button
                 onClick={confirmStartDelivery}
-                disabled={submitting || !driverName.trim()}
+                disabled={submitting || !driverName.trim() || !deliveryReceipt.trim()}
                 style={{
                   padding: '12px 24px',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: '600',
-                  cursor: (submitting || !driverName.trim()) ? 'not-allowed' : 'pointer',
+                  cursor: (submitting || !driverName.trim() || !deliveryReceipt.trim()) ? 'not-allowed' : 'pointer',
                   transition: 'all 0.3s ease',
                   background: 'linear-gradient(135deg, #42CAD6 0%, #3AB0BC 100%)',
                   color: 'white',
-                  opacity: (submitting || !driverName.trim()) ? '0.6' : '1'
+                  opacity: (submitting || !driverName.trim() || !deliveryReceipt.trim()) ? '0.6' : '1'
                 }}
                 onMouseOver={(e) => {
-                  if (!submitting && driverName.trim()) {
+                  if (!submitting && driverName.trim() && deliveryReceipt.trim()) {
                     e.target.style.background = 'linear-gradient(135deg, #3AB0BC 0%, #2E969F 100%)';
                     e.target.style.boxShadow = '0 4px 12px rgba(66, 202, 214, 0.4)';
                   }
                 }}
                 onMouseOut={(e) => {
-                  if (!submitting && driverName.trim()) {
+                  if (!submitting && driverName.trim() && deliveryReceipt.trim()) {
                     e.target.style.background = 'linear-gradient(135deg, #42CAD6 0%, #3AB0BC 100%)';
                     e.target.style.boxShadow = 'none';
                   }
@@ -1408,6 +1481,16 @@ export default function DeliveryTracking() {
                 <p style={{ margin: '5px 0', fontSize: '14px', color: '#2c3e50' }}>
                   <strong>Address:</strong> {selectedDelivery.notes}
                 </p>
+                {selectedDelivery.driver_name && (
+                  <p style={{ margin: '5px 0', fontSize: '14px', color: '#2c3e50' }}>
+                    <strong>Driver:</strong> {selectedDelivery.driver_name}
+                  </p>
+                )}
+                {selectedDelivery.delivery_receipt && (
+                  <p style={{ margin: '5px 0', fontSize: '14px', color: '#2c3e50' }}>
+                    <strong>Delivery Receipt:</strong> {selectedDelivery.delivery_receipt}
+                  </p>
+                )}
               </div>
 
               <div style={{ marginTop: '20px' }}>
@@ -1571,6 +1654,16 @@ export default function DeliveryTracking() {
                 <p style={{ margin: '5px 0', fontSize: '14px', color: '#2c3e50' }}>
                   <strong>Email:</strong> {selectedDelivery.email}
                 </p>
+                {selectedDelivery.driver_name && (
+                  <p style={{ margin: '5px 0', fontSize: '14px', color: '#2c3e50' }}>
+                    <strong>Driver:</strong> {selectedDelivery.driver_name}
+                  </p>
+                )}
+                {selectedDelivery.delivery_receipt && (
+                  <p style={{ margin: '5px 0', fontSize: '14px', color: '#2c3e50' }}>
+                    <strong>Delivery Receipt:</strong> {selectedDelivery.delivery_receipt}
+                  </p>
+                )}
                 <p style={{ margin: '5px 0', fontSize: '14px', color: '#2c3e50' }}>
                   <strong>Current Status:</strong> <span style={{
                     color: selectedDelivery.status === 'Delivered' ? '#10B981' :
@@ -2055,6 +2148,30 @@ export default function DeliveryTracking() {
                               textAlign: 'right',
                               wordBreak: 'break-word'
                             }}>{delivery.driver_name}</span>
+                          </div>
+                        )}
+
+                        {delivery.delivery_receipt && (
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            marginBottom: '12px',
+                            gap: '10px'
+                          }}>
+                            <span style={{
+                              fontSize: '13px',
+                              color: '#7f8c8d',
+                              fontWeight: '500',
+                              flexShrink: '0'
+                            }}>📄 Receipt:</span>
+                            <span style={{
+                              fontSize: '14px',
+                              color: '#2c3e50',
+                              fontWeight: '600',
+                              textAlign: 'right',
+                              wordBreak: 'break-word'
+                            }}>{delivery.delivery_receipt}</span>
                           </div>
                         )}
 

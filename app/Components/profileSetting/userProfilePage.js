@@ -42,14 +42,40 @@ const ProfileSetting = () => {
     const [emailError, setEmailError] = useState('');
     const [isSendingEmailCode, setIsSendingEmailCode] = useState(false);
 
+    // Admin Edit Profile states
+    const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+    const [roleList, setRoleList] = useState([]);
+    const [locationList, setLocationList] = useState([]);
+    const [editFname, setEditFname] = useState('');
+    const [editMname, setEditMname] = useState('');
+    const [editLname, setEditLname] = useState('');
+    const [editPhone, setEditPhone] = useState('');
+    const [editAddress, setEditAddress] = useState('');
+    const [editBirthdate, setEditBirthdate] = useState('');
+    const [editRole, setEditRole] = useState('');
+    const [editRoleID, setEditRoleID] = useState('');
+    const [editLocation, setEditLocation] = useState('');
+    const [editLocationID, setEditLocationID] = useState('');
+    const [editStatus, setEditStatus] = useState('');
+    const [editProfileError, setEditProfileError] = useState('');
+
     const user_id = sessionStorage.getItem('user_id');
     const baseURL = sessionStorage.getItem('baseURL');
     const url = baseURL + 'users.php'; // For user operations
     const loginUrl = baseURL + 'login.php'; // For password verification
+    const dropdownUrl = baseURL + 'GetDropDown.php'; // For roles and locations
 
     useEffect(() => {
         fetchUserDetails();
     }, []);
+
+    // Fetch roles and locations if user is admin
+    useEffect(() => {
+        if (userDetails.role_name === 'Admin') {
+            fetchRoles();
+            fetchLocations();
+        }
+    }, [userDetails.role_name]);
 
     const fetchUserDetails = async () => {
         try {
@@ -65,6 +91,36 @@ const ProfileSetting = () => {
             }
         } catch (error) {
             console.error('Error fetching user details:', error);
+        }
+    };
+
+    // Fetch roles for admin editing
+    const fetchRoles = async () => {
+        try {
+            const response = await axios.get(dropdownUrl, {
+                params: {
+                    json: JSON.stringify([]),
+                    operation: 'GetRole'
+                }
+            });
+            setRoleList(response.data || []);
+        } catch (error) {
+            console.error('Error fetching roles:', error);
+        }
+    };
+
+    // Fetch locations for admin editing
+    const fetchLocations = async () => {
+        try {
+            const response = await axios.get(dropdownUrl, {
+                params: {
+                    json: JSON.stringify([]),
+                    operation: 'GetLocation'
+                }
+            });
+            setLocationList(response.data || []);
+        } catch (error) {
+            console.error('Error fetching locations:', error);
         }
     };
 
@@ -516,6 +572,130 @@ const ProfileSetting = () => {
         }
     };
 
+    // Admin Edit Profile Functions
+    const openEditProfileModal = async () => {
+        // Fetch full user details including phone, address, birth_date, role_id
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify({ userID: user_id }),
+                    operation: 'GetUserDetails'
+                }
+            });
+
+            if (response.data.length > 0) {
+                const details = response.data[0];
+                setEditFname(details.fname || '');
+                setEditMname(details.mname || '');
+                setEditLname(details.lname || '');
+                setEditPhone(details.phone || '');
+                setEditAddress(details.address || '');
+                // Format birth_date for date input (YYYY-MM-DD)
+                const birthDate = details.birth_date || '';
+                setEditBirthdate(birthDate.includes('0000-00-00') || birthDate === '' ? '' : birthDate.split(' ')[0]);
+                setEditRole(details.role_id || '');
+                setEditRoleID(details.role_id || '');
+                setEditLocation(details.location_id || '');
+                setEditLocationID(details.location_id || '');
+                setEditStatus(details.status || '');
+                setEditProfileError('');
+                setShowEditProfileModal(true);
+            }
+        } catch (error) {
+            console.error('Error fetching user details for edit:', error);
+            showAlertError({
+                icon: "error",
+                title: "Error!",
+                text: 'Failed to load user details. Please try again!',
+                button: 'Okay'
+            });
+        }
+    };
+
+    const closeEditProfileModal = () => {
+        setShowEditProfileModal(false);
+        setEditProfileError('');
+    };
+
+    const handleRoleChange = (e) => {
+        const selectedRoleID = e.target.value;
+        const selectedRole = roleList.find(r => r.role_id == selectedRoleID);
+        setEditRole(selectedRoleID);
+        setEditRoleID(selectedRoleID);
+    };
+
+    const handleLocationChange = (e) => {
+        const selectedLocationID = e.target.value;
+        setEditLocation(selectedLocationID);
+        setEditLocationID(selectedLocationID);
+    };
+
+    const updateProfile = async () => {
+        setEditProfileError('');
+
+        // Validate required fields
+        if (!editFname.trim() || !editMname.trim() || !editLname.trim()) {
+            setEditProfileError('First name, middle name, and last name are required.');
+            return;
+        }
+
+        if (!editPhone.trim() || !editAddress.trim() || !editBirthdate.trim()) {
+            setEditProfileError('Phone, address, and birthdate are required.');
+            return;
+        }
+
+        try {
+            const updateData = {
+                fname: editFname.trim(),
+                mname: editMname.trim(),
+                lname: editLname.trim(),
+                bDate: editBirthdate,
+                role: editRoleID,
+                location: editLocationID,
+                phone: editPhone.trim(),
+                email: userDetails.email || '', // Keep existing email
+                address: editAddress.trim(),
+                accountStatus: editStatus,
+                accountID: user_id
+            };
+
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify(updateData),
+                    operation: 'UpdateUser'
+                }
+            });
+
+            if (response.data === 'Success') {
+                AlertSucces(
+                    "Profile successfully updated!",
+                    "success",
+                    true,
+                    'Okay'
+                );
+                closeEditProfileModal();
+                fetchUserDetails(); // Refresh user details
+            } else {
+                setEditProfileError(response.data || 'Failed to update profile.');
+                showAlertError({
+                    icon: "error",
+                    title: "Update Failed!",
+                    text: response.data || 'Failed to update profile. Please try again!',
+                    button: 'Try Again'
+                });
+            }
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            setEditProfileError('Something went wrong while updating your profile.');
+            showAlertError({
+                icon: "error",
+                title: "Update Failed!",
+                text: 'Something went wrong while updating your profile!',
+                button: 'Try Again'
+            });
+        }
+    };
+
     const fullName = `${userDetails.fname || ''} ${userDetails.mname || ''} ${userDetails.lname || ''}`.trim();
 
     // Get status display information
@@ -709,17 +889,51 @@ const ProfileSetting = () => {
 
                 {/* Profile Information Card */}
                 <div className="profile-card">
-                    <h4 style={{
-                        marginBottom: '25px',
-                        color: '#2d3748',
-                        fontWeight: '700',
+                    <div style={{
                         display: 'flex',
+                        justifyContent: 'space-between',
                         alignItems: 'center',
-                        gap: '10px',
-                        fontSize: 'clamp(1.1rem, 4vw, 1.3rem)'
+                        marginBottom: '25px',
+                        flexWrap: 'wrap',
+                        gap: '15px'
                     }}>
-                        <span style={{ fontSize: 'clamp(1.3rem, 4.5vw, 1.5rem)' }}>ℹ️</span> Personal Information
-                    </h4>
+                        <h4 style={{
+                            margin: 0,
+                            color: '#2d3748',
+                            fontWeight: '700',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            fontSize: 'clamp(1.1rem, 4vw, 1.3rem)'
+                        }}>
+                            <span style={{ fontSize: 'clamp(1.3rem, 4.5vw, 1.5rem)' }}>ℹ️</span> Personal Information
+                        </h4>
+                        {userDetails.role_name === 'Admin' && (
+                            <Button
+                                onClick={openEditProfileModal}
+                                style={{
+                                    background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    padding: 'clamp(8px, 2vw, 10px) clamp(20px, 4vw, 25px)',
+                                    fontWeight: '600',
+                                    fontSize: 'clamp(0.85rem, 3vw, 1rem)',
+                                    boxShadow: '0 4px 15px rgba(76, 175, 80, 0.4)',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.target.style.transform = 'translateY(-2px)';
+                                    e.target.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.6)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.transform = 'translateY(0)';
+                                    e.target.style.boxShadow = '0 4px 15px rgba(76, 175, 80, 0.4)';
+                                }}
+                            >
+                                ✏️ Edit Profile
+                            </Button>
+                        )}
+                    </div>
 
                     <div className="info-row">
                         <div className="info-label">
@@ -1690,6 +1904,254 @@ const ProfileSetting = () => {
                     )}
                 </Modal.Footer>
             </Modal>
+
+            {/* Edit Profile Modal - Admin Only */}
+            {userDetails.role_name === 'Admin' && (
+                <Modal show={showEditProfileModal} onHide={closeEditProfileModal} centered size="lg">
+                    <Modal.Header closeButton style={{ borderBottom: '2px solid #4caf50', background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)', color: 'white' }}>
+                        <Modal.Title style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span>✏️</span> Edit Profile Details
+                        </Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body style={{ padding: '30px', maxHeight: '70vh', overflowY: 'auto' }}>
+                        {editProfileError && (
+                            <Alert variant="danger" style={{ borderRadius: '10px', borderLeft: '4px solid #dc3545', marginBottom: '20px' }}>
+                                <strong>⚠️</strong> {editProfileError}
+                            </Alert>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                            {/* First Name */}
+                            <Form.Group>
+                                <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
+                                    👤 First Name <span style={{ color: '#dc3545' }}>*</span>
+                                </Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Enter first name"
+                                    value={editFname}
+                                    onChange={(e) => setEditFname(e.target.value)}
+                                    style={{
+                                        borderRadius: '10px',
+                                        padding: '12px 15px',
+                                        border: '2px solid #e9ecef',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#4caf50'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                                />
+                            </Form.Group>
+
+                            {/* Middle Name */}
+                            <Form.Group>
+                                <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
+                                    👤 Middle Name <span style={{ color: '#dc3545' }}>*</span>
+                                </Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Enter middle name"
+                                    value={editMname}
+                                    onChange={(e) => setEditMname(e.target.value)}
+                                    style={{
+                                        borderRadius: '10px',
+                                        padding: '12px 15px',
+                                        border: '2px solid #e9ecef',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#4caf50'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                                />
+                            </Form.Group>
+
+                            {/* Last Name */}
+                            <Form.Group>
+                                <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
+                                    👤 Last Name <span style={{ color: '#dc3545' }}>*</span>
+                                </Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Enter last name"
+                                    value={editLname}
+                                    onChange={(e) => setEditLname(e.target.value)}
+                                    style={{
+                                        borderRadius: '10px',
+                                        padding: '12px 15px',
+                                        border: '2px solid #e9ecef',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#4caf50'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                                />
+                            </Form.Group>
+
+                            {/* Phone */}
+                            <Form.Group>
+                                <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
+                                    📞 Phone <span style={{ color: '#dc3545' }}>*</span>
+                                </Form.Label>
+                                <Form.Control
+                                    type="tel"
+                                    placeholder="Enter phone number"
+                                    value={editPhone}
+                                    onChange={(e) => setEditPhone(e.target.value)}
+                                    style={{
+                                        borderRadius: '10px',
+                                        padding: '12px 15px',
+                                        border: '2px solid #e9ecef',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#4caf50'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                                />
+                            </Form.Group>
+
+                            {/* Address */}
+                            <Form.Group style={{ gridColumn: 'span 2' }}>
+                                <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
+                                    📍 Address <span style={{ color: '#dc3545' }}>*</span>
+                                </Form.Label>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Enter address"
+                                    value={editAddress}
+                                    onChange={(e) => setEditAddress(e.target.value)}
+                                    style={{
+                                        borderRadius: '10px',
+                                        padding: '12px 15px',
+                                        border: '2px solid #e9ecef',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#4caf50'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                                />
+                            </Form.Group>
+
+                            {/* Birthdate */}
+                            <Form.Group>
+                                <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
+                                    🎂 Birthdate <span style={{ color: '#dc3545' }}>*</span>
+                                </Form.Label>
+                                <Form.Control
+                                    type="date"
+                                    value={editBirthdate}
+                                    onChange={(e) => setEditBirthdate(e.target.value)}
+                                    style={{
+                                        borderRadius: '10px',
+                                        padding: '12px 15px',
+                                        border: '2px solid #e9ecef',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#4caf50'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                                />
+                            </Form.Group>
+
+                            {/* Role */}
+                            <Form.Group>
+                                <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
+                                    💼 Role <span style={{ color: '#dc3545' }}>*</span>
+                                </Form.Label>
+                                <Form.Select
+                                    value={editRole}
+                                    onChange={handleRoleChange}
+                                    style={{
+                                        borderRadius: '10px',
+                                        padding: '12px 15px',
+                                        border: '2px solid #e9ecef',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#4caf50'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                                >
+                                    <option value="">Select Role</option>
+                                    {roleList.map((role) => (
+                                        <option key={role.role_id} value={role.role_id}>
+                                            {role.role_name}
+                                        </option>
+                                    ))}
+                                </Form.Select>
+                            </Form.Group>
+
+                            {/* Location */}
+                            <Form.Group>
+                                <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
+                                    📍 Location <span style={{ color: '#dc3545' }}>*</span>
+                                </Form.Label>
+                                <Form.Select
+                                    value={editLocation}
+                                    onChange={handleLocationChange}
+                                    style={{
+                                        borderRadius: '10px',
+                                        padding: '12px 15px',
+                                        border: '2px solid #e9ecef',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#4caf50'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                                >
+                                    <option value="">Select Location</option>
+                                    {locationList.map((location) => (
+                                        <option key={location.location_id} value={location.location_id}>
+                                            {location.location_name}
+                                        </option>
+                                    ))}
+                                </Form.Select>
+                            </Form.Group>
+
+                            {/* Account Status */}
+                            <Form.Group>
+                                <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
+                                    ✨ Account Status <span style={{ color: '#dc3545' }}>*</span>
+                                </Form.Label>
+                                <Form.Select
+                                    value={editStatus}
+                                    onChange={(e) => setEditStatus(e.target.value)}
+                                    style={{
+                                        borderRadius: '10px',
+                                        padding: '12px 15px',
+                                        border: '2px solid #e9ecef',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = '#4caf50'}
+                                    onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                                >
+                                    <option value="">Select Status</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Suspend">Suspend</option>
+                                </Form.Select>
+                            </Form.Group>
+                        </div>
+                    </Modal.Body>
+                    <Modal.Footer style={{ borderTop: '2px solid #e9ecef', padding: '20px 30px' }}>
+                        <Button
+                            variant="secondary"
+                            onClick={closeEditProfileModal}
+                            style={{
+                                borderRadius: '10px',
+                                padding: '10px 25px',
+                                fontWeight: '600'
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={updateProfile}
+                            style={{
+                                background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                                border: 'none',
+                                borderRadius: '10px',
+                                padding: '10px 25px',
+                                fontWeight: '600',
+                                boxShadow: '0 4px 15px rgba(76, 175, 80, 0.4)'
+                            }}
+                        >
+                            💾 Save Changes
+                        </Button>
+                    </Modal.Footer>
+                </Modal>
+            )}
         </div>
     );
 };

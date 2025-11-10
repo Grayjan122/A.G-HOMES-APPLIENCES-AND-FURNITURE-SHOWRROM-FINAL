@@ -13,7 +13,7 @@ import Alert from 'react-bootstrap/Alert';
 import { LogInSuccess } from './Components/SweetAlert/logIn';
 import { showAlertError } from './Components/SweetAlert/error';
 
-export default function LoginPage() {
+export default function HomePage() {
   const [show, setShow] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [debugInfo, setDebugInfo] = useState([]);
@@ -54,9 +54,16 @@ export default function LoginPage() {
   const router = useRouter();
 
   // Base URL configuration - dynamically set based on environment
-  const BASE_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost/capstone-api/api/'
-    : 'https://ag-home.site/backend/api/';
+  const BASE_URL = typeof window !== 'undefined' 
+    ? (window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.'))
+      ? `http://${window.location.hostname}/capstone-api/api/`
+      : 'https://ag-home.site/backend/api/'
+    : 'http://localhost/capstone-api/api/';
+    
+
+  // const BASE_URL = http://localhost/capstone-api/;
+  //  const BASE_URL = 'http://192.168.137.180/capstone-api/api/';
+
 
   // Check if we're in the browser (client-side)
   const [isMounted, setIsMounted] = useState(false);
@@ -208,7 +215,18 @@ export default function LoginPage() {
     }
   }, [userAnswer]);
 
-  const generateRandomNumbers = () => {
+  const generateRandomNumbers = (e) => {
+    // Add rotation animation only when button is clicked
+    if (e && e.currentTarget && e.currentTarget.classList) {
+      const button = e.currentTarget;
+      button.classList.add('rotating');
+      setTimeout(() => {
+        if (button && button.classList) {
+          button.classList.remove('rotating');
+        }
+      }, 500); // Match animation duration
+    }
+    
     setNum1(Math.floor(Math.random() * 49) + 1);
     setNum2(Math.floor(Math.random() * 8) + 1);
     setUserAnswer('');
@@ -1108,18 +1126,24 @@ export default function LoginPage() {
         </button> */}
 
         <div className='as'>
-          <div className='pic-slog'>
+          <div className='pic-slog' style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '15px'
+          }}>
             <Image src={'/assets/images/AG.png'} width={90} height={90} alt='logo' className='logo' />
-            <h1>A.G Home Appliance <br />
+            <h1 style={{ color: 'white', textAlign: 'center', margin: 0 }}>A.G Home Appliance <br />
               & Furniture Showroom</h1>
           </div>
 
           <form onSubmit={login} className='log-in-form'>
             <h2 className='Log-1'>Sign in to start your session</h2>
 
-            <div>
+            <div className='form-group'>
               <label className='label'>
-                Username:
+                Username
               </label>
               <input
                 placeholder='Enter username'
@@ -1132,9 +1156,9 @@ export default function LoginPage() {
               />
             </div>
 
-            <div style={{ marginTop: '10px' }}>
+            <div className='form-group'>
               <label className='label'>
-                Password:
+                Password
               </label>
               <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
                 <input
@@ -1179,29 +1203,32 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div style={{ marginTop: '10px' }} className='athen'>
-              <label className='label-1'>{num1}</label>
-              <label className='operator'>+</label>
-              <label className='label-1'>{num2}</label>
-              <label className='operator'>=</label>
-              <input
-                style={{ border: borderColor }}
-                className="authen-input"
-                type="number"
-                required
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                className='operator-1'
-                onClick={generateRandomNumbers}
-                disabled={isLoading}
-              >
-                <Image src={'/assets/images/refresh.png'} width={60} height={55} alt="Refresh" />
-              </button>
+            <div className='form-group'>
+              <label className='label'>Verification</label>
+              <div className='athen'>
+                <label className='label-1'>{num1}</label>
+                <label className='operator'>+</label>
+                <label className='label-1'>{num2}</label>
+                <label className='operator'>=</label>
+                <input
+                  style={{ border: borderColor }}
+                  className="authen-input"
+                  type="number"
+                  required
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  className='operator-1'
+                  onClick={generateRandomNumbers}
+                  disabled={isLoading}
+                >
+                  <Image src={'/assets/images/refresh.png'} width={60} height={55} alt="Refresh" />
+                </button>
+              </div>
             </div>
 
             <button
@@ -1236,6 +1263,43 @@ export default function LoginPage() {
                 }}
               >
                 Forgot Password?
+              </button>
+            </div>
+
+            {/* Shop Link */}
+            <div style={{
+              marginTop: '10px',
+              textAlign: 'center'
+            }}>
+              <button
+                type="button"
+                onClick={() => router.push('/shop')}
+                disabled={isLoading}
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  color: 'white',
+                  padding: '10px 20px',
+                  borderRadius: '25px',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  opacity: isLoading ? 0.5 : 1,
+                  boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isLoading) {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+                }}
+              >
+                🛒 Visit Our Shop
               </button>
             </div>
           </form>
@@ -1756,4 +1820,4 @@ export default function LoginPage() {
       {showDebugPanel && <DebugPanel />}
     </>
   );
-};
+}

@@ -43,6 +43,7 @@ const ProductsAdmin = () => {
     const [categoryFilter, setCategoryFilter] = useState('');
     const [searchFilter, setSearchFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
+    const [productTypeFilter, setProductTypeFilter] = useState('');
 
     // Sorting states for products
     const [sortField, setSortField] = useState('');
@@ -63,7 +64,6 @@ const ProductsAdmin = () => {
 
     //product inputs
     const [prodName, setProdName] = useState('');
-    const [cat, setCat] = useState('');
     const [i_color, setI_Color] = useState('');
     const [i_price, setI_Price] = useState('');
     const [i_description, setI_Descrition] = useState('');
@@ -76,12 +76,16 @@ const ProductsAdmin = () => {
     //category inputs
     const [category_name, setCategory_Name] = useState('');
     const [category_description, setCategory_Description] = useState('');
+    const [selectedProductTypeId, setSelectedProductTypeId] = useState('');
+    const [selectedProductTypeName, setSelectedProductTypeName] = useState('');
 
     const [prodId, setProdId] = useState('');
 
     //arrays
     const [productList, setProductList] = useState([]);
     const [categoryList, setCategorytList] = useState([]);
+    const [productTypeList, setProductTypeList] = useState([]);
+    const [productSalesList, setProductSalesList] = useState([]);
 
     // Image upload states
     const [selectedFile, setSelectedFile] = useState(null);
@@ -307,6 +311,30 @@ const ProductsAdmin = () => {
         );
     };
 
+    // Calculate total sales per product
+    const productSalesMap = useMemo(() => {
+        const salesMap = {};
+        if (Array.isArray(productSalesList)) {
+            productSalesList.forEach(sale => {
+                const productId = sale.product_id;
+                if (!salesMap[productId]) {
+                    salesMap[productId] = {
+                        totalQty: 0,
+                        totalRevenue: 0
+                    };
+                }
+                salesMap[productId].totalQty += parseInt(sale.qty) || 0;
+                salesMap[productId].totalRevenue += parseFloat(sale.total_price) || 0;
+            });
+        }
+        return salesMap;
+    }, [productSalesList]);
+
+    // Helper function to get sales for a product
+    const getProductSales = (productId) => {
+        return productSalesMap[productId] || { totalQty: 0, totalRevenue: 0 };
+    };
+
     // Filter and sort products
     const filteredAndSortedProducts = useMemo(() => {
         // Ensure productList is an array
@@ -328,6 +356,14 @@ const ProductsAdmin = () => {
                 return false;
             }
 
+            // Product type filter
+            if (productTypeFilter) {
+                const productTypeId = product.product_type_id ? product.product_type_id.toString() : '';
+                if (productTypeId !== productTypeFilter) {
+                    return false;
+                }
+            }
+
             // Search filter (searches in product name and description)
             if (searchFilter.trim()) {
                 const searchTerm = searchFilter.toLowerCase();
@@ -341,28 +377,38 @@ const ProductsAdmin = () => {
         // Apply sorting
         if (sortField) {
             filtered = [...filtered].sort((a, b) => {
-                let aVal = a[sortField];
-                let bVal = b[sortField];
+                let aVal, bVal;
 
-                // Handle different data types
-                if (sortField === 'price') {
-                    aVal = parseFloat(aVal) || 0;
-                    bVal = parseFloat(bVal) || 0;
-                } else if (typeof aVal === 'string') {
-                    aVal = aVal.toLowerCase();
-                    bVal = bVal.toLowerCase();
+                // Handle sales sorting (by quantity or revenue)
+                if (sortField === 'sales_qty') {
+                    aVal = productSalesMap[a.product_id]?.totalQty || 0;
+                    bVal = productSalesMap[b.product_id]?.totalQty || 0;
+                } else if (sortField === 'sales_revenue') {
+                    aVal = productSalesMap[a.product_id]?.totalRevenue || 0;
+                    bVal = productSalesMap[b.product_id]?.totalRevenue || 0;
+                } else if (sortField === 'price') {
+                    aVal = parseFloat(a[sortField]) || 0;
+                    bVal = parseFloat(b[sortField]) || 0;
+                } else if (typeof a[sortField] === 'string') {
+                    aVal = a[sortField].toLowerCase();
+                    bVal = b[sortField].toLowerCase();
+                } else {
+                    aVal = a[sortField];
+                    bVal = b[sortField];
                 }
 
                 if (sortDirection === 'asc') {
-                    return aVal > bVal ? 1 : -1;
-                } else {
+                    // Ascending arrow (↑) = highest to lowest
                     return aVal < bVal ? 1 : -1;
+                } else {
+                    // Descending arrow (↓) = lowest to highest
+                    return aVal > bVal ? 1 : -1;
                 }
             });
         }
 
         return filtered;
-    }, [productList, categoryFilter, searchFilter, statusFilter, sortField, sortDirection]);
+    }, [productList, categoryFilter, productTypeFilter, searchFilter, statusFilter, sortField, sortDirection, productSalesMap]);
 
     // Pagination for products
     const totalPagesProducts = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
@@ -372,7 +418,34 @@ const ProductsAdmin = () => {
     // Reset to page 1 when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [categoryFilter, searchFilter, statusFilter, sortField, sortDirection]);
+    }, [categoryFilter, productTypeFilter, searchFilter, statusFilter, sortField, sortDirection]);
+
+    useEffect(() => {
+        if (!selectedProductTypeId) {
+            return;
+        }
+
+        const selectedType = productTypeList.find(
+            (type) => type.product_type_id?.toString() === selectedProductTypeId
+        );
+
+        if (selectedType) {
+            const typeName = selectedType.product_type_name || '';
+            if (typeName !== selectedProductTypeName) {
+                setSelectedProductTypeName(typeName);
+            }
+
+            const categoryIdString = selectedType.category_id ? selectedType.category_id.toString() : '';
+            if (categoryIdString !== catId) {
+                setCatID(categoryIdString);
+            }
+
+            const categoryNameValue = getCategoryNameById(categoryIdString);
+            if (categoryNameValue !== catName) {
+                setCatName(categoryNameValue);
+            }
+        }
+    }, [selectedProductTypeId, productTypeList, categoryList, selectedProductTypeName, catId, catName]);
 
     const handlePageChange = (page) => {
         if (page >= 1 && page <= totalPagesProducts) {
@@ -383,11 +456,13 @@ const ProductsAdmin = () => {
     useEffect(() => {
         GetProduct();
         GetCategory();
+        GetProductTypeList();
+        GetProductSale();
     }, []);
 
     const resetForm = () => {
         setProdName('');
-        setCat('');
+        // setCat('');
         setI_Color('');
         setI_Price('');
         setI_Descrition('');
@@ -400,10 +475,15 @@ const ProductsAdmin = () => {
         setImagePreview('');
         setProductImagePath('');
         setUploadingImage(false);
+        setSelectedProductTypeId('');
+        setSelectedProductTypeName('');
+        setCatID('');
+        setCatName('');
     };
 
     const clearProductFilters = () => {
         setCategoryFilter('');
+        setProductTypeFilter('');
         setSearchFilter('');
         setStatusFilter('all');
         setSortField('');
@@ -414,6 +494,9 @@ const ProductsAdmin = () => {
         switch (filterType) {
             case 'category':
                 setCategoryFilter('');
+                break;
+            case 'productType':
+                setProductTypeFilter('');
                 break;
             case 'search':
                 setSearchFilter('');
@@ -461,6 +544,64 @@ const ProductsAdmin = () => {
         }
     }
 
+    const GetProductSale = async () => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'products.php';
+
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify([]),
+                    operation: "GetProductsSales"
+                }
+            });
+
+            console.log('📦 Products Sales fetched:', response.data);
+            console.log('📦 Products Sales type:', typeof response.data);
+            
+            let salesData = response.data;
+            
+            // If response is a string, try to parse it as JSON
+            if (typeof salesData === 'string') {
+                try {
+                    salesData = JSON.parse(salesData);
+                    console.log('✅ Parsed JSON string, result:', salesData);
+                } catch (parseError) {
+                    console.error('❌ Failed to parse JSON string:', parseError);
+                    // If it's not valid JSON and contains error messages, handle it
+                    if (salesData.toLowerOase().includes('error') || 
+                        salesData.toLowerCase().includes('failed') ||
+                        salesData.toLowerCase().includes('success') && !salesData.includes('[')) {
+                        console.warn('⚠️ API returned message:', salesData);
+                        setProductSalesList([]);
+                        return;
+                    }
+                    setProductSalesList([]);
+                    return;
+                }
+            }
+            
+            // Ensure salesData is an array
+            if (Array.isArray(salesData)) {
+                console.log('✅ Valid array with', salesData.length, 'product sales');
+                
+                // Log first sale for debugging
+                if (salesData.length > 0) {
+                    const firstSale = salesData[0];
+                    console.log('First sale:', firstSale);
+                }
+                
+                setProductSalesList(salesData);
+            } else {
+                console.error('❌ Response is not an array:', typeof salesData, salesData);
+                setProductSalesList([]);
+            }
+        } catch (error) {
+            console.error("Error fetching product sales:", error);
+            setProductSalesList([]);
+        }
+    }
+
     const GetCategory = async () => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'products.php';
@@ -479,15 +620,62 @@ const ProductsAdmin = () => {
         }
     }
 
+const GetProductTypeList = async () => {
+    const baseURL = sessionStorage.getItem('baseURL');
+    const url = baseURL + 'products.php';
+
+    try {
+        const response = await axios.get(url, {
+            params: {
+                json: JSON.stringify([]),
+                operation: "GetProductTypes"
+            }
+        });
+
+        let typesData = response.data;
+        if (typeof typesData === 'string') {
+            try {
+                typesData = JSON.parse(typesData);
+            } catch (parseError) {
+                console.warn('Failed to parse product type list JSON:', parseError);
+            }
+        }
+
+        const validTypes = Array.isArray(typesData)
+            ? typesData.filter(type => type && type.product_type_id && type.product_type_name)
+            : [];
+
+        setProductTypeList(validTypes);
+
+        if (!Array.isArray(typesData)) {
+            console.warn('GetProductTypes response is not an array', response.data);
+        }
+    } catch (error) {
+        console.error("Error fetching product type list:", error);
+        setProductTypeList([]);
+    }
+}
+
+    const getCategoryNameById = (categoryId) => {
+        if (!categoryId) return '';
+        const match = categoryList.find(
+            (category) => category.category_id?.toString() === categoryId.toString()
+        );
+        return match ? match.category_name : '';
+    };
+
     const AddProduct = async (e) => {
         e.preventDefault();
 
+        const productTypeIdValue = selectedProductTypeId ? parseInt(selectedProductTypeId, 10) : null;
+        const categoryIdValue = catId ? parseInt(catId, 10) : null;
+
         if (
             !prodName?.trim() ||
-            !cat?.trim() ||
+            !productTypeIdValue ||
+            !categoryIdValue ||
             !i_price?.toString().trim() ||
-            !i_description?.trim() 
-           
+            !i_description?.trim()
         ) {
             setMessage("Please fill in all needed details!");
             setAlertVariant('danger');
@@ -516,7 +704,8 @@ const ProductsAdmin = () => {
         const url = baseURL + 'products.php';
         const productDetails = {
             prodName: prodName,
-            category: cat,
+            category: categoryIdValue,
+            product_type_id: productTypeIdValue,
             description: i_description,
             dimension: dimension,
             material: i_material,
@@ -594,18 +783,34 @@ const ProductsAdmin = () => {
                 }
             });
 
-            const product = response.data[0];
-            setProdName(product.product_name);
-            setI_Descrition(product.description);
-            setI_Marterial(product.material);
-            setI_Color(product.color);
-            setI_Price(parseFloat(product.price));
-            setDimension(product.dimensions);
-            setCatID(product.category_id);
-            setCatName(product.category_name);
-            setCat(product.category_name);
-            setProdId(product.product_id);
-            setDateCreated(product.date_created);
+            let productData = response.data;
+            if (typeof productData === 'string') {
+                try {
+                    productData = JSON.parse(productData);
+                } catch (parseError) {
+                    console.error("Failed to parse product detail response:", parseError, productData);
+                    productData = [];
+                }
+            }
+
+            if (!Array.isArray(productData) || productData.length === 0) {
+                console.warn("No product detail returned for ID:", id);
+                return;
+            }
+
+            const product = productData[0];
+            setProdName(product.product_name ?? '');
+            setI_Descrition(product.description ?? '');
+            setI_Marterial(product.material ?? '');
+            setI_Color(product.color ?? '');
+            setI_Price(product.price ? parseFloat(product.price) : 0);
+            setDimension(product.dimensions ?? '');
+            setCatID(product.category_id ?? '');
+            setCatName(product.category_name ?? '');
+            setSelectedProductTypeId(product.product_type_id ? product.product_type_id.toString() : '');
+            setSelectedProductTypeName(product.product_type_name ?? '');
+            setProdId(product.product_id ?? '');
+            setDateCreated(product.date_created ?? '');
 
             // FIXED: Set the product image path
             setProductImagePath(product.product_preview_image || 'Nothing as for now');
@@ -628,18 +833,32 @@ const ProductsAdmin = () => {
             }
         }
 
+        const productTypeIdValue = selectedProductTypeId ? parseInt(selectedProductTypeId, 10) : null;
+        const categoryIdValue = catId ? parseInt(catId, 10) : null;
+
+        if (!prodName?.trim() || !productTypeIdValue || !categoryIdValue || !i_price?.toString().trim() || !i_description?.trim()) {
+            showAlertError({
+                icon: "warning",
+                title: "Incomplete Product Details",
+                text: 'Please provide name, product type, category, price, and description before saving.',
+                button: 'Got it'
+            });
+            return;
+        }
+
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'products.php';
         const productDetails = {
             prodName: prodName,
-            category: catId,
+            category: categoryIdValue,
+            product_type_id: productTypeIdValue,
             description: i_description,
             dimension: dimension,
             material: i_material,
             color: i_color,
             price: i_price,
             product_preview_image: imagePath,
-            catID: catId,
+            catID: categoryIdValue,
             prodId: prodId
         }
 
@@ -725,13 +944,24 @@ const ProductsAdmin = () => {
         }
     };
 
-    const category_change = (e) => {
-        const selectedCategoryName = e.target.value;
-        setCatName(selectedCategoryName);
+    const handleProductTypeChange = (productTypeId) => {
+        setSelectedProductTypeId(productTypeId);
 
-        const c = categoryList.find(u => u.category_name === selectedCategoryName);
-        if (c) {
-            setCatID(c.category_id);
+        const selectedType = productTypeList.find(
+            (type) => type.product_type_id?.toString() === productTypeId
+        );
+
+        if (selectedType) {
+            setSelectedProductTypeName(selectedType.product_type_name || '');
+            const categoryIdString = selectedType.category_id ? selectedType.category_id.toString() : '';
+            setCatID(categoryIdString);
+
+            const categoryNameValue = getCategoryNameById(categoryIdString);
+            setCatName(categoryNameValue);
+        } else {
+            setCatID('');
+            setCatName('');
+            setSelectedProductTypeName('');
         }
     };
 
@@ -796,21 +1026,37 @@ const ProductsAdmin = () => {
                         </div>
 
                         <div className='div-input-add-prod'>
-                            <label className='add-prod-label'>Category</label>
-                            <select className='category-dropdown' onChange={category_change} value={catName}>
-                                <option value="" disabled hidden>
-                                    {cat}
-                                </option>
-                                {categoryList.map((cat) => (
-                                    <option key={cat.category_id} value={cat.category_name}>
-                                        {cat.category_name}
-                                    </option>
-                                ))}
+                            <label className='add-prod-label'>Product Type</label>
+                            <select
+                                className='category-dropdown'
+                                onChange={(e) => handleProductTypeChange(e.target.value)}
+                            value={selectedProductTypeId ?? ''}
+                            >
+                                <option value="" disabled hidden>Select Product Type</option>
+                                {productTypeList.map((type) => {
+                                    const categoryName = getCategoryNameById(type.category_id);
+                                    return (
+                                        <option key={type.product_type_id} value={type.product_type_id}>
+                                            {type.product_type_name}{categoryName ? ` (${categoryName})` : ''}
+                                        </option>
+                                    );
+                                })}
                             </select>
                         </div>
                     </div>
 
                     <div className='div-input-add-prod'>
+                        <label className='add-prod-label'>Category</label>
+                        <input
+                            type='text'
+                            className='dimension-input'
+                            value={catName ?? ''}
+                            readOnly
+                            placeholder='Auto-filled based on product type'
+                        />
+                    </div>
+
+                    {/* <div className='div-input-add-prod'>
                         <label className='add-prod-label'>Dimension</label>
                         <input
                             type='text'
@@ -818,9 +1064,9 @@ const ProductsAdmin = () => {
                             value={dimension}
                             onChange={(e) => setDimension(e.target.value)}
                         />
-                    </div>
+                    </div> */}
 
-                    <div className='div-input-add-prod'>
+                    {/* <div className='div-input-add-prod'>
                         <label className='add-prod-label'>Color</label>
                         <input
                             type='text'
@@ -828,7 +1074,7 @@ const ProductsAdmin = () => {
                             value={i_color}
                             onChange={(e) => setI_Color(e.target.value)}
                         />
-                    </div>
+                    </div> */}
 
                     <div className='div-input-add-prod'>
                         <label className='add-prod-label'>Price</label>
@@ -849,14 +1095,14 @@ const ProductsAdmin = () => {
                         />
                     </div>
 
-                    <div className='div-input-add-prod'>
+                    {/* <div className='div-input-add-prod'>
                         <label className='add-prod-label'>Material</label>
                         <textarea
                             className='description-input'
                             value={i_material}
                             onChange={(e) => setI_Marterial(e.target.value)}
                         />
-                    </div>
+                    </div> */}
 
                     <div className='div-input-add-prod'>
                         <label className='add-prod-label'>Preview Image</label>
@@ -934,31 +1180,43 @@ const ProductsAdmin = () => {
                     </div>
 
                     <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Category</label>
-                        <select className='category-dropdown' onChange={(e) => setCat(e.target.value)} value={cat}>
-                            <option value="" disabled hidden>Select Category</option>
-                            {categoryList.map((cat) => (
-                                <option key={cat.category_id} value={cat.category_id}>
-                                    {cat.category_name}
-                                </option>
-                            ))}
+                        <label className='add-prod-label'>Product Type</label>
+                        <select
+                            className='category-dropdown'
+                            onChange={(e) => handleProductTypeChange(e.target.value)}
+                            value={selectedProductTypeId ?? ''}
+                        >
+                            <option value="" disabled hidden>Select Product Type</option>
+                            {productTypeList.map((type) => {
+                                const categoryName = getCategoryNameById(type.category_id);
+                                return (
+                                    <option key={type.product_type_id} value={type.product_type_id}>
+                                        {type.product_type_name}{categoryName ? ` (${categoryName})` : ''}
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
 
-                 
+                    <div className='div-input-add-prod'>
+                        <label className='add-prod-label'>Category</label>
+                        <input
+                            type='text'
+                            className='dimension-input'
+                            value={catName ?? ''}
+                            readOnly
+                            placeholder='Auto-filled based on product type'
+                        />
+                    </div>
 
-                    <div className='div-for-line'>
-                       
-
-                        <div className='div-input-add-prod'>
-                            <label className='add-prod-label'>Price</label>
-                            <input
-                                type='number'
-                                className='prod-name-input1'
-                                value={i_price}
-                                onChange={e => setI_Price(e.target.value)}
-                            />
-                        </div>
+                    <div className='div-input-add-prod'>
+                        <label className='add-prod-label'>Price</label>
+                        <input
+                            type='number'
+                            className='prod-name-input1'
+                            value={i_price}
+                            onChange={e => setI_Price(e.target.value)}
+                        />
                     </div>
 
                     <div className='div-input-add-prod'>
@@ -1033,6 +1291,14 @@ const ProductsAdmin = () => {
                             disabled={true}
                             className='prod-name-input'
                             value={prodName}
+                        />
+                    </div>
+                    <div className='div-input-add-prod'>
+                        <label className='add-prod-label'>Product Type</label>
+                        <input
+                            className='prod-name-input'
+                            disabled={true}
+                            value={selectedProductTypeName}
                         />
                     </div>
                     <div className='div-input-add-prod'>
@@ -1241,6 +1507,34 @@ const ProductsAdmin = () => {
                             </select>
                         </div>
 
+                        {/* Product Type Filter */}
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
+                                Filter by Product Type
+                            </label>
+                            <select
+                                value={productTypeFilter}
+                                onChange={(e) => setProductTypeFilter(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    border: '1px solid #ced4da',
+                                    borderRadius: '4px',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                <option value="">All Product Types</option>
+                                {productTypeList.map((type) => {
+                                    const categoryName = getCategoryNameById(type.category_id);
+                                    return (
+                                        <option key={type.product_type_id} value={type.product_type_id}>
+                                            {type.product_type_name}{categoryName ? ` (${categoryName})` : ''}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
+
                         {/* Search Filter */}
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '14px' }}>
@@ -1322,6 +1616,8 @@ const ProductsAdmin = () => {
                         </div>
                     </div>
                 </div>
+
+          
 
                 {/* Product Active Filters */}
                 <div style={{
@@ -1425,6 +1721,50 @@ const ProductsAdmin = () => {
                             </span>
                         )}
 
+                        {productTypeFilter && (
+                            <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '4px 8px',
+                                backgroundColor: '#e9ecef',
+                                borderRadius: '16px',
+                                fontSize: '13px',
+                                border: '1px solid #dee2e6'
+                            }}>
+                                Product Type: {productTypeList.find((t) => t.product_type_id?.toString() === productTypeFilter)?.product_type_name || productTypeFilter}
+                                <button
+                                    type="button"
+                                    onClick={() => removeProductFilter('productType')}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#6c757d',
+                                        cursor: 'pointer',
+                                        padding: '2px',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '18px',
+                                        height: '18px',
+                                        marginLeft: '4px'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.backgroundColor = '#dc3545';
+                                        e.target.style.color = 'white';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.backgroundColor = 'transparent';
+                                        e.target.style.color = '#6c757d';
+                                    }}
+                                    title="Remove product type filter"
+                                >
+                                    ×
+                                </button>
+                            </span>
+                        )}
+
                         {searchFilter && (
                             <span style={{
                                 display: 'inline-flex',
@@ -1469,7 +1809,7 @@ const ProductsAdmin = () => {
                             </span>
                         )}
 
-                        {!categoryFilter && !searchFilter && statusFilter === 'all' && (
+                        {!categoryFilter && !productTypeFilter && !searchFilter && statusFilter === 'all' && (
                             <span style={{ color: '#6c757d' }}>None</span>
                         )}
 
@@ -1691,6 +2031,40 @@ const ProductsAdmin = () => {
                                         }}
                                     >
                                         Category {sortField === 'category_name' && renderSortArrow('category_name')}
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleSort('sales_qty')}
+                                        style={{
+                                            padding: '6px 12px',
+                                            border: sortField === 'sales_qty' ? '2px solid #28a745' : '1px solid #ced4da',
+                                            backgroundColor: sortField === 'sales_qty' ? '#e8f5e9' : 'white',
+                                            borderRadius: '20px',
+                                            cursor: 'pointer',
+                                            fontSize: '14px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '5px'
+                                        }}
+                                    >
+                                        Sales (Qty) {sortField === 'sales_qty' && renderSortArrow('sales_qty')}
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleSort('sales_revenue')}
+                                        style={{
+                                            padding: '6px 12px',
+                                            border: sortField === 'sales_revenue' ? '2px solid #ffc107' : '1px solid #ced4da',
+                                            backgroundColor: sortField === 'sales_revenue' ? '#fff8e1' : 'white',
+                                            borderRadius: '20px',
+                                            cursor: 'pointer',
+                                            fontSize: '14px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '5px'
+                                        }}
+                                    >
+                                        Revenue {sortField === 'sales_revenue' && renderSortArrow('sales_revenue')}
                                     </button>
                                 </div>
 
@@ -1940,6 +2314,22 @@ const ProductsAdmin = () => {
                                                 }}>
                                                     {product.product_name}
                                                 </h3>
+                                                {product.product_type_name && (
+                                                    <div style={{
+                                                        marginBottom: '10px',
+                                                        fontSize: '12px',
+                                                        fontWeight: '600',
+                                                        color: '#3b5bcc',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                        padding: '4px 10px',
+                                                        backgroundColor: '#eef2ff',
+                                                        borderRadius: '999px'
+                                                    }}>
+                                                        🪑 {product.product_type_name}
+                                                    </div>
+                                                )}
 
                                                 {/* Product Description */}
                                                 <p style={{
@@ -1962,7 +2352,7 @@ const ProductsAdmin = () => {
                                                     gap: '10px',
                                                     marginBottom: '15px'
                                                 }}>
-                                                    <div>
+                                                    {/* <div>
                                                         <span style={{
                                                             fontSize: '12px',
                                                             color: '#6c757d',
@@ -1978,9 +2368,9 @@ const ProductsAdmin = () => {
                                                         }}>
                                                             {product.color}
                                                         </span>
-                                                    </div>
+                                                    </div> */}
 
-                                                    <div>
+                                                    {/* <div>
                                                         <span style={{
                                                             fontSize: '12px',
                                                             color: '#6c757d',
@@ -1996,11 +2386,11 @@ const ProductsAdmin = () => {
                                                         }}>
                                                             {product.material}
                                                         </span>
-                                                    </div>
+                                                    </div> */}
                                                 </div>
 
                                                 {/* Dimensions */}
-                                                <div style={{ marginBottom: '15px' }}>
+                                                {/* <div style={{ marginBottom: '15px' }}>
                                                     <span style={{
                                                         fontSize: '12px',
                                                         color: '#6c757d',
@@ -2016,7 +2406,7 @@ const ProductsAdmin = () => {
                                                     }}>
                                                         {product.dimensions}
                                                     </span>
-                                                </div>
+                                                </div> */}
                                             </div>
 
                                             {/* Price and Sales - Fixed at bottom */}
@@ -2060,13 +2450,29 @@ const ProductsAdmin = () => {
                                                     }}>
                                                         Total Sales
                                                     </span>
-                                                    <span style={{
-                                                        fontSize: '18px',
-                                                        color: '#495057',
-                                                        fontWeight: '700'
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '2px'
                                                     }}>
-                                                        0
-                                                    </span>
+                                                        <span style={{
+                                                            fontSize: '18px',
+                                                            color: '#495057',
+                                                            fontWeight: '700'
+                                                        }}>
+                                                            {getProductSales(product.product_id).totalQty} {getProductSales(product.product_id).totalQty === 1 ? 'unit' : 'units'}
+                                                        </span>
+                                                        <span style={{
+                                                            fontSize: '12px',
+                                                            color: '#28a745',
+                                                            fontWeight: '500'
+                                                        }}>
+                                                            ₱{getProductSales(product.product_id).totalRevenue.toLocaleString('en-US', {
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 2
+                                                            })}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

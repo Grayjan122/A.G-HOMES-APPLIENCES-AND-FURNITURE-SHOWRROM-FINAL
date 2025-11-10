@@ -170,19 +170,77 @@ const Customer = () => {
     setEditCustomerVisible(true);
   }
 
+  // Validation helper functions
+  const isValidPhilippinePhone = (phone) => {
+    // Remove all spaces, dashes, and parentheses
+    const cleanPhone = phone.replace(/[\s\-()]/g, '');
+    
+    // Philippine phone number patterns:
+    // 1. Mobile: 09XX-XXX-XXXX (11 digits starting with 09)
+    // 2. Mobile with +63: +639XX-XXX-XXXX (13 chars with +63)
+    // 3. Landline: (02) XXXX-XXXX or (0XX) XXX-XXXX
+    
+    const mobilePattern = /^(09|\+639)\d{9}$/;
+    const landlinePattern = /^0\d{1,2}\d{7,8}$/;
+    
+    return mobilePattern.test(cleanPhone) || landlinePattern.test(cleanPhone);
+  };
+
+  const isValidEmail = (email) => {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailPattern.test(email);
+  };
+
+  const isEmailUnique = (email, excludeCustomerId = null) => {
+    return !customerList.some(customer => 
+      customer.email.toLowerCase() === email.toLowerCase() && 
+      customer.cust_id !== excludeCustomerId
+    );
+  };
+
   const addCustomer = async () => {
     if (!customerName.trim() ||
       !customerPhone.trim() ||
       !customerEmail.trim() ||
       !customerAddress.trim()
     ) {
-      // setMessage('Please fill all the needed details!');
-      // setModalTitle('Alert ⚠️');
-      // setShow(true);
       showAlertError({
         icon: "warning",
         title: "Incomplete Customer Details!",
         text: 'Please fill all the required details!',
+        button: 'Try Again'
+      });
+      return;
+    }
+
+    // Validate Philippine phone number
+    if (!isValidPhilippinePhone(customerPhone)) {
+      showAlertError({
+        icon: "error",
+        title: "Invalid Phone Number!",
+        text: 'Please enter a valid Philippine phone number (e.g., 09XX-XXX-XXXX or +639XX-XXX-XXXX)',
+        button: 'Try Again'
+      });
+      return;
+    }
+
+    // Validate email format
+    if (!isValidEmail(customerEmail)) {
+      showAlertError({
+        icon: "error",
+        title: "Invalid Email!",
+        text: 'Please enter a valid email address (e.g., example@email.com)',
+        button: 'Try Again'
+      });
+      return;
+    }
+
+    // Check if email already exists
+    if (!isEmailUnique(customerEmail)) {
+      showAlertError({
+        icon: "error",
+        title: "Email Already Exists!",
+        text: 'This email is already registered to another customer. Please use a different email address.',
         button: 'Try Again'
       });
       return;
@@ -259,6 +317,54 @@ const Customer = () => {
 
   const updateCustomerDetails = async (e) => {
     e.preventDefault();
+
+    // Validate required fields
+    if (!customerName.trim() ||
+      !customerPhone.trim() ||
+      !customerEmail.trim() ||
+      !customerAddress.trim()
+    ) {
+      showAlertError({
+        icon: "warning",
+        title: "Incomplete Customer Details!",
+        text: 'Please fill all the required details!',
+        button: 'Try Again'
+      });
+      return;
+    }
+
+    // Validate Philippine phone number
+    if (!isValidPhilippinePhone(customerPhone)) {
+      showAlertError({
+        icon: "error",
+        title: "Invalid Phone Number!",
+        text: 'Please enter a valid Philippine phone number (e.g., 09XX-XXX-XXXX or +639XX-XXX-XXXX)',
+        button: 'Try Again'
+      });
+      return;
+    }
+
+    // Validate email format
+    if (!isValidEmail(customerEmail)) {
+      showAlertError({
+        icon: "error",
+        title: "Invalid Email!",
+        text: 'Please enter a valid email address (e.g., example@email.com)',
+        button: 'Try Again'
+      });
+      return;
+    }
+
+    // Check if email already exists (excluding current customer)
+    if (!isEmailUnique(customerEmail, customerID)) {
+      showAlertError({
+        icon: "error",
+        title: "Email Already Exists!",
+        text: 'This email is already registered to another customer. Please use a different email address.',
+        button: 'Try Again'
+      });
+      return;
+    }
 
     const baseURL = sessionStorage.getItem('baseURL');
     const url = baseURL + 'customer.php';
@@ -341,27 +447,36 @@ const Customer = () => {
             <input
               className='prod-name-input'
               type='text'
+              placeholder='Enter customer full name'
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
             />
           </div>
           <div className='div-input-add-prod'>
-            <label className='add-prod-label'>Phone Number</label>
+            <label className='add-prod-label'>Phone Number *</label>
             <input
               className='prod-name-input'
               type='text'
+              placeholder='e.g., 0912-345-6789 or +63912-345-6789'
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
             />
+            <small style={{ color: '#6c757d', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+              📱 Philippine phone number format required
+            </small>
           </div>
           <div className='div-input-add-prod'>
-            <label className='add-prod-label'>Email</label>
+            <label className='add-prod-label'>Email *</label>
             <input
               className='prod-name-input'
               type='email'
+              placeholder='e.g., customer@example.com'
               value={customerEmail}
               onChange={(e) => setCustomerEmail(e.target.value)}
             />
+            <small style={{ color: '#6c757d', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+              ✉️ Must be unique and valid email format
+            </small>
           </div>
           <div className='div-input-add-cat'>
             <label className='add-prod-label'>Address</label>
@@ -440,27 +555,36 @@ const Customer = () => {
             <input
               className='prod-name-input'
               type='text'
+              placeholder='Enter customer full name'
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
             />
           </div>
           <div className='div-input-add-prod'>
-            <label className='add-prod-label'>Phone Number</label>
+            <label className='add-prod-label'>Phone Number *</label>
             <input
               className='prod-name-input'
               type='text'
+              placeholder='e.g., 0912-345-6789 or +63912-345-6789'
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
             />
+            <small style={{ color: '#6c757d', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+              📱 Philippine phone number format required
+            </small>
           </div>
           <div className='div-input-add-prod'>
-            <label className='add-prod-label'>Email</label>
+            <label className='add-prod-label'>Email *</label>
             <input
               className='prod-name-input'
               type='email'
+              placeholder='e.g., customer@example.com'
               value={customerEmail}
               onChange={(e) => setCustomerEmail(e.target.value)}
             />
+            <small style={{ color: '#6c757d', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+              ✉️ Must be unique and valid email format
+            </small>
           </div>
           <div className='div-input-add-cat'>
             <label className='add-prod-label'>Address</label>

@@ -30,6 +30,7 @@ const CombinedRequests = () => {
     const [checkedItems, setCheckedItems] = useState({});
     const [unavailableProducts, setUnavailableProducts] = useState([]);
     const [availProduct, setAvailProducts] = useState([]);
+    const [declinedProducts, setDeclinedProducts] = useState([]);
 
     // Customize Request States
     const [customizeRequestList, setCustomizeRequestList] = useState([]);
@@ -185,6 +186,72 @@ const CombinedRequests = () => {
         }
     };
 
+    const GetDeclinedProducts = async (req_id) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'requestStock.php';
+        const ID = { reqID: req_id };
+
+        try {
+            const response = await axios.get(url, {
+                params: { json: JSON.stringify(ID), operation: "GetDeclinedProducts" }
+            });
+            
+            const declinedProductIds = Array.isArray(response.data) ? response.data : [];
+            
+            // Use the current stockRequestDetails state to get product details
+            const declinedProductsList = stockRequestDetails
+                .filter(p => declinedProductIds.includes(parseInt(p.product_id)))
+                .map(p => ({
+                    product_id: p.product_id,
+                    product_name: p.product_name,
+                    description: p.description,
+                    qty: p.qty
+                }));
+            
+            setDeclinedProducts(declinedProductsList);
+        } catch (error) {
+            console.error("Error fetching declined products:", error);
+            // If table doesn't exist, just set empty array
+            setDeclinedProducts([]);
+        }
+    };
+
+    // Load declined products when stockRequestDetails changes
+    useEffect(() => {
+        if (s_reqID && stockRequestDetails.length > 0) {
+            const loadDeclined = async () => {
+                const baseURL = sessionStorage.getItem('baseURL');
+                const url = baseURL + 'requestStock.php';
+                const ID = { reqID: s_reqID };
+
+                try {
+                    const response = await axios.get(url, {
+                        params: { json: JSON.stringify(ID), operation: "GetDeclinedProducts" }
+                    });
+                    
+                    const declinedProductIds = Array.isArray(response.data) ? response.data : [];
+                    
+                    // Use the current stockRequestDetails state to get product details
+                    const declinedProductsList = stockRequestDetails
+                        .filter(p => declinedProductIds.includes(parseInt(p.product_id)))
+                        .map(p => ({
+                            product_id: p.product_id,
+                            product_name: p.product_name,
+                            description: p.description,
+                            qty: p.qty
+                        }));
+                    
+                    setDeclinedProducts(declinedProductsList);
+                } catch (error) {
+                    console.error("Error fetching declined products:", error);
+                    setDeclinedProducts([]);
+                }
+            };
+            loadDeclined();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stockRequestDetails, s_reqID]);
+
     const GetStockRequestD = async (req_id) => {
         const LocationID = parseInt(sessionStorage.getItem('location_id'));
         const baseURL = sessionStorage.getItem('baseURL');
@@ -336,6 +403,13 @@ const CombinedRequests = () => {
         const available = [];
 
         stockRequestDetails.forEach(p => {
+            // Skip declined products
+            const isDeclined = declinedProducts.some(dp => dp.product_id === p.product_id);
+            if (isDeclined) {
+                unavailable.push(p);
+                return;
+            }
+
             const av = currentStoreInventory.find(f => f.product_id === p.product_id);
             const reqQTY = p.qty;
 
@@ -350,7 +424,7 @@ const CombinedRequests = () => {
         setCheckedItems(initialChecked);
         setUnavailableProducts(unavailable);
         setAvailProducts(available);
-    }, [stockRequestDetails, currentStoreInventory]);
+    }, [stockRequestDetails, currentStoreInventory, declinedProducts]);
 
     const createNotification = async (notificationData) => {
         const baseURL = sessionStorage.getItem('baseURL');
@@ -374,21 +448,81 @@ const CombinedRequests = () => {
         const accountID = parseInt(sessionStorage.getItem('user_id'));
         const updates = [];
 
-        Object.keys(checkedItems).forEach(productId => {
-            if (checkedItems[productId]) {
-                const p = stockRequestDetails.find(r => r.product_id === parseInt(productId));
-                const u = currentStoreInventory.find(f => f.product_id === parseInt(productId));
+        // Get all products from stockRequestDetails that are NOT declined
+        // Note: Availability is NOT based on inventory - approve all non-declined products
+        const allNonDeclinedProducts = stockRequestDetails.filter(p => 
+            !declinedProducts.some(dp => dp.product_id === p.product_id)
+        );
 
-                if (u && p) {
-                    updates.push({
-                        prodID: u.product_id,
-                        pastBalance: u.qty,
-                        qty: p.qty,
-                        currentBalance: u.qty - p.qty
-                    });
-                }
+        // If user has checked items, use those (excluding declined), otherwise use all non-declined products
+        let productsToApprove = [];
+        
+        // Check if there are any checked items that are not declined
+        const checkedNonDeclined = Object.keys(checkedItems).filter(productId => {
+            if (checkedItems[productId]) {
+                const isDeclined = declinedProducts.some(dp => dp.product_id === parseInt(productId));
+                return !isDeclined;
+            }
+            return false;
+        });
+
+        if (checkedNonDeclined.length > 0) {
+            // User has manually checked items - use only checked ones (excluding declined)
+            productsToApprove = checkedNonDeclined;
+        } else {
+            // No items checked - use ALL non-declined products (regardless of inventory)
+            productsToApprove = allNonDeclinedProducts.map(p => p.product_id.toString());
+        }
+
+        // If still no products to approve, check if all products are declined
+        if (productsToApprove.length === 0) {
+            const totalProducts = stockRequestDetails.length;
+            const declinedCount = declinedProducts.length;
+            
+            if (totalProducts === declinedCount) {
+                showAlertError({
+                    icon: "warning",
+                    title: "No Products Available",
+                    text: 'All products in this request have been declined.',
+                    button: 'OK'
+                });
+            } else {
+                showAlertError({
+                    icon: "warning",
+                    title: "No Products Selected",
+                    text: 'Please select at least one product to approve.',
+                    button: 'OK'
+                });
+            }
+            return;
+        }
+
+        productsToApprove.forEach(productId => {
+            const productIdInt = parseInt(productId);
+            const p = stockRequestDetails.find(r => r.product_id === productIdInt);
+            const u = currentStoreInventory.find(f => f.product_id === productIdInt);
+
+            // Calculate inventory updates if product exists in inventory
+            if (u && p) {
+                updates.push({
+                    prodID: u.product_id,
+                    pastBalance: u.qty,
+                    qty: p.qty,
+                    currentBalance: u.qty - p.qty
+                });
             }
         });
+
+        // Get product details for transfer list (all non-declined products being approved)
+        const filteredAvailProducts = allNonDeclinedProducts.filter(p => 
+            productsToApprove.includes(p.product_id.toString())
+        );
+        
+        // Combine declined products with unavailable products for the backend
+        const allUnavailableProducts = [
+            ...unavailableProducts,
+            ...declinedProducts.map(dp => ({ product_id: dp.product_id }))
+        ];
 
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'requestStock.php';
@@ -399,16 +533,28 @@ const CombinedRequests = () => {
             reqToID: reqToId
         };
 
+        console.log('ApproveStockRequest - Debug Info:', {
+            productsToApprove,
+            allNonDeclinedProducts,
+            filteredAvailProducts,
+            allUnavailableProducts,
+            updates,
+            checkedItems,
+            declinedProducts
+        });
+
         try {
             const response = await axios.get(url, {
                 params: {
                     json: JSON.stringify(reqDetails1),
                     operation: "AcceptRequestWR",
-                    transferList: JSON.stringify(availProduct),
-                    unavailList: JSON.stringify(unavailableProducts),
+                    transferList: JSON.stringify(filteredAvailProducts),
+                    unavailList: JSON.stringify(allUnavailableProducts),
                     inventoryReportList: JSON.stringify(updates),
                 }
             });
+
+            console.log('AcceptRequestWR Response:', response.data);
 
             if (response.data === 'Success') {
                 AlertSucces(
@@ -419,6 +565,9 @@ const CombinedRequests = () => {
                 );
                 GetStockRequest();
                 setShowStockModal(false);
+                setDeclinedProducts([]);
+                setCheckedItems({});
+                
                 Logs(accountID, 'Accept the request #' + s_reqID);
 
                 // Send notification to the requesting location (Inventory Manager role)
@@ -433,20 +582,230 @@ const CombinedRequests = () => {
                     referenceId: s_reqID
                 });
             } else {
-                console.log(accountID);
-                
-                console.log(response.data);
+                console.error('AcceptRequestWR failed:', {
+                    accountID,
+                    responseData: response.data,
+                    reqDetails: reqDetails1,
+                    filteredAvailProducts,
+                    allUnavailableProducts,
+                    updates
+                });
                 
                 showAlertError({
                     icon: "error",
                     title: "Something Went Wrong!",
-                    text: 'Failed to approve the request!',
+                    text: `Failed to approve the request! Server response: ${JSON.stringify(response.data)}`,
                     button: 'Try Again'
                 });
             }
         } catch (error) {
             console.error("Error approving stock request:", error);
+            console.error("Error details:", {
+                message: error.message,
+                response: error.response?.data,
+                request: error.config
+            });
+            
+            showAlertError({
+                icon: "error",
+                title: "Network Error",
+                text: `Failed to connect to server. Please check your connection and try again. Error: ${error.message}`,
+                button: 'OK'
+            });
         }
+    };
+
+    const DeclineProduct = async (product) => {
+        // Show confirmation dialog
+        const confirmed = await new Promise((resolve) => {
+            import('sweetalert2').then((Swal) => {
+                Swal.default.fire({
+                    icon: 'warning',
+                    title: 'Decline Product?',
+                    text: `Are you sure you want to decline ${product.product_name} (${product.description}) from this request?`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Decline',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true
+                }).then((result) => {
+                    resolve(result.isConfirmed);
+                });
+            });
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        const accountID = parseInt(sessionStorage.getItem('user_id'));
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'requestStock.php';
+        
+        // Save declined product to database
+        const declineDetails = {
+            reqID: s_reqID,
+            productID: product.product_id,
+            accID: accountID,
+            reqFromID: reqFromId,
+            reqToID: reqToId
+        };
+
+        try {
+            // Save declined product to database immediately
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify(declineDetails),
+                    operation: "DeclineProductFromRequest"
+                }
+            });
+
+            if (response.data === 'Success') {
+                console.log('Product declined and saved to database');
+            } else {
+                console.error('Failed to save declined product:', response.data);
+            }
+        } catch (error) {
+            console.error('Error saving declined product to database:', error);
+            // Still update local state even if database save fails
+        }
+        
+        // Add product to declined list
+        setDeclinedProducts(prev => {
+            if (!prev.find(p => p.product_id === product.product_id)) {
+                return [...prev, product];
+            }
+            return prev;
+        });
+
+        // Remove from checked items if it was checked
+        setCheckedItems(prev => {
+            const newChecked = { ...prev };
+            delete newChecked[product.product_id];
+            return newChecked;
+        });
+
+        // Remove from available products if it was there
+        setAvailProducts(prev => prev.filter(p => p.product_id !== product.product_id));
+
+        AlertSucces(
+            `Product ${product.product_name} declined from request`,
+            "success",
+            true,
+            'Got It'
+        );
+
+        Logs(accountID, `Declined product ${product.product_name} (ID: ${product.product_id}) from request #${s_reqID}`);
+    };
+
+    const DeclineStockRequest = async () => {
+        // Show confirmation dialog
+        const confirmed = await new Promise((resolve) => {
+            import('sweetalert2').then((Swal) => {
+                Swal.default.fire({
+                    icon: 'warning',
+                    title: 'Decline Request?',
+                    text: `Are you sure you want to decline stock request #${s_reqID}? This action cannot be undone.`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Decline',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true
+                }).then((result) => {
+                    resolve(result.isConfirmed);
+                });
+            });
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        const accountID = parseInt(sessionStorage.getItem('user_id'));
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'requestStock.php';
+        
+        // Try multiple operation names that might exist
+        const operations = [
+            "DeclineRequestWR",
+            "RejectRequestWR",
+            "UpdateRequestStatus",
+            "CancelRequestWR"
+        ];
+
+        const reqDetails1 = {
+            reqID: s_reqID,
+            accID: accountID,
+            reqFromID: reqFromId,
+            reqToID: reqToId,
+            status: 'Declined'
+        };
+
+        console.log('Declining stock request:', reqDetails1);
+
+        let lastError = null;
+        
+        // Try each operation until one works
+        for (const operation of operations) {
+            try {
+                console.log(`Trying operation: ${operation}`);
+                const response = await axios.get(url, {
+                    params: {
+                        json: JSON.stringify(reqDetails1),
+                        operation: operation
+                    }
+                });
+
+                console.log(`Response for ${operation}:`, response.data);
+
+                // Check for success in different formats
+                if (response.data === 'Success' || 
+                    response.data?.success === true || 
+                    response.data?.message === 'Success' ||
+                    response.data === '1' ||
+                    (typeof response.data === 'string' && response.data.toLowerCase().includes('success'))) {
+                    
+                    AlertSucces(
+                        "Request successfully declined!",
+                        "success",
+                        true,
+                        'Got It'
+                    );
+                    GetStockRequest();
+                    setShowStockModal(false);
+                    setDeclinedProducts([]);
+                    Logs(accountID, 'Decline the request #' + s_reqID);
+
+                    // Send notification to the requesting location (Inventory Manager role)
+                    await createNotification({
+                        type: 'stock_request',
+                        title: 'Stock Request Declined',
+                        message: `Your stock request #${s_reqID} has been declined by ${s_reqFrom}. Please contact them for more information.`,
+                        locationId: reqFromId,
+                        targetRole: 'Inventory Manager',
+                        productId: null,
+                        customerId: null,
+                        referenceId: s_reqID
+                    });
+                    return; // Success, exit function
+                }
+            } catch (error) {
+                console.log(`Operation ${operation} failed:`, error.response?.data || error.message);
+                lastError = error;
+                continue; // Try next operation
+            }
+        }
+
+        // If all operations failed, show error
+        console.error('All decline operations failed. Last error:', lastError);
+        showAlertError({
+            icon: "error",
+            title: "Backend Operation Not Found",
+            text: 'The decline operation is not available in the backend. Please contact the administrator to add this functionality.',
+            button: 'OK'
+        });
     };
 
     // ============= CUSTOMIZE REQUEST FUNCTIONS =============
@@ -586,11 +945,120 @@ const CombinedRequests = () => {
         }
     };
 
+    const DeclineCustomizeRequest = async () => {
+        // Show confirmation dialog
+        const confirmed = await new Promise((resolve) => {
+            import('sweetalert2').then((Swal) => {
+                Swal.default.fire({
+                    icon: 'warning',
+                    title: 'Decline Request?',
+                    text: `Are you sure you want to decline customize request #${c_reqID}? This action cannot be undone.`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Decline',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true
+                }).then((result) => {
+                    resolve(result.isConfirmed);
+                });
+            });
+        });
+
+        if (!confirmed) {
+            return;
+        }
+
+        const accountID = parseInt(sessionStorage.getItem('user_id'));
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'customizeProducts.php';
+        
+        // Try multiple operation names that might exist
+        const operations = [
+            "DeclineCustomizeRequestWR",
+            "RejectCustomizeRequestWR",
+            "UpdateCustomizeRequestStatus",
+            "CancelCustomizeRequestWR"
+        ];
+
+        const reqDetails1 = { 
+            accID: accountID, 
+            customizeID: c_reqID,
+            status: 'Declined'
+        };
+
+        console.log('Declining customize request:', reqDetails1);
+
+        let lastError = null;
+        
+        // Try each operation until one works
+        for (const operation of operations) {
+            try {
+                console.log(`Trying operation: ${operation}`);
+                const response = await axios.get(url, {
+                    params: { 
+                        json: JSON.stringify(reqDetails1), 
+                        operation: operation 
+                    }
+                });
+
+                console.log(`Response for ${operation}:`, response.data);
+
+                // Check for success in different formats
+                if (response.data === 'Success' || 
+                    response.data?.success === true || 
+                    response.data?.message === 'Success' ||
+                    response.data === '1' ||
+                    (typeof response.data === 'string' && response.data.toLowerCase().includes('success'))) {
+                    
+                    AlertSucces(
+                        "Customize request successfully declined!",
+                        "success",
+                        true,
+                        'Got It'
+                    );
+                    GetCustomizeRequest();
+                    GetSemiDetails();
+                    GetFullDetails();
+                    setShowCustomizeModal(false);
+                    Logs(accountID, 'Decline the customize request #' + c_reqID);
+
+                    // Send notification to the requesting location (Sales Clerk role)
+                    await createNotification({
+                        type: 'customize_request',
+                        title: 'Customize Request Declined',
+                        message: `Your customize request #${c_reqID} has been declined by ${c_reqFrom}. Please contact them for more information.`,
+                        locationId: c_reqFromId,
+                        targetRole: 'Sales Clerk',
+                        productId: null,
+                        customerId: null,
+                        referenceId: c_reqID
+                    });
+                    return; // Success, exit function
+                }
+            } catch (error) {
+                console.log(`Operation ${operation} failed:`, error.response?.data || error.message);
+                lastError = error;
+                continue; // Try next operation
+            }
+        }
+
+        // If all operations failed, show error
+        console.error('All decline operations failed. Last error:', lastError);
+        showAlertError({
+            icon: "error",
+            title: "Backend Operation Not Found",
+            text: 'The decline operation is not available in the backend. Please contact the administrator to add this functionality.',
+            button: 'OK'
+        });
+    };
+
     const openStockModal = async (request) => {
-        await GetStockRequestDetails(request.request_stock_id);
+        setCurrentStockPage(1);
+        setDeclinedProducts([]); // Reset declined products initially
         await GetStockRequestD(request.request_stock_id);
         await GetCurrentStoreInventory(location_id);
-        setCurrentStockPage(1);
+        await GetStockRequestDetails(request.request_stock_id); // This will trigger useEffect to load declined products
         setShowStockModal(true);
     };
 
@@ -697,23 +1165,74 @@ const CombinedRequests = () => {
                             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 0 }}>
                                 <thead style={{ backgroundColor: '#f8f9fa', position: 'sticky', top: 0, zIndex: 1 }}>
                                     <tr>
-                                        <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '25%' }}>Product Code</th>
-                                        <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '55%' }}>Description</th>
-                                        <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '20%', textAlign: 'center' }}>QTY</th>
+                                        <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '20%' }}>Product Code</th>
+                                        <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '45%' }}>Description</th>
+                                        <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '15%', textAlign: 'center' }}>QTY</th>
+                                        <th style={{ padding: '12px', border: '1px solid #dee2e6', width: '20%', textAlign: 'center' }}>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {currentStockItems.length > 0 ? (
-                                        currentStockItems.map((p, i) => (
-                                            <tr key={i}>
-                                                <td style={{ padding: '12px', border: '1px solid #dee2e6', fontWeight: '500' }}>{p.product_name}</td>
-                                                <td style={{ padding: '12px', border: '1px solid #dee2e6' }}>{p.description}</td>
-                                                <td style={{ padding: '12px', border: '1px solid #dee2e6', textAlign: 'center', fontWeight: '500', fontSize: '16px' }}>{p.qty}</td>
-                                            </tr>
-                                        ))
+                                        currentStockItems.map((p, i) => {
+                                            const isDeclined = declinedProducts.some(dp => dp.product_id === p.product_id);
+                                            return (
+                                                <tr 
+                                                    key={i}
+                                                    style={{
+                                                        backgroundColor: isDeclined ? '#f8d7da' : 'transparent',
+                                                        opacity: isDeclined ? 0.6 : 1
+                                                    }}
+                                                >
+                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6', fontWeight: '500' }}>
+                                                        {p.product_name}
+                                                        {isDeclined && (
+                                                            <span style={{
+                                                                marginLeft: '8px',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px',
+                                                                fontSize: '10px',
+                                                                backgroundColor: '#dc3545',
+                                                                color: 'white',
+                                                                fontWeight: 'bold'
+                                                            }}>
+                                                                DECLINED
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6' }}>{p.description}</td>
+                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6', textAlign: 'center', fontWeight: '500', fontSize: '16px' }}>{p.qty}</td>
+                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6', textAlign: 'center' }}>
+                                                        {!isDeclined ? (
+                                                            <Button
+                                                                variant="outline-danger"
+                                                                size="sm"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    DeclineProduct(p);
+                                                                }}
+                                                                style={{
+                                                                    fontSize: '12px',
+                                                                    padding: '4px 12px'
+                                                                }}
+                                                            >
+                                                                Decline
+                                                            </Button>
+                                                        ) : (
+                                                            <span style={{
+                                                                color: '#dc3545',
+                                                                fontWeight: 'bold',
+                                                                fontSize: '12px'
+                                                            }}>
+                                                                Declined
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
-                                            <td colSpan="3" style={{ textAlign: "center", padding: "30px", fontStyle: "italic", color: '#666' }}>
+                                            <td colSpan="4" style={{ textAlign: "center", padding: "30px", fontStyle: "italic", color: '#666' }}>
                                                 <div style={{ fontSize: '48px', marginBottom: '15px' }}>📦</div>
                                                 <div style={{ fontSize: '16px' }}>No items found</div>
                                             </td>
@@ -746,13 +1265,33 @@ const CombinedRequests = () => {
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => { setShowStockModal(false); setAvailProducts([]); }}>Close</Button>
-                    <Button variant="primary" onClick={ApproveStockRequest}>Accept</Button>
+                    <Button variant="secondary" onClick={() => { 
+                        setShowStockModal(false); 
+                        setAvailProducts([]); 
+                        setDeclinedProducts([]);
+                    }}>
+                        Close
+                    </Button>
+                    <Button variant="danger" onClick={DeclineStockRequest} style={{ marginRight: '10px' }}>
+                        Decline All
+                    </Button>
+                    <Button variant="primary" onClick={ApproveStockRequest}>
+                        Accept Selected
+                        {Object.keys(checkedItems).filter(key => checkedItems[key]).length > 0 && (
+                            <span style={{ marginLeft: '8px', fontSize: '12px' }}>
+                                ({Object.keys(checkedItems).filter(key => checkedItems[key]).length})
+                            </span>
+                        )}
+                    </Button>
                 </Modal.Footer>
             </Modal>
 
             {/* Customize Request Modal */}
-            <Modal show={showCustomizeModal} onHide={() => { setShowCustomizeModal(false); setCurrentSemiDetails([]); setCurrentFullDetails([]); }} size="xl" className='request-modal'>
+            <Modal show={showCustomizeModal} onHide={() => { 
+                setShowCustomizeModal(false); 
+                setCurrentSemiDetails([]); 
+                setCurrentFullDetails([]);
+            }} size="xl" className='request-modal'>
                 <Modal.Header closeButton className='searched-product-header'>
                     <Modal.Title>Customize Request Details</Modal.Title>
                 </Modal.Header>
@@ -891,7 +1430,11 @@ const CombinedRequests = () => {
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => { setShowCustomizeModal(false); setCurrentSemiDetails([]); setCurrentFullDetails([]); }}>Close</Button>
+                    <Button variant="secondary" onClick={() => { 
+                        setShowCustomizeModal(false); 
+                        setCurrentSemiDetails([]); 
+                        setCurrentFullDetails([]);
+                    }}>Close</Button>
                     <Button variant="primary" onClick={ApproveCustomizeRequest}>Accept Request</Button>
                 </Modal.Footer>
             </Modal>

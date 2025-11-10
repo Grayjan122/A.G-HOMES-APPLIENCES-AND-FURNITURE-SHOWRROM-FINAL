@@ -36,6 +36,7 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
 
     const [installmentList, setInstallmentList] = useState([]);
     const [overdueCustomers, setOverdueCustomers] = useState([]);
+    const [groupedOverdueCustomers, setGroupedOverdueCustomers] = useState([]); // Grouped by customer
     const [customerList, setCustomerList] = useState([]);
 
     // Email notification states
@@ -43,6 +44,8 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
     const [emailResults, setEmailResults] = useState(null);
     const [selectedCollection, setSelectedCollection] = useState(null); // 'daily', 'weekly', 'monthly'
     const [showCollectionModal, setShowCollectionModal] = useState(false);
+    const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+    const [showCustomerPaymentsModal, setShowCustomerPaymentsModal] = useState(false);
 
     const [counts, setCounts] = useState({
         prodCount: '0',
@@ -280,6 +283,40 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
         
         setOverdueCustomers(overdue);
 
+        // Group overdue installments by customer
+        const grouped = overdue.reduce((acc, installment) => {
+            const custId = installment.cust_id;
+            
+            if (!acc[custId]) {
+                acc[custId] = {
+                    cust_id: custId,
+                    installments: [],
+                    totalAmount: 0,
+                    totalAmountWithPenalty: 0,
+                    maxDaysPastDue: 0,
+                    paymentCount: 0
+                };
+            }
+            
+            acc[custId].installments.push(installment);
+            acc[custId].totalAmount += installment.baseAmount || 0;
+            acc[custId].totalAmountWithPenalty += installment.amountWithPenalty || 0;
+            acc[custId].maxDaysPastDue = Math.max(acc[custId].maxDaysPastDue, installment.daysPastDue || 0);
+            acc[custId].paymentCount += 1;
+            
+            return acc;
+        }, {});
+
+        // Convert to array and sort by total amount with penalty (highest first)
+        const groupedArray = Object.values(grouped)
+            .map(customer => ({
+                ...customer,
+                hasPenalty: customer.maxDaysPastDue > GRACE_PERIOD_DAYS
+            }))
+            .sort((a, b) => b.totalAmountWithPenalty - a.totalAmountWithPenalty);
+
+        setGroupedOverdueCustomers(groupedArray);
+
         const totalOverdue = overdue.reduce((sum, customer) => {
             return sum + (customer.amountWithPenalty || 0);
         }, 0);
@@ -444,6 +481,19 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                        installment.due_date <= endDate;
             })
             .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+    };
+
+    const getCustomerPayments = (custId) => {
+        if (!custId || !overdueCustomers.length) return [];
+        
+        return overdueCustomers
+            .filter(installment => installment.cust_id === custId)
+            .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+    };
+
+    const handleCustomerClick = (custId) => {
+        setSelectedCustomerId(custId);
+        setShowCustomerPaymentsModal(true);
     };
 
     const countConfigs = [
@@ -3607,7 +3657,7 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                 </div>
 
                 {/* Debug Info - Remove after testing */}
-                <div className="alert alert-info" style={{ margin: '20px 0' }}>
+                {/* <div className="alert alert-info" style={{ margin: '20px 0' }}>
                     <h6>🔧 Debug Info:</h6>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                         <div>
@@ -3649,7 +3699,7 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                             </pre>
                         )}
                     </details>
-                </div>
+                </div> */}
 
                 {/* Collection Insights */}
                 <div className="row mb-4">
@@ -3697,10 +3747,10 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                     <span>Total Customers with Dues</span>
                                     <h4 style={{ color: '#46f436ff' }}>{counts.totalCustomersWithDue}</h4>
                                 </div>
-                                {overdueCustomers.length > 0 && (
+                                {groupedOverdueCustomers.length > 0 && (
                                     <div style={{ padding: '12px', background: '#ffebee', borderRadius: '6px' }}>
-                                        <span>Overdue Payments Count</span>
-                                        <h4 style={{ color: '#E91E63' }}>{overdueCustomers.length}</h4>
+                                        <span>Overdue Customers Count</span>
+                                        <h4 style={{ color: '#E91E63' }}>{groupedOverdueCustomers.length}</h4>
                                         <small style={{ color: '#E91E63' }}>Total Overdue: {counts.overdueAmount}</small>
                                     </div>
                                 )}
@@ -3710,7 +3760,7 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                 </div>
 
                 {/* No Overdue Message */}
-                {installmentList.length > 0 && overdueCustomers.length === 0 && (
+                {installmentList.length > 0 && groupedOverdueCustomers.length === 0 && (
                     <div style={{
                         background: 'white',
                         borderRadius: '12px',
@@ -3735,7 +3785,7 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                 )}
 
                 {/* Overdue Customers Board */}
-                {overdueCustomers.length > 0 && (
+                {groupedOverdueCustomers.length > 0 && (
                     <div style={{
                         background: 'white',
                         borderRadius: '12px',
@@ -3752,7 +3802,7 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                             alignItems: 'center',
                             gap: '8px'
                         }}>
-                            🚨 Overdue Customers ({overdueCustomers.length})
+                            🚨 Overdue Customers ({groupedOverdueCustomers.length})
                         </h2>
 
                         {/* Grace Period Info Box */}
@@ -3820,21 +3870,12 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                         </th>
                                         <th style={{
                                             padding: '12px',
-                                            textAlign: 'left',
+                                            textAlign: 'center',
                                             borderBottom: '2px solid #ddd',
                                             color: '#666',
                                             fontWeight: '600'
                                         }}>
-                                            Payment #
-                                        </th>
-                                        <th style={{
-                                            padding: '12px',
-                                            textAlign: 'left',
-                                            borderBottom: '2px solid #ddd',
-                                            color: '#666',
-                                            fontWeight: '600'
-                                        }}>
-                                            Due Date
+                                            Overdue Payments
                                         </th>
                                         <th style={{
                                             padding: '12px',
@@ -3843,7 +3884,7 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                             color: '#666',
                                             fontWeight: '600'
                                         }}>
-                                            Amount Due
+                                            Total Amount Due
                                         </th>
                                         <th style={{
                                             padding: '12px',
@@ -3852,7 +3893,7 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                             color: '#666',
                                             fontWeight: '600'
                                         }}>
-                                            Days Overdue
+                                            Max Days Overdue
                                         </th>
                                         <th style={{
                                             padding: '12px',
@@ -3863,14 +3904,23 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                         }}>
                                             Status
                                         </th>
+                                        <th style={{
+                                            padding: '12px',
+                                            textAlign: 'center',
+                                            borderBottom: '2px solid #ddd',
+                                            color: '#666',
+                                            fontWeight: '600'
+                                        }}>
+                                            Action
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {overdueCustomers.slice(0, 10).map((customer, index) => (
+                                    {groupedOverdueCustomers.slice(0, 10).map((customer, index) => (
                                         <tr key={index} style={{
                                             borderBottom: '1px solid #eee',
-                                            backgroundColor: customer.daysPastDue > 30 ? '#ffebee' :
-                                                customer.daysPastDue > 3 ? '#fff3e0' : '#e8f5e9',
+                                            backgroundColor: customer.maxDaysPastDue > 30 ? '#ffebee' :
+                                                customer.maxDaysPastDue > 3 ? '#fff3e0' : '#e8f5e9',
                                             cursor: 'pointer'
                                         }}
                                             onMouseEnter={(e) => {
@@ -3878,9 +3928,10 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                             }}
                                             onMouseLeave={(e) => {
                                                 e.currentTarget.style.backgroundColor =
-                                                    customer.daysPastDue > 30 ? '#ffebee' :
-                                                        customer.daysPastDue > 3 ? '#fff3e0' : '#e8f5e9';
+                                                    customer.maxDaysPastDue > 30 ? '#ffebee' :
+                                                        customer.maxDaysPastDue > 3 ? '#fff3e0' : '#e8f5e9';
                                             }}
+                                            onClick={() => handleCustomerClick(customer.cust_id)}
                                         >
                                             <td style={{
                                                 padding: '12px',
@@ -3891,15 +3942,11 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                             </td>
                                             <td style={{
                                                 padding: '12px',
-                                                color: '#666'
+                                                textAlign: 'center',
+                                                color: '#666',
+                                                fontWeight: 'bold'
                                             }}>
-                                                Payment {customer.payment_number || 'N/A'}
-                                            </td>
-                                            <td style={{
-                                                padding: '12px',
-                                                color: '#666'
-                                            }}>
-                                                {new Date(customer.due_date).toLocaleDateString()}
+                                                {customer.paymentCount} {customer.paymentCount === 1 ? 'payment' : 'payments'}
                                             </td>
                                             <td style={{
                                                 padding: '12px',
@@ -3907,43 +3954,32 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                             }}>
                                                 <div style={{
                                                     fontWeight: 'bold',
-                                                    color: customer.hasPenalty ? '#E91E63' : '#4CAF50'
+                                                    color: customer.hasPenalty ? '#E91E63' : '#4CAF50',
+                                                    fontSize: '1.1em'
                                                 }}>
                                                     {new Intl.NumberFormat('en-PH', {
                                                         style: 'currency',
                                                         currency: 'PHP'
-                                                    }).format(customer.amountWithPenalty)}
+                                                    }).format(customer.totalAmountWithPenalty)}
                                                 </div>
-                                                {customer.hasPenalty ? (
+                                                {/* {customer.hasPenalty && (
                                                     <div style={{
                                                         fontSize: '0.75em',
                                                         color: '#E91E63',
                                                         fontWeight: 'normal'
                                                     }}>
-                                                        +5% penalty applied
+                                                        Includes 5% penalty
                                                     </div>
-                                                ) : (
-                                                    <div style={{
-                                                        fontSize: '0.75em',
-                                                        color: '#2e7d32',
-                                                        fontWeight: 'bold',
-                                                        backgroundColor: '#c8e6c9',
-                                                        padding: '2px 6px',
-                                                        borderRadius: '4px',
-                                                        display: 'inline-block'
-                                                    }}>
-                                                        {customer.daysUntilPenalty} {customer.daysUntilPenalty === 1 ? 'day' : 'days'} left
-                                                    </div>
-                                                )}
+                                                )} */}
                                             </td>
                                             <td style={{
                                                 padding: '12px',
                                                 textAlign: 'center',
                                                 fontWeight: 'bold',
-                                                color: customer.daysPastDue > 30 ? '#d32f2f' :
-                                                    customer.daysPastDue > 3 ? '#f57c00' : '#388e3c'
+                                                color: customer.maxDaysPastDue > 30 ? '#d32f2f' :
+                                                    customer.maxDaysPastDue > 3 ? '#f57c00' : '#388e3c'
                                             }}>
-                                                {customer.daysPastDue} days
+                                                {customer.maxDaysPastDue} days
                                             </td>
                                             <td style={{
                                                 padding: '12px',
@@ -3954,21 +3990,50 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                                     borderRadius: '12px',
                                                     fontSize: '0.8em',
                                                     fontWeight: 'bold',
-                                                    backgroundColor: customer.daysPastDue > 30 ? '#ffcdd2' :
-                                                        customer.daysPastDue > 3 ? '#fff3e0' : '#c8e6c9',
-                                                    color: customer.daysPastDue > 30 ? '#d32f2f' :
-                                                        customer.daysPastDue > 3 ? '#f57c00' : '#2e7d32'
+                                                    backgroundColor: customer.maxDaysPastDue > 30 ? '#ffcdd2' :
+                                                        customer.maxDaysPastDue > 3 ? '#fff3e0' : '#c8e6c9',
+                                                    color: customer.maxDaysPastDue > 30 ? '#d32f2f' :
+                                                        customer.maxDaysPastDue > 3 ? '#f57c00' : '#2e7d32'
                                                 }}>
-                                                    {customer.daysPastDue > 30 ? 'CRITICAL' :
-                                                        customer.daysPastDue > 3 ? 'OVERDUE' : 'GRACE PERIOD'}
+                                                    {customer.maxDaysPastDue > 30 ? 'CRITICAL' :
+                                                        customer.maxDaysPastDue > 3 ? 'OVERDUE' : 'GRACE PERIOD'}
                                                 </span>
+                                            </td>
+                                            <td style={{
+                                                padding: '12px',
+                                                textAlign: 'center'
+                                            }}>
+                                                <button style={{
+                                                    padding: '6px 12px',
+                                                    backgroundColor: '#667eea',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.85em',
+                                                    fontWeight: '500',
+                                                    transition: 'background-color 0.2s'
+                                                }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCustomerClick(customer.cust_id);
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = '#5568d3';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = '#667eea';
+                                                    }}
+                                                >
+                                                    View All
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
 
-                            {overdueCustomers.length > 10 && (
+                            {groupedOverdueCustomers.length > 10 && (
                                 <div style={{
                                     padding: '12px',
                                     textAlign: 'center',
@@ -3976,20 +4041,7 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                     borderTop: '1px solid #ddd',
                                     color: '#666'
                                 }}>
-                                    Showing 10 of {overdueCustomers.length} overdue customers
-                                    <button style={{
-                                        marginLeft: '10px',
-                                        padding: '4px 12px',
-                                        border: '1px solid #E91E63',
-                                        backgroundColor: 'white',
-                                        color: '#E91E63',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '0.8em'
-                                    }}
-                                        onClick={() => {/* Add view all functionality */ }}>
-                                        View All
-                                    </button>
+                                    Showing 10 of {groupedOverdueCustomers.length} overdue customers
                                 </div>
                             )}
                         </div>
@@ -4267,6 +4319,325 @@ const DashboardAdmin = ({ onNavigateToSales }) => {
                                                                             color: isToday ? '#2e7d32' : '#f57c00'
                                                                         }}>
                                                                             {isToday ? 'DUE TODAY' : 'UPCOMING'}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                )}
+
+                {/* Customer Payments Modal */}
+                {showCustomerPaymentsModal && selectedCustomerId && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1001
+                    }}
+                        onClick={() => {
+                            setShowCustomerPaymentsModal(false);
+                            setSelectedCustomerId(null);
+                        }}
+                    >
+                        <div style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            padding: '30px',
+                            maxWidth: '1000px',
+                            width: '90%',
+                            maxHeight: '80vh',
+                            overflow: 'auto',
+                            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)'
+                        }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '20px'
+                            }}>
+                                <h2 style={{
+                                    margin: 0,
+                                    color: '#333',
+                                    fontSize: '1.8em'
+                                }}>
+                                    💰 All Overdue Payments - {GetCustName(selectedCustomerId)}
+                                </h2>
+                                <button
+                                    onClick={() => {
+                                        setShowCustomerPaymentsModal(false);
+                                        setSelectedCustomerId(null);
+                                    }}
+                                    style={{
+                                        background: '#f44336',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: '40px',
+                                        height: '40px',
+                                        fontSize: '20px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            {(() => {
+                                const customerPayments = getCustomerPayments(selectedCustomerId);
+                                const totalAmount = customerPayments.reduce((sum, inst) => 
+                                    sum + (inst.amountWithPenalty || 0), 0
+                                );
+                                const today = new Date();
+                                const GRACE_PERIOD_DAYS = 3;
+
+                                return (
+                                    <>
+                                        <div style={{
+                                            padding: '16px',
+                                            backgroundColor: '#f8f9fa',
+                                            borderRadius: '8px',
+                                            marginBottom: '20px',
+                                            borderLeft: '4px solid #E91E63'
+                                        }}>
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <div>
+                                                    <strong style={{ fontSize: '1.1em', color: '#666' }}>
+                                                        Total Overdue Amount:
+                                                    </strong>
+                                                    <div style={{
+                                                        fontSize: '2em',
+                                                        fontWeight: 'bold',
+                                                        color: '#E91E63',
+                                                        marginTop: '5px'
+                                                    }}>
+                                                        {new Intl.NumberFormat('en-PH', {
+                                                            style: 'currency',
+                                                            currency: 'PHP'
+                                                        }).format(totalAmount)}
+                                                    </div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <strong style={{ fontSize: '1.1em', color: '#666' }}>
+                                                        Total Payments:
+                                                    </strong>
+                                                    <div style={{
+                                                        fontSize: '2em',
+                                                        fontWeight: 'bold',
+                                                        color: '#E91E63',
+                                                        marginTop: '5px'
+                                                    }}>
+                                                        {customerPayments.length}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {customerPayments.length === 0 ? (
+                                            <div style={{
+                                                textAlign: 'center',
+                                                padding: '40px',
+                                                color: '#999',
+                                                fontSize: '1.2em'
+                                            }}>
+                                                No overdue payments found for this customer
+                                            </div>
+                                        ) : (
+                                            <div style={{
+                                                border: '1px solid #ddd',
+                                                borderRadius: '8px',
+                                                overflow: 'hidden'
+                                            }}>
+                                                <table style={{
+                                                    width: '100%',
+                                                    borderCollapse: 'collapse',
+                                                    fontSize: '0.9em'
+                                                }}>
+                                                    <thead>
+                                                        <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                                            <th style={{
+                                                                padding: '12px',
+                                                                textAlign: 'left',
+                                                                borderBottom: '2px solid #ddd',
+                                                                color: '#666',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                Payment #
+                                                            </th>
+                                                            <th style={{
+                                                                padding: '12px',
+                                                                textAlign: 'left',
+                                                                borderBottom: '2px solid #ddd',
+                                                                color: '#666',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                Due Date
+                                                            </th>
+                                                            <th style={{
+                                                                padding: '12px',
+                                                                textAlign: 'right',
+                                                                borderBottom: '2px solid #ddd',
+                                                                color: '#666',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                Payment Calculation
+                                                            </th>
+                                                            <th style={{
+                                                                padding: '12px',
+                                                                textAlign: 'center',
+                                                                borderBottom: '2px solid #ddd',
+                                                                color: '#666',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                Days Overdue
+                                                            </th>
+                                                            <th style={{
+                                                                padding: '12px',
+                                                                textAlign: 'center',
+                                                                borderBottom: '2px solid #ddd',
+                                                                color: '#666',
+                                                                fontWeight: '600'
+                                                            }}>
+                                                                Status
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {customerPayments.map((installment, index) => {
+                                                            const dueDate = new Date(installment.due_date);
+                                                            const daysPastDue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+                                                            const hasPenalty = daysPastDue > GRACE_PERIOD_DAYS;
+                                                            const originalAmount = parseFloat(installment.baseAmount || installment.amount_due) || 0;
+                                                            const penaltyAmount = hasPenalty ? originalAmount * 0.05 : 0;
+                                                            const totalAmount = originalAmount + penaltyAmount;
+                                                            
+                                                            return (
+                                                                <tr key={index} style={{
+                                                                    borderBottom: '1px solid #eee',
+                                                                    backgroundColor: daysPastDue > 30 ? '#ffebee' :
+                                                                        daysPastDue > 3 ? '#fff3e0' : '#e8f5e9'
+                                                                }}
+                                                                    onMouseEnter={(e) => {
+                                                                        e.currentTarget.style.backgroundColor = '#f5f5f5';
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        e.currentTarget.style.backgroundColor =
+                                                                            daysPastDue > 30 ? '#ffebee' :
+                                                                                daysPastDue > 3 ? '#fff3e0' : '#e8f5e9';
+                                                                    }}
+                                                                >
+                                                                    <td style={{
+                                                                        padding: '12px',
+                                                                        fontWeight: '500',
+                                                                        color: '#333'
+                                                                    }}>
+                                                                        Payment {installment.payment_number || 'N/A'}
+                                                                    </td>
+                                                                    <td style={{
+                                                                        padding: '12px',
+                                                                        color: '#666'
+                                                                    }}>
+                                                                        {dueDate.toLocaleDateString('en-US', {
+                                                                            weekday: 'short',
+                                                                            year: 'numeric',
+                                                                            month: 'short',
+                                                                            day: 'numeric'
+                                                                        })}
+                                                                    </td>
+                                                                    <td style={{
+                                                                        padding: '12px',
+                                                                        textAlign: 'right'
+                                                                    }}>
+                                                                        <div style={{
+                                                                            display: 'flex',
+                                                                            flexDirection: 'column',
+                                                                            alignItems: 'flex-end',
+                                                                            gap: '4px'
+                                                                        }}>
+                                                                            <div style={{
+                                                                                fontSize: '0.85em',
+                                                                                color: '#666'
+                                                                            }}>
+                                                                                Original: {new Intl.NumberFormat('en-PH', {
+                                                                                    style: 'currency',
+                                                                                    currency: 'PHP'
+                                                                                }).format(originalAmount)}
+                                                                            </div>
+                                                                            {hasPenalty && (
+                                                                                <div style={{
+                                                                                    fontSize: '0.85em',
+                                                                                    color: '#E91E63',
+                                                                                    fontWeight: '500'
+                                                                                }}>
+                                                                                    + Penalty (5%): {new Intl.NumberFormat('en-PH', {
+                                                                                        style: 'currency',
+                                                                                        currency: 'PHP'
+                                                                                    }).format(penaltyAmount)}
+                                                                                </div>
+                                                                            )}
+                                                                            <div style={{
+                                                                                fontSize: '1.1em',
+                                                                                fontWeight: 'bold',
+                                                                                color: hasPenalty ? '#E91E63' : '#4CAF50',
+                                                                                borderTop: hasPenalty ? '1px solid #ddd' : 'none',
+                                                                                paddingTop: hasPenalty ? '4px' : '0',
+                                                                                marginTop: hasPenalty ? '4px' : '0'
+                                                                            }}>
+                                                                                = Total: {new Intl.NumberFormat('en-PH', {
+                                                                                    style: 'currency',
+                                                                                    currency: 'PHP'
+                                                                                }).format(totalAmount)}
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td style={{
+                                                                        padding: '12px',
+                                                                        textAlign: 'center',
+                                                                        fontWeight: 'bold',
+                                                                        color: daysPastDue > 30 ? '#d32f2f' :
+                                                                            daysPastDue > 3 ? '#f57c00' : '#388e3c'
+                                                                    }}>
+                                                                        {daysPastDue} days
+                                                                    </td>
+                                                                    <td style={{
+                                                                        padding: '12px',
+                                                                        textAlign: 'center'
+                                                                    }}>
+                                                                        <span style={{
+                                                                            padding: '4px 8px',
+                                                                            borderRadius: '12px',
+                                                                            fontSize: '0.8em',
+                                                                            fontWeight: 'bold',
+                                                                            backgroundColor: daysPastDue > 30 ? '#ffcdd2' :
+                                                                                daysPastDue > 3 ? '#fff3e0' : '#c8e6c9',
+                                                                            color: daysPastDue > 30 ? '#d32f2f' :
+                                                                                daysPastDue > 3 ? '#f57c00' : '#2e7d32'
+                                                                        }}>
+                                                                            {daysPastDue > 30 ? 'CRITICAL' :
+                                                                                daysPastDue > 3 ? 'OVERDUE' : 'GRACE PERIOD'}
                                                                         </span>
                                                                     </td>
                                                                 </tr>

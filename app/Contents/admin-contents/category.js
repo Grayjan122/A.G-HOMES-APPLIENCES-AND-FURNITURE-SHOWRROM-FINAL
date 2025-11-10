@@ -4,7 +4,6 @@ import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
-import Alert from 'react-bootstrap/Alert';
 import CustomPagination from '@/app/Components/Pagination/pagination';
 import { AlertSucces } from '@/app/Components/SweetAlert/success';
 import { showAlertError } from '@/app/Components/SweetAlert/error';
@@ -13,35 +12,20 @@ import "../../css/products.css";
 const ITEMS_PER_PAGE = 8;
 
 const CategoryAdmin = () => {
-    // Modal states
-    const [show, setShow] = useState(false);
     const [addCategoryVisible, setAddCategoryVisible] = useState(true);
     const [viewCategoryVisible, setViewCategoryVisible] = useState(true);
     const [editCategoryVisible, setEditCategoryVisible] = useState(true);
 
-    // Pagination states
     const [currentPageCategory, setCurrentPageCategory] = useState(1);
-
-    // Filter states
     const [categorySearchFilter, setCategorySearchFilter] = useState('');
 
-    // Alert states
-    const [message, setMessage] = useState('');
-    const [modalTitle, setModalTitle] = useState('');
-
-    // Form inputs
     const [category_name, setCategory_Name] = useState('');
     const [category_description, setCategory_Description] = useState('');
     const [category_id, setCategory_Id] = useState('');
 
-    // Data arrays
     const [productList, setProductList] = useState([]);
     const [categoryList, setCategoryList] = useState([]);
 
-    // Modal handlers
-    const handleClose = () => setShow(false);
-
-    // Filter categories
     const filteredCategories = useMemo(() => {
         return categoryList.filter(category => {
             if (categorySearchFilter.trim()) {
@@ -53,15 +37,18 @@ const CategoryAdmin = () => {
         });
     }, [categoryList, categorySearchFilter]);
 
-    // Pagination for categories
-    const totalPagesCategories = Math.ceil(filteredCategories.length / ITEMS_PER_PAGE);
+    const totalPagesCategories = Math.ceil(filteredCategories.length / ITEMS_PER_PAGE) || 1;
     const startIndexCategories = (currentPageCategory - 1) * ITEMS_PER_PAGE;
     const currentCategoryItems = filteredCategories.slice(startIndexCategories, startIndexCategories + ITEMS_PER_PAGE);
 
-    // Reset to page 1 when filters change
     useEffect(() => {
         setCurrentPageCategory(1);
     }, [categorySearchFilter]);
+
+    useEffect(() => {
+        GetProduct();
+        GetCategory();
+    }, []);
 
     const handlePageChangeCategory = (page) => {
         if (page >= 1 && page <= totalPagesCategories) {
@@ -69,29 +56,19 @@ const CategoryAdmin = () => {
         }
     };
 
-    // Load data on component mount
-    useEffect(() => {
-        GetProduct();
-        GetCategory();
-    }, []);
-
     const resetForm = () => {
         setCategory_Name('');
         setCategory_Description('');
         setCategory_Id('');
-        setModalTitle('');
-        setMessage('');
     };
 
     const close_modal = () => {
-        handleClose();
         setAddCategoryVisible(true);
         setViewCategoryVisible(true);
         setEditCategoryVisible(true);
         resetForm();
     };
 
-    // API Functions
     const GetProduct = async () => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'products.php';
@@ -103,9 +80,10 @@ const CategoryAdmin = () => {
                     operation: "GetProduct"
                 }
             });
-            setProductList(response.data);
+            setProductList(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error("Error fetching product list:", error);
+            setProductList([]);
         }
     };
 
@@ -120,9 +98,10 @@ const CategoryAdmin = () => {
                     operation: "GetCategory"
                 }
             });
-            setCategoryList(response.data);
+            setCategoryList(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error("Error fetching category list:", error);
+            setCategoryList([]);
         }
     };
 
@@ -130,11 +109,10 @@ const CategoryAdmin = () => {
         e.preventDefault();
 
         if (!category_name?.trim() || !category_description?.trim()) {
-           
             showAlertError({
                 icon: "warning",
                 title: "Fill in required details!",
-                text: 'Please fill all the required details!',
+                text: 'Please complete all required fields before saving.',
                 button: 'Try Again'
             });
             return;
@@ -158,12 +136,7 @@ const CategoryAdmin = () => {
             if (response.data === 'Success') {
                 GetCategory();
                 close_modal();
-                AlertSucces(
-                    "New category successfully added!",
-                    "success",
-                    true,
-                    'Okay'
-                );
+                AlertSucces("New category successfully added!", "success", true, 'Okay');
             } else {
                 showAlertError({
                     icon: "error",
@@ -180,7 +153,6 @@ const CategoryAdmin = () => {
     const GetCategoryDetail = async (category_id) => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'products.php';
-
         const categoryID = { categoryID: category_id };
 
         try {
@@ -191,18 +163,39 @@ const CategoryAdmin = () => {
                 }
             });
 
-            setCategory_Id(response.data[0].category_id);
-            setCategory_Name(response.data[0].category_name);
-            setCategory_Description(response.data[0].category_description);
+            if (Array.isArray(response.data) && response.data.length > 0) {
+                setCategory_Id(response.data[0].category_id);
+                setCategory_Name(response.data[0].category_name);
+                setCategory_Description(response.data[0].category_description);
+            }
         } catch (error) {
             console.error("Error fetching category details:", error);
         }
     };
 
     const updateCategoryDetail = async () => {
+        if (!category_id) {
+            showAlertError({
+                icon: "warning",
+                title: "Missing Category",
+                text: 'Please select a category to update.',
+                button: 'Okay'
+            });
+            return;
+        }
+
+        if (!category_name?.trim() || !category_description?.trim()) {
+            showAlertError({
+                icon: "warning",
+                title: "Incomplete Data",
+                text: 'Please fill out both the name and description before saving.',
+                button: 'Got it'
+            });
+            return;
+        }
+
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'products.php';
-
         const categoryDetails = {
             catID: category_id,
             catName: category_name,
@@ -219,14 +212,8 @@ const CategoryAdmin = () => {
 
             if (response.data === 'Success') {
                 GetCategory();
-                resetForm();
                 close_modal();
-                AlertSucces(
-                    "Category details successfully updated!",
-                    "success",
-                    true,
-                    'Okay'
-                );
+                AlertSucces("Category details successfully updated!", "success", true, 'Okay');
             } else {
                 showAlertError({
                     icon: "error",
@@ -240,9 +227,10 @@ const CategoryAdmin = () => {
         }
     };
 
-    const triggerModal = (operation, id, e) => {
+    const triggerModal = (operation, id) => {
         switch (operation) {
             case 'addCategory':
+                resetForm();
                 setAddCategoryVisible(false);
                 break;
             case 'viewCategory':
@@ -253,29 +241,21 @@ const CategoryAdmin = () => {
                 GetCategoryDetail(id);
                 setEditCategoryVisible(false);
                 break;
+            default:
+                break;
         }
     };
 
-    // Count products for a specific category
     const getProductCount = (categoryId) => {
-        return productList.filter(prod => prod.category_id === categoryId).length;
+        const idInt = categoryId ? parseInt(categoryId, 10) : 0;
+        return productList.filter(prod => {
+            const prodCatId = prod.category_id ? parseInt(prod.category_id, 10) : 0;
+            return prodCatId === idInt;
+        }).length;
     };
 
     return (
         <>
-            {/* Alert Modal */}
-            <Modal show={show} onHide={handleClose} size='sm'>
-                <Modal.Header closeButton>
-                    <Modal.Title>{modalTitle}</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>{message}</Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={handleClose}>
-                        Close
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
             {/* Add Category Modal */}
             <Modal show={!addCategoryVisible} onHide={close_modal} size='lg'>
                 <Modal.Header closeButton>
@@ -386,22 +366,23 @@ const CategoryAdmin = () => {
             </Modal>
 
             <div className='customer-main'>
-                {/* Header */}
                 <div className='customer-header'>
                     <div className='h-customer'>
                         <h1 className='h-customer'>CATEGORY MANAGEMENT</h1>
+                        <p style={{ margin: 0, color: '#6c757d', fontSize: '14px' }}>
+                            Maintain product categories and monitor linked items at a glance.
+                        </p>
                     </div>
                     <div>
                         <button
                             className='add-cust-bttn'
-                            onClick={(e) => triggerModal('addCategory', '0', e)}
+                            onClick={() => triggerModal('addCategory', '0')}
                         >
                             ADD CATEGORY+
                         </button>
                     </div>
                 </div>
 
-                {/* Search Filter */}
                 <div style={{
                     padding: '15px',
                     backgroundColor: '#ffffff',
@@ -483,7 +464,6 @@ const CategoryAdmin = () => {
                     </div>
                 </div>
 
-                {/* Categories Grid */}
                 <div className='categories-grid-container' style={{
                     padding: '20px 0',
                     minHeight: '40vh'
@@ -522,7 +502,6 @@ const CategoryAdmin = () => {
                                                 e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
                                             }}
                                         >
-                                            {/* Category Header */}
                                             <div style={{
                                                 height: '120px',
                                                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -555,7 +534,7 @@ const CategoryAdmin = () => {
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        triggerModal('editCategory', category.category_id, e);
+                                                        triggerModal('editCategory', category.category_id);
                                                     }}
                                                     style={{
                                                         position: 'absolute',
@@ -588,7 +567,6 @@ const CategoryAdmin = () => {
                                                 </button>
                                             </div>
 
-                                            {/* Category Information */}
                                             <div style={{ padding: '25px' }}>
                                                 <h3 style={{
                                                     margin: '0 0 15px 0',
@@ -657,135 +635,10 @@ const CategoryAdmin = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                <div style={{
-                                                    marginTop: '20px',
-                                                    padding: '10px 0',
-                                                    borderTop: '1px solid #f1f3f4',
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    alignItems: 'center'
-                                                }}>
-                                                    <div style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '8px'
-                                                    }}>
-                                                        <div style={{
-                                                            width: '8px',
-                                                            height: '8px',
-                                                            borderRadius: '50%',
-                                                            backgroundColor: productCount > 0 ? '#28a745' : '#ffc107'
-                                                        }}></div>
-                                                        <span style={{
-                                                            fontSize: '13px',
-                                                            color: '#6c757d',
-                                                            fontWeight: '500'
-                                                        }}>
-                                                            {productCount > 0 ? 'Active Category' : 'Empty Category'}
-                                                        </span>
-                                                    </div>
-
-                                                    <div style={{
-                                                        fontSize: '12px',
-                                                        color: '#adb5bd',
-                                                        fontStyle: 'italic'
-                                                    }}>
-                                                        Click to view details
-                                                    </div>
-                                                </div>
                                             </div>
                                         </div>
                                     );
                                 })}
-                            </div>
-
-                            {/* Statistics Summary */}
-                            <div style={{
-                                marginTop: '30px',
-                                padding: '20px',
-                                backgroundColor: '#f8f9fa',
-                                borderRadius: '10px',
-                                border: '1px solid #e9ecef'
-                            }}>
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                                    gap: '20px',
-                                    textAlign: 'center'
-                                }}>
-                                    <div>
-                                        <div style={{
-                                            fontSize: '28px',
-                                            fontWeight: '700',
-                                            color: '#007bff',
-                                            marginBottom: '5px'
-                                        }}>
-                                            {filteredCategories.length}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '14px',
-                                            color: '#6c757d',
-                                            fontWeight: '500'
-                                        }}>
-                                            Total Categories
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div style={{
-                                            fontSize: '28px',
-                                            fontWeight: '700',
-                                            color: '#28a745',
-                                            marginBottom: '5px'
-                                        }}>
-                                            {filteredCategories.filter(cat => getProductCount(cat.category_id) > 0).length}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '14px',
-                                            color: '#6c757d',
-                                            fontWeight: '500'
-                                        }}>
-                                            Active Categories
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div style={{
-                                            fontSize: '28px',
-                                            fontWeight: '700',
-                                            color: '#ffc107',
-                                            marginBottom: '5px'
-                                        }}>
-                                            {filteredCategories.filter(cat => getProductCount(cat.category_id) === 0).length}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '14px',
-                                            color: '#6c757d',
-                                            fontWeight: '500'
-                                        }}>
-                                            Empty Categories
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div style={{
-                                            fontSize: '28px',
-                                            fontWeight: '700',
-                                            color: '#17a2b8',
-                                            marginBottom: '5px'
-                                        }}>
-                                            {productList.length}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '14px',
-                                            color: '#6c757d',
-                                            fontWeight: '500'
-                                        }}>
-                                            Total Products
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </>
                     ) : (
@@ -798,7 +651,7 @@ const CategoryAdmin = () => {
                             textAlign: 'center',
                             color: '#6c757d',
                             padding: '60px 20px',
-                            minHeight: '400px'
+                            minHeight: '300px'
                         }}>
                             <div style={{
                                 fontSize: '64px',
@@ -816,7 +669,7 @@ const CategoryAdmin = () => {
                                 {categoryList.length === 0 ? 'No categories available' : 'No categories match the current filters'}
                             </h3>
                             <p style={{
-                                margin: '0 0 20px 0',
+                                margin: '0',
                                 fontSize: '16px',
                                 maxWidth: '400px',
                                 lineHeight: '1.5',
@@ -829,8 +682,9 @@ const CategoryAdmin = () => {
                             </p>
                             {categoryList.length === 0 && (
                                 <button
-                                    onClick={(e) => triggerModal('addCategory', '0', e)}
+                                    onClick={() => triggerModal('addCategory', '0')}
                                     style={{
+                                        marginTop: '20px',
                                         padding: '12px 24px',
                                         backgroundColor: '#007bff',
                                         color: 'white',
@@ -855,7 +709,6 @@ const CategoryAdmin = () => {
                     )}
                 </div>
 
-                {/* Categories Pagination */}
                 {totalPagesCategories > 1 && currentCategoryItems && currentCategoryItems.length > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
                         <CustomPagination

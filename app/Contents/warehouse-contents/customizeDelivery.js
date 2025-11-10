@@ -10,7 +10,7 @@ import CustomPagination from '@/app/Components/Pagination/pagination';
 import { AlertSucces } from '@/app/Components/SweetAlert/success';
 import { showAlertError } from '@/app/Components/SweetAlert/error';
 
-const ITEMS_PER_PAGE = 9;
+const ITEMS_PER_PAGE = 12;
 const ITEMS_PER_PAGE_MODAL = 5;
 
 const DeliveryCustomizeWR = () => {
@@ -39,6 +39,7 @@ const DeliveryCustomizeWR = () => {
     const [alert, setAlert] = useState({ show: false, message: '', variant: '', bg: '' });
     const [dateAndTime, setDateAndTime] = useState(null);
     const [reqDateTime, setReqDateTime] = useState("");
+    const [declinedProducts, setDeclinedProducts] = useState([]);
 
     const formatDate = (dateStr) => {
         const months = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -117,20 +118,29 @@ const DeliveryCustomizeWR = () => {
         const ID = {
             locID: locationID
         }
-        console.log(ID);
+        console.log('[fetchNormalDeliveryList] Fetching deliveries for location:', locationID);
 
         try {
             const response = await axios.get(url, {
                 params: {
                     json: JSON.stringify(ID),
-                    operation: "GetReqDelivery"
+                    operation: "GetNormalDeliveries"
                 }
             });
-            setNormalDeliveryList(response.data);
-            // console.log(response.data + locationID);
+            
+            // Handle response - check if it's an error object or data array
+            if (response.data && typeof response.data === 'object' && response.data.error) {
+                console.error("Error from backend:", response.data.error);
+                setNormalDeliveryList([]);
+            } else {
+                const deliveryData = Array.isArray(response.data) ? response.data : [];
+                console.log('[fetchNormalDeliveryList] Fetched', deliveryData.length, 'deliveries');
+                setNormalDeliveryList(deliveryData);
+            }
 
         } catch (error) {
             console.error("Error fetching normal delivery list:", error);
+            setNormalDeliveryList([]);
         }
     };
 
@@ -237,23 +247,126 @@ const DeliveryCustomizeWR = () => {
         }
     };
 
-    const GetNormalDeliveryDetails = async (transaction_id) => {
+    // Helper function to fetch declined products from database
+    const GetDeclinedProducts = async (req_id) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'requestStock.php';
+        const ID = { reqID: req_id };
+        try {
+            const response = await axios.get(url, {
+                params: { json: JSON.stringify(ID), operation: "GetDeclinedProducts" }
+            });
+            
+            // Handle various response formats - Axios should auto-parse JSON
+            let declinedProductIds = [];
+            let data = response.data;
+            
+            // If response is a string, parse it
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                } catch (e) {
+                    console.error('Error parsing JSON string:', e);
+                    data = [];
+                }
+            }
+            
+            // Extract product IDs from response
+            if (Array.isArray(data)) {
+                declinedProductIds = data
+                    .map(id => parseInt(id))
+                    .filter(id => !isNaN(id));
+            } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+                // Handle object response (e.g., {0: 123, 1: 456})
+                declinedProductIds = Object.values(data)
+                    .map(id => parseInt(id))
+                    .filter(id => !isNaN(id));
+            }
+            
+            console.log(`[GetDeclinedProducts] Request ${req_id}: Found ${declinedProductIds.length} declined products from database:`, declinedProductIds);
+            
+            setDeclinedProducts(declinedProductIds);
+            return declinedProductIds; // Return for immediate use
+        } catch (error) {
+            console.error("Error fetching declined products from database:", error);
+            console.error("Error details:", error.response?.data || error.message);
+            setDeclinedProducts([]);
+            return [];
+        }
+    };
+
+    const GetNormalDeliveryDetails = async (r_delivery_id) => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'requestStock.php';
         const ID = {
-            reqID: transaction_id
+            r_delivery_id: r_delivery_id
         };
 
         try {
+            console.log(`[GetNormalDeliveryDetails] Fetching delivery details for r_delivery_id: ${r_delivery_id}`);
+            
+            // Fetch delivery details from request_delivery_details table (batch system)
             const response = await axios.get(url, {
                 params: {
                     json: JSON.stringify(ID),
-                    operation: "GetRequestDetails"
+                    operation: "GetNormalDeliveryDetailsFromBatch"
                 }
             });
-            setDeliveryDetails(response.data);
+            
+            // Handle error response
+            if (response.data && typeof response.data === 'object' && response.data.error) {
+                console.error("Error from backend:", response.data.error);
+                setDeliveryDetails([]);
+                return;
+            }
+            
+            console.log(`[GetNormalDeliveryDetails] Fetched ${response.data?.length || 0} products from request_delivery_details`);
+            
+            // Ensure response.data is an array
+            const deliveryDetails = Array.isArray(response.data) ? response.data : [];
+            
+            // No need to filter declined products here since delivery details are already
+            // from the delivery batch (only delivered items are in request_delivery_details)
+            // But we can still filter if needed for consistency
+            const request_stock_id = deliveryDetails.length > 0 ? deliveryDetails[0].request_stock_id : null;
+            
+            if (request_stock_id) {
+                // Fetch declined products to filter them out
+                const declinedProductIds = await GetDeclinedProducts(request_stock_id);
+                console.log(`[GetNormalDeliveryDetails] Found ${declinedProductIds.length} declined products for request ${request_stock_id}`);
+                
+                if (declinedProductIds.length > 0) {
+                    // Filter out declined products
+                    const declinedIdsAsNumbers = declinedProductIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+                    const declinedIdsAsStrings = declinedProductIds.map(id => String(id));
+                    
+                    const filteredData = deliveryDetails.filter(item => {
+                        if (!item || item.product_id === undefined || item.product_id === null) {
+                            return true;
+                        }
+                        
+                        const productIdNum = parseInt(item.product_id);
+                        const productIdStr = String(item.product_id);
+                        
+                        const isDeclined = declinedIdsAsNumbers.includes(productIdNum) || 
+                                           declinedIdsAsStrings.includes(productIdStr) ||
+                                           declinedIdsAsNumbers.includes(item.product_id) ||
+                                           declinedIdsAsStrings.includes(item.product_id);
+                        
+                        return !isDeclined;
+                    });
+                    
+                    console.log(`[GetNormalDeliveryDetails] After filtering declined: ${filteredData.length} products remain`);
+                    setDeliveryDetails(filteredData);
+                } else {
+                    setDeliveryDetails(deliveryDetails);
+                }
+            } else {
+                setDeliveryDetails(deliveryDetails);
+            }
         } catch (error) {
             console.error("Error fetching delivery details:", error);
+            setDeliveryDetails([]);
         }
     };
 
@@ -302,10 +415,28 @@ const DeliveryCustomizeWR = () => {
             filtered = [...filtered, ...normalWithType];
         }
 
-        // Sort by date - oldest to newest
+        // Sort by date and time - oldest to newest (oldest first)
         filtered.sort((a, b) => {
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
+            // For normal deliveries, combine date and time for accurate sorting
+            let dateA, dateB;
+            
+            if (a.deliveryType === 'normal' && a.date && a.delivery_time) {
+                // Combine date and time for normal deliveries
+                dateA = new Date(`${a.date} ${a.delivery_time}`);
+            } else {
+                // For customize deliveries or if time is missing, use date only
+                dateA = new Date(a.date);
+            }
+            
+            if (b.deliveryType === 'normal' && b.date && b.delivery_time) {
+                // Combine date and time for normal deliveries
+                dateB = new Date(`${b.date} ${b.delivery_time}`);
+            } else {
+                // For customize deliveries or if time is missing, use date only
+                dateB = new Date(b.date);
+            }
+            
+            // Sort oldest first (ascending)
             return dateA - dateB;
         });
 
@@ -413,8 +544,24 @@ const DeliveryCustomizeWR = () => {
             setDeliveryDetails(details);
             setModalType('customize');
         } else {
-            await GetNormalDeliveryDetails(delivery.request_stock_id);
-            await GetTrackRequestTimeandDate(delivery.request_stock_id, delivery.delivery_status);
+            // Use r_delivery_id to fetch delivery details from request_delivery_details
+            const r_delivery_id = delivery.r_delivery_id;
+            if (r_delivery_id) {
+                await GetNormalDeliveryDetails(r_delivery_id);
+            } else {
+                console.error('Missing r_delivery_id in delivery object');
+                setDeliveryDetails([]);
+            }
+            // Use date and time from request_delivery table instead of request_reports
+            // The delivery object already contains delivery_date (as 'date') and delivery_time from request_delivery
+            // Status is also from request_delivery.delivery_status
+            if (delivery.date && delivery.delivery_time) {
+                const formattedDate = formatDate(delivery.date);
+                const formattedTime = formatTime(delivery.delivery_time);
+                setReqDateTime(`${formattedDate} • ${formattedTime}`);
+            } else {
+                setReqDateTime('N/A');
+            }
             setSelectedDelivery(delivery);
             setModalType('normal');
         }
@@ -503,6 +650,7 @@ const DeliveryCustomizeWR = () => {
             const url = baseURL + 'delivery.php';
             const ID = {
                 reqID: selectedDelivery.request_stock_id,
+                r_delivery_id: selectedDelivery.r_delivery_id || selectedDelivery.r_deliver_id, // Pass the specific delivery batch ID
                 accID: accountID,
             };
 
@@ -524,16 +672,17 @@ const DeliveryCustomizeWR = () => {
                     setShowModal(false);
                     fetchAllData();
                     const name = sessionStorage.getItem('fullname');
+                    const deliveryId = selectedDelivery.r_delivery_id || selectedDelivery.r_deliver_id;
                     // Send notification to the requesting location (Inventory Manager)
                     await createNotification({
                         type: 'delivery',
                         title: 'Delivery Completed',
-                        message: `Stock request #${selectedDelivery.request_stock_id} has been marked as completed by ${name}.`,
+                        message: `Delivery #${deliveryId} has been marked as completed by ${name}.`,
                         locationId: selectedDelivery.request_from, // Requesting location (store)
                         targetRole: 'Inventory Manager',
                         productId: null,
                         customerId: null,
-                        referenceId: selectedDelivery.request_stock_id
+                        referenceId: deliveryId
                     });
                 } else {
                     showAlertError({
@@ -598,6 +747,11 @@ const DeliveryCustomizeWR = () => {
 
     const getDeliveryId = (item) => {
         return item.deliveryType === 'customize' ? item.customize_request_id : item.request_stock_id;
+    };
+
+    const getDeliveryRequestId = (item) => {
+        // For normal deliveries, return r_delivery_id (delivery request ID)
+        return item.deliveryType === 'normal' ? (item.r_delivery_id || item.r_deliver_id) : null;
     };
 
     return (
@@ -767,11 +921,11 @@ const DeliveryCustomizeWR = () => {
                                 <div className='r-d-div'>
                                     {/* <div className='r-1'><strong>REQUEST ID:</strong> {selectedDelivery.request_stock_id}</div> */}
                                     <div className='r-1'><strong>REQUEST ID:</strong> {selectedDelivery.request_stock_id}</div>
-                                    <div><strong>REQUEST DATE:</strong> {formatDate(selectedDelivery.date)}</div>
+                                    <div><strong>DELIVERY DATE:</strong> {selectedDelivery.date ? formatDate(selectedDelivery.date) : 'N/A'}</div>
 
 
                                 </div>
-                                <div><strong>DELIVERY ID:</strong> {selectedDelivery.r_deliver_id}</div>
+                                <div><strong>DELIVERY ID:</strong> {selectedDelivery.r_delivery_id || selectedDelivery.r_deliver_id}</div>
                                 <div><strong>DELIVER TO:</strong> {selectedDelivery.reqFrom}</div>
                                 <div><strong>DELIVER FROM:</strong> {selectedDelivery.reqTo}</div>
                                 <div><strong>REQUEST BY:</strong> {`${selectedDelivery.firstName || ''} ${selectedDelivery.middleName || ''} ${selectedDelivery.lastName || ''}`.trim()}</div>
@@ -783,7 +937,9 @@ const DeliveryCustomizeWR = () => {
                                             ? "green"
                                             : selectedDelivery.delivery_status === "On Delivery"
                                                 ? "goldenrod"
-                                                : "black",
+                                                : selectedDelivery.delivery_status === "Complete"
+                                                    ? "blue"
+                                                    : "black",
                                         fontWeight: 'bold'
                                     }}>
                                         {selectedDelivery.delivery_status} | {reqDateTime}
@@ -1090,6 +1246,7 @@ const DeliveryCustomizeWR = () => {
                                 const deliverTo = getDeliverTo(delivery);
                                 const driver = getDriver(delivery);
                                 const deliveryId = getDeliveryId(delivery);
+                                const deliveryRequestId = getDeliveryRequestId(delivery);
 
                                 return (
                                     <div
@@ -1136,37 +1293,73 @@ const DeliveryCustomizeWR = () => {
                                             marginBottom: '15px'
                                         }}>
                                             <div>
-                                                <div style={{
-                                                    fontSize: '11px',
-                                                    color: '#6c757d',
-                                                    marginBottom: '2px',
-                                                    fontWeight: '500',
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '0.5px'
-                                                }}>
-                                                    {/* {delivery.deliveryType === 'customize' ? 'Delivery ID' : 'Request ID'} */}
-                                                    Request ID
-                                                </div>
-                                                <div style={{
-                                                    fontSize: '20px',
-                                                    fontWeight: '700',
-                                                    color: '#2c3e50'
-                                                }}>
-                                                    #{deliveryId}
-                                                </div>
-                                                <div style={{
-                                                    fontSize: '10px',
-                                                    color: '#fff',
-                                                    backgroundColor: delivery.deliveryType === 'customize' ? '#17a2b8' : '#6c757d',
-                                                    padding: '2px 8px',
-                                                    borderRadius: '10px',
-                                                    marginTop: '4px',
-                                                    display: 'inline-block',
-                                                    fontWeight: '600',
-                                                    textTransform: 'uppercase'
-                                                }}>
-                                                    {delivery.deliveryType === 'customize' ? 'Customized' : 'Normal Stock'}
-                                                </div>
+                                                {delivery.deliveryType === 'normal' ? (
+                                                    <>
+                                                        <div style={{
+                                                            fontSize: '11px',
+                                                            color: '#6c757d',
+                                                            marginBottom: '2px',
+                                                            fontWeight: '500',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px'
+                                                        }}>
+                                                            Delivery Request ID
+                                                        </div>
+                                                        <div style={{
+                                                            fontSize: '20px',
+                                                            fontWeight: '700',
+                                                            color: '#2c3e50'
+                                                        }}>
+                                                            #{deliveryRequestId || 'N/A'}
+                                                        </div>
+                                                        <div style={{
+                                                            fontSize: '10px',
+                                                            color: '#fff',
+                                                            backgroundColor: '#6c757d',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '10px',
+                                                            marginTop: '4px',
+                                                            display: 'inline-block',
+                                                            fontWeight: '600',
+                                                            textTransform: 'uppercase'
+                                                        }}>
+                                                            Normal Stock
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div style={{
+                                                            fontSize: '11px',
+                                                            color: '#6c757d',
+                                                            marginBottom: '2px',
+                                                            fontWeight: '500',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px'
+                                                        }}>
+                                                            Request ID
+                                                        </div>
+                                                        <div style={{
+                                                            fontSize: '20px',
+                                                            fontWeight: '700',
+                                                            color: '#2c3e50'
+                                                        }}>
+                                                            #{deliveryId}
+                                                        </div>
+                                                        <div style={{
+                                                            fontSize: '10px',
+                                                            color: '#fff',
+                                                            backgroundColor: '#17a2b8',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '10px',
+                                                            marginTop: '4px',
+                                                            display: 'inline-block',
+                                                            fontWeight: '600',
+                                                            textTransform: 'uppercase'
+                                                        }}>
+                                                            Customized
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
 
                                             <div style={{

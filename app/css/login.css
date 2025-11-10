@@ -78,6 +78,15 @@
   }
 }
 
+@keyframes rotateRefresh {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .main_div {
   position: relative;
   width: 100vw;
@@ -104,175 +113,231 @@
 
 .as {
   display: flex;
-  flex-direction: column;
-  margin-left: 620px;
+  flex-direction: row;
+  align-items: center;
+  gap: 60px;
+  max-width: 1200px;
   animation: fadeInUp 0.8s ease-out;
 }
 
 .pic-slog {
   display: flex;
   flex-direction: row;
-  padding-bottom: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 20px;
+  gap: 20px;
   animation: fadeInLeft 0.8s ease-out;
 }
 
 .pic-slog .logo {
   animation: scaleIn 0.6s ease-out 0.2s backwards;
+  flex-shrink: 0;
 }
 
 .pic-slog h1 {
   font-size: 32px;
   font-weight: bold;
   color: #000000;
-  margin: 0 20px 0 0;
-  align-self: center;
-  padding-left: 10px;
+  margin: 0;
+  line-height: 1.3;
   animation: fadeInRight 0.8s ease-out 0.3s backwards;
 }
 
 .log-in-form {
   width: 550px;
-  background-color: white;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3), 0 5px 15px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   animation: scaleIn 0.8s ease-out 0.4s backwards;
 }
 
+.form-group {
+  margin-bottom: 20px;
+}
+
 .Log-1 {
-  color: #000000;
-  margin-bottom: 30px;
-  font-size: 20px;
+  color: #1a1a2e;
+  margin-bottom: 35px;
+  font-size: 22px;
+  font-weight: 700;
   text-align: center;
   position: relative;
-  display: inline-block;
-  padding-bottom: 10px;
+  display: block;
+  padding-bottom: 15px;
   animation: slideDown 0.6s ease-out 0.6s backwards;
+  letter-spacing: 0.5px;
 }
 
 .Log-1::after {
   content: "";
   position: absolute;
   bottom: 0;
-  left: 90%;
+  left: 50%;
   transform: translateX(-50%);
-  width: 450px;
-  height: 3px;
-  background-color: #000000;
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, #5182FF, #667eea);
   border-radius: 2px;
 }
 
 .label {
   display: block;
-  font-size: 20px;
-  font-weight: bold;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #2c3e50;
   animation: fadeInLeft 0.5s ease-out 0.7s backwards;
 }
 
 .log-input {
   width: 100%;
-  height: 35px;
-  background-color: #D9D9D9;
-  border: 0px;
-  padding: 5px;
+  height: 48px;
+  background-color: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 10px;
+  padding: 12px 16px;
   font-size: 15px;
   transition: all 0.3s ease;
   animation: fadeInUp 0.5s ease-out 0.8s backwards;
+  color: #2c3e50;
 }
 
 .log-input:focus {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(81, 130, 255, 0.3);
+  outline: none;
+  border-color: #5182FF;
+  background-color: #fff;
+  box-shadow: 0 0 0 4px rgba(81, 130, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.log-input::placeholder {
+  color: #adb5bd;
 }
 
 .athen {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 12px;
   animation: fadeInUp 0.6s ease-out 0.9s backwards;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
 }
 
 .label-1 {
-  font-size: 30px;
-  border: 1px solid black;
-  padding: 10px 20px;
+  font-size: 26px;
+  font-weight: 700;
+  padding: 12px 18px;
   text-align: center;
   min-width: 60px;
-  background-color: #D9D9D9;
-  border: 0px;
-  width: 100px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px solid #dee2e6;
+  border-radius: 10px;
+  width: 90px;
   transition: all 0.3s ease;
+  color: #2c3e50;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .label-1:hover {
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .authen-input {
   width: 100px;
-  height: 60px;
-  font-size: 30px;
+  height: 58px;
+  font-size: 26px;
+  font-weight: 700;
   padding: 0px 5px;
-  background-color: #D9D9D9;
-  border: 0px;
+  background-color: #fff;
+  border: 2px solid #5182FF;
+  border-radius: 10px;
   text-align: center;
   transition: all 0.3s ease;
+  color: #2c3e50;
 }
 
 .authen-input:focus {
   outline: none;
-  border: none;
-  box-shadow: 0 0 0 3px rgba(81, 130, 255, 0.3);
-  transform: scale(1.05);
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(81, 130, 255, 0.15);
+  transform: translateY(-1px);
 }
 
 .operator {
-  font-size: 30px;
+  font-size: 28px;
   font-weight: bold;
+  color: #5182FF;
   animation: pulse 2s ease-in-out infinite;
 }
 
 .operator-1 {
-  background-color: white;
-  border: 0px;
-  color: red;
+  background: transparent;
+  border: none;
   cursor: pointer;
+  transition: transform 0.3s ease;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.operator-1 img {
   transition: transform 0.3s ease;
 }
 
-.operator-1:hover {
-  transform: rotate(180deg);
+.operator-1:hover img {
+  transform: rotate(45deg) scale(1.1);
 }
 
-.operator-1:active {
-  transform: rotate(180deg) scale(0.9);
+.operator-1:active img {
+  animation: rotateRefresh 0.5s ease-in-out;
+}
+
+.operator-1.rotating img {
+  animation: rotateRefresh 0.5s ease-in-out;
 }
 
 .sub-button {
-  margin-top: 20px;
+  margin-top: 25px;
   width: 100%;
-  height: 40px;
-  font-size: 25px;
-  font-weight: bold;
+  height: 52px;
+  font-size: 18px;
+  font-weight: 700;
   color: white;
-  background-color: #5182FF;
-  border: 0px;
+  background: linear-gradient(135deg, #5182FF 0%, #667eea 100%);
+  border: none;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
   animation: fadeInUp 0.6s ease-out 1s backwards;
+  box-shadow: 0 4px 15px rgba(81, 130, 255, 0.3);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .sub-button:hover {
-  background-color: blue;
-  color: wheat;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(81, 130, 255, 0.4);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(81, 130, 255, 0.5);
 }
 
 .sub-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 5px rgba(81, 130, 255, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(81, 130, 255, 0.3);
+}
+
+.sub-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 input[type="number"]::-webkit-inner-spin-button,
@@ -308,9 +373,9 @@ body {
 }
 
 .logo {
-  height: 80px;
+  height: 120px;
   margin-bottom: 10px;
-  width: 90px;
+  width: 140px;
 }
 
 .brand h1 {
@@ -407,38 +472,61 @@ body {
    .main_div {
     flex-direction: column;
     padding: 20px;
-    height: 140vh;
+    min-height: 100vh;
     width: 100vw;
-    margin-top: -150px;
   }
+  
   .log-in-form {
     width: 90%;
-    padding: 15px;
-    height: 450px;
+    max-width: 450px;
+    padding: 30px 25px;
+    height: auto;
     margin: 0;
   }
 
+  .Log-1 {
+    font-size: 18px;
+    margin-bottom: 25px;
+  }
+
   .Log-1::after {
-    width: 100%;
-    left: 50%;
+    width: 60px;
+  }
+
+  .as {
+    flex-direction: column;
+    margin-left: 0;
+    align-items: center;
+    gap: 20px;
   }
 
   .pic-slog {
     flex-direction: row;
     align-items: center;
     text-align: center;
-    gap: 20px;
-    margin-left: -80px;
+    gap: 15px;
+    padding: 10px;
   }
 
   .pic-slog h1 {
-    font-size: 30px;
-    padding-left: 0;
+    font-size: 24px;
+    text-align: left;
+    color: white;
   }
 
-  .as {
-    margin-left: 0;
-    align-items: center;
+  .label {
+    font-size: 14px;
+  }
+
+  .log-input {
+    height: 45px;
+    font-size: 14px;
+    padding: 10px 14px;
+  }
+
+  .sub-button {
+    height: 48px;
+    font-size: 16px;
   }
 
   .athen {
@@ -492,31 +580,41 @@ body {
     align-items: stretch;
     gap: 10px;
   }
+  .logo {
+    width: 60px;
+    height: 60px;
+  }
 }
 
 @media (max-width: 480px) {
   .main_div {
     flex-direction: column;
-    padding: 20px;
-    height: 140vh;
+    padding: 15px;
+    min-height: 100vh;
     width: 100vw;
-    margin-top: -250px;
   }
 
-  .Log-1 {
-    font-size: 18px;
-  }
-
-  .pic-slog h1 {
-    font-size: 20px;
+  .as {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    height: auto;
   }
 
   .pic-slog {
     display: flex;
     flex-direction: row;
-    gap: 20px;
-    justify-content: flex-start;
-    margin-left: -40px;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    justify-content: center;
+  }
+
+  .pic-slog h1 {
+    font-size: 16px;
+    text-align: left;
+    color: white;
   }
 
   .logo {
@@ -524,65 +622,57 @@ body {
     height: 60px;
   }
 
-  .as {
-    display: flex;
-    flex-direction: column;
-    height: 400px;
+  .log-in-form {
+    width: 95%;
+    padding: 25px 20px;
   }
 
   .Log-1 {
-    color: #000000;
-    margin-bottom: 30px;
-    font-size: 20px;
-    text-align: center;
-    position: relative;
-    display: inline-block;
-    padding-bottom: 10px;
+    font-size: 16px;
+    margin-bottom: 20px;
   }
 
   .Log-1::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    transform: translateX(-50%);
-    width: 270px;
-    height: 3px;
-    background-color: #000000;
-    border-radius: 2px;
-    margin-left: 10px;
+    width: 50px;
   }
 
-  .log-in-form {
-    width: 350px;
-    height: 450px;
+  .label {
+    font-size: 13px;
+  }
+
+  .log-input {
+    height: 42px;
+    font-size: 13px;
+    padding: 10px 12px;
   }
 
   .athen {
-    display: flex;
-    align-items: center;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 5px;
+    padding: 12px;
+    gap: 8px;
   }
 
   .authen-input {
-    font-size: 20px;
+    font-size: 22px;
     height: 50px;
     width: 70px;
   }
 
   .label-1 {
-    font-size: 20px;
-    border: 1px solid black;
-    text-align: center;
-    background-color: #D9D9D9;
-    border: 0px;
-    width: 50px;
-    padding-top: 10px;
+    font-size: 22px;
+    width: 60px;
+    padding: 10px 12px;
+  }
+
+  .operator {
+    font-size: 24px;
   }
 
   .sub-button {
-    font-size: 18px;
-    height: 40px;
+    font-size: 15px;
+    height: 45px;
+  }
+
+  .form-group {
+    margin-bottom: 15px;
   }
 }

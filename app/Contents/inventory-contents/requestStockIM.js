@@ -18,6 +18,9 @@ const ITEMS_PER_PAGE_REQQUEST = 10;
 const ITEMS_PER_PAGE_PRODUCT = 5;
 
 const RequestStockIM = () => {
+    // Responsive state
+    const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
     // User state
     const [user_id, setUser_id] = useState('');
 
@@ -97,7 +100,29 @@ const RequestStockIM = () => {
     // Helper function to get current stock for a product
     const getCurrentStock = (productId) => {
         const stockItem = currentStockInventory.find(item => item.product_id === productId);
-        return stockItem ? stockItem.qty : 0;
+        return stockItem ? parseInt(stockItem.qty) || 0 : 0;
+    };
+
+    // Helper function to get threshold values for a product (defaults: min=1, max=2)
+    const getProductThresholds = (productId) => {
+        const stockItem = currentStockInventory.find(item => item.product_id === productId);
+        if (!stockItem) {
+            // Product doesn't exist in store - use defaults
+            return { min: 1, max: 2 };
+        }
+        return {
+            min: stockItem.min_threshold !== null && stockItem.min_threshold !== undefined 
+                ? parseInt(stockItem.min_threshold) : 1,
+            max: stockItem.max_threshold !== null && stockItem.max_threshold !== undefined 
+                ? parseInt(stockItem.max_threshold) : 2
+        };
+    };
+
+    // Helper function to check if product is below min threshold
+    const isBelowMinThreshold = (productId) => {
+        const currentStock = getCurrentStock(productId);
+        const thresholds = getProductThresholds(productId);
+        return currentStock < thresholds.min;
     };
 
     // Helper functions for empty state messages
@@ -164,6 +189,21 @@ const RequestStockIM = () => {
             );
         }
 
+        // Sort: Stock out items (currentStock <= 0) appear first, then in-stock items
+        filteredList.sort((a, b) => {
+            const stockA = getCurrentStock(a.product_id);
+            const stockB = getCurrentStock(b.product_id);
+            const isOutOfStockA = stockA <= 0;
+            const isOutOfStockB = stockB <= 0;
+            
+            // If one is out of stock and the other isn't, out of stock comes first
+            if (isOutOfStockA && !isOutOfStockB) return -1;
+            if (!isOutOfStockA && isOutOfStockB) return 1;
+            
+            // If both have same stock status, maintain original order (or sort by name if needed)
+            return 0;
+        });
+
         return filteredList;
     };
 
@@ -218,6 +258,32 @@ const RequestStockIM = () => {
                 button: 'OK'
             });
             return;
+        }
+
+        // Check for items where requested quantity + current stock exceeds max threshold
+        const itemsExceedingMax = selectedProductsForRequest.filter(item => {
+            const currentStock = getCurrentStock(item.product_id);
+            const thresholds = getProductThresholds(item.product_id);
+            const requestedQty = item.requestQty || 1;
+            const totalAfterRequest = currentStock + requestedQty;
+            return totalAfterRequest > thresholds.max;
+        });
+
+        if (itemsExceedingMax.length > 0) {
+            const maxValues = itemsExceedingMax.map(item => {
+                const currentStock = getCurrentStock(item.product_id);
+                const thresholds = getProductThresholds(item.product_id);
+                const requestedQty = item.requestQty || 1;
+                const totalAfterRequest = currentStock + requestedQty;
+                return `${item.product_name} (current: ${currentStock}, requesting: ${requestedQty}, total: ${totalAfterRequest}, max: ${thresholds.max})`;
+            }).join('\n');
+            
+            showAlertError({
+                icon: "warning",
+                title: "Some Items Will Exceed Maximum Threshold!",
+                text: `The following products will exceed their maximum threshold after adding the requested quantity:\n\n${maxValues}\n\nStock can only cater up to the maximum threshold. You can still proceed, but the request may be adjusted.`,
+                button: 'OK'
+            });
         }
 
         // Add selected products to stockInList
@@ -275,6 +341,16 @@ const RequestStockIM = () => {
     // Initialize user_id
     useEffect(() => {
         setUser_id(sessionStorage.getItem('user_id'));
+    }, []);
+
+    // Handle window resize for responsive design
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     // Initialize data
@@ -410,6 +486,21 @@ const RequestStockIM = () => {
                 button: 'OK'
             });
             return;
+        }
+
+        // Check if requested quantity + current stock exceeds max threshold
+        const currentStock = getCurrentStock(productId);
+        const thresholds = getProductThresholds(productId);
+        const totalAfterRequest = currentStock + newQty;
+        
+        if (totalAfterRequest > thresholds.max) {
+            showAlertError({
+                icon: "warning",
+                title: "Exceeds Maximum Threshold!",
+                text: `Current stock: ${currentStock} units. Requesting ${newQty} units will result in ${totalAfterRequest} total units, which exceeds the maximum threshold of ${thresholds.max} units.`,
+                button: 'OK'
+            });
+            // Still allow the update, but warn the user
         }
 
         setStockInList(prevList =>
@@ -721,6 +812,7 @@ const RequestStockIM = () => {
 
             if (response.data === 'Success') {
                 show_sweet1();
+                const itemCount = stockInList.length;
                 setStockInList([]);
                 setRequestFrom('');
                 setRequestTo('');
@@ -730,7 +822,7 @@ const RequestStockIM = () => {
                 await createNotification(
                     'stock_request',
                     'New Stock Request',
-                    `New stock request from ${from1.location_name} to ${to1.location_name} with ${stockInList.length} item(s)`,
+                    `New stock request from ${from1.location_name} to ${to1.location_name} with ${itemCount} item(s)`,
                     requestTo,
                     'Warehouse Representative',  // Send only to Warehouse Representatives
                     null
@@ -830,6 +922,20 @@ const RequestStockIM = () => {
         );
         const incomingQty = parseInt(prodQty) || 0;
 
+        // Check if requested quantity + current stock exceeds max threshold
+        const currentStock = getCurrentStock(s.product_id);
+        const thresholds = getProductThresholds(s.product_id);
+        const totalAfterRequest = currentStock + incomingQty;
+        
+        if (totalAfterRequest > thresholds.max) {
+            showAlertError({
+                icon: "warning",
+                title: "Exceeds Maximum Threshold!",
+                text: `Current stock: ${currentStock} units. Requesting ${incomingQty} units will result in ${totalAfterRequest} total units, which exceeds the maximum threshold of ${thresholds.max} units. You can still proceed, but the request may be adjusted.`,
+                button: 'OK'
+            });
+        }
+
         setStockInList(prev => {
             const existingIndex = prev.findIndex(item => item.product_name === s.product_name);
             if (existingIndex !== -1) {
@@ -898,6 +1004,30 @@ const RequestStockIM = () => {
             .filter(item => selectedProducts.includes(item.product_id))
             .map(item => ({ ...item, qty: 1 }));
 
+        // Check for items where requested quantity + current stock exceeds max threshold
+        const itemsExceedingMax = selectedItems.filter(item => {
+            const currentStock = getCurrentStock(item.product_id);
+            const thresholds = getProductThresholds(item.product_id);
+            const totalAfterRequest = currentStock + item.qty;
+            return totalAfterRequest > thresholds.max;
+        });
+
+        if (itemsExceedingMax.length > 0) {
+            const maxValues = itemsExceedingMax.map(item => {
+                const currentStock = getCurrentStock(item.product_id);
+                const thresholds = getProductThresholds(item.product_id);
+                const totalAfterRequest = currentStock + item.qty;
+                return `${item.product_name} (current: ${currentStock}, requesting: ${item.qty}, total: ${totalAfterRequest}, max: ${thresholds.max})`;
+            }).join('\n');
+            
+            showAlertError({
+                icon: "warning",
+                title: "Some Items Will Exceed Maximum Threshold!",
+                text: `The following products will exceed their maximum threshold after adding the requested quantity:\n\n${maxValues}\n\nStock can only cater up to the maximum threshold.`,
+                button: 'OK'
+            });
+        }
+
         setStockInList(prev => {
             const existingIds = new Set(prev.map(item => item.product_id));
             const newItems = selectedItems.filter(item => !existingIds.has(item.product_id));
@@ -909,7 +1039,7 @@ const RequestStockIM = () => {
     };
 
     const sendRequest = async () => {
-        if (!stockInList || stockInList.length === 0) {
+        if (!sortedStockInList || sortedStockInList.length === 0) {
             error_alert('error', 'Oops', "You can't send an empty request list!");
             return;
         } else if (!requestFrom.trim() || !requestTo.trim()) {
@@ -919,15 +1049,65 @@ const RequestStockIM = () => {
             error_alert('error', 'Oops', "You can't request stock from the same store/location!");
             return;
         } else {
+            // Check for any items where requested quantity + current stock exceeds max threshold before sending
+            const itemsExceedingMax = sortedStockInList.filter(item => {
+                const currentStock = getCurrentStock(item.product_id);
+                const thresholds = getProductThresholds(item.product_id);
+                const totalAfterRequest = currentStock + item.qty;
+                return totalAfterRequest > thresholds.max;
+            });
+
+            if (itemsExceedingMax.length > 0) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Some Items Will Exceed Maximum Threshold!",
+                    html: `<div style="text-align: left; padding: 10px;">
+                        <p>The following products will exceed their maximum threshold after adding the requested quantity:</p>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            ${itemsExceedingMax.map(item => {
+                                const currentStock = getCurrentStock(item.product_id);
+                                const thresholds = getProductThresholds(item.product_id);
+                                const totalAfterRequest = currentStock + item.qty;
+                                return `<li><strong>${item.product_name}</strong>: Current ${currentStock} + Requested ${item.qty} = ${totalAfterRequest} (max: ${thresholds.max})</li>`;
+                            }).join('')}
+                        </ul>
+                        <p style="margin-top: 10px;">Stock can only cater up to the maximum threshold. Do you want to continue anyway?</p>
+                    </div>`,
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, Continue",
+                    cancelButtonText: "Cancel",
+                    confirmButtonColor: "#3085d6",
+                    cancelButtonColor: "#d33"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        setContinueSendReq(false);
+                    }
+                });
+                return;
+            }
+
             setContinueSendReq(false);
             return;
         }
     };
 
+    // Sort stockInList by priority: items below min threshold first, then others
+    const sortedStockInList = [...stockInList].sort((a, b) => {
+        const aBelowMin = isBelowMinThreshold(a.product_id);
+        const bBelowMin = isBelowMinThreshold(b.product_id);
+        
+        // Items below min threshold come first
+        if (aBelowMin && !bBelowMin) return -1;
+        if (!aBelowMin && bBelowMin) return 1;
+        
+        // If both have same priority status, maintain original order
+        return 0;
+    });
+
     // Pagination calculations
-    const totalRequestPages = Math.ceil(stockInList.length / ITEMS_PER_PAGE_REQQUEST);
+    const totalRequestPages = Math.ceil(sortedStockInList.length / ITEMS_PER_PAGE_REQQUEST);
     const startRequestIndex = (currentRequestPage - 1) * ITEMS_PER_PAGE_REQQUEST;
-    const currentRequestItems = stockInList.slice(startRequestIndex, startRequestIndex + ITEMS_PER_PAGE_REQQUEST);
+    const currentRequestItems = sortedStockInList.slice(startRequestIndex, startRequestIndex + ITEMS_PER_PAGE_REQQUEST);
 
     const handlePageChange = (page) => {
         if (page >= 1 && page <= totalRequestPages) {
@@ -1795,27 +1975,82 @@ const RequestStockIM = () => {
             </Modal>
 
             {/* Main Content */}
-            <div className='customer-main'>
-                <div className='customer-header'>
-                    <h1 className='h-customer'>REQUEST STOCK</h1>
+            <div className='customer-main' style={{ 
+                padding: windowWidth <= 768 ? '15px' : windowWidth <= 576 ? '10px' : '20px', 
+                maxWidth: '100%', 
+                overflowX: 'hidden' 
+            }}>
+                <div className='customer-header' style={{ 
+                    marginBottom: windowWidth <= 576 ? '20px' : '30px' 
+                }}>
+                    <h1 className='h-customer' style={{
+                        fontSize: windowWidth <= 576 ? '20px' : windowWidth <= 768 ? '24px' : '32px',
+                        fontWeight: '700',
+                        color: '#212529',
+                        marginBottom: '10px'
+                    }}>REQUEST STOCK</h1>
+                    <p style={{ 
+                        color: '#6c757d', 
+                        fontSize: windowWidth <= 576 ? '12px' : '14px', 
+                        margin: 0 
+                    }}>Create and manage stock requests from your store to the warehouse</p>
                 </div>
 
-                <Container style={{ marginTop: '10px' }}>
-                    <Row>
-                        <Col md={3}>
-                            {/* LEFT COLUMN CONTENT */}
-                            <div className='side-by-side' style={{ marginTop: '0px' }}>
-                                <div>
-                                    <label className='add-prod-label'>Request From:</label>
+                <Container fluid style={{ padding: '0' }}>
+                    <Row style={{ margin: 0 }}>
+                        <Col xs={12} lg={4} xl={3} style={{ padding: '0 15px 20px 15px' }}>
+                            {/* LEFT COLUMN CONTENT - Form Card */}
+                            <div style={{
+                                backgroundColor: '#ffffff',
+                                borderRadius: '12px',
+                                padding: '24px',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                border: '1px solid #e9ecef',
+                                height: '100%'
+                            }}>
+                                <h3 style={{
+                                    fontSize: '18px',
+                                    fontWeight: '600',
+                                    color: '#212529',
+                                    marginBottom: '20px',
+                                    paddingBottom: '12px',
+                                    borderBottom: '2px solid #e9ecef'
+                                }}>Request Details</h3>
+                                
+                                <div style={{ marginBottom: '20px' }}>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '8px',
+                                        fontWeight: '600',
+                                        fontSize: '14px',
+                                        color: '#495057'
+                                    }}>Request From <span style={{ color: '#dc3545' }}>*</span></label>
                                     <select
                                         id='storeReqFrom'
-                                        className="category-dropdown"
                                         value={requestFrom}
                                         onChange={(e) => setRequestFrom(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            border: '1px solid #ced4da',
+                                            borderRadius: '8px',
+                                            fontSize: '14px',
+                                            backgroundColor: '#ffffff',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onFocus={(e) => {
+                                            e.target.style.borderColor = '#007bff';
+                                            e.target.style.boxShadow = '0 0 0 3px rgba(0,123,255,0.1)';
+                                        }}
+                                        onBlur={(e) => {
+                                            e.target.style.borderColor = '#ced4da';
+                                            e.target.style.boxShadow = 'none';
+                                        }}
                                     >
                                         <option value="">Select Store / Location</option>
                                         {locationList
-                                            .filter((r) => r.name !== "Warehouse") // Exclude Warehouse from Request From options
+                                            .filter((r) => r.name !== "Warehouse")
                                             .map((r) => (
                                                 <option key={r.location_id} value={r.location_id}>
                                                     {r.location_name}
@@ -1823,12 +2058,40 @@ const RequestStockIM = () => {
                                             ))}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className='add-prod-label'>Request To:</label>
-                                    <select className='category-dropdown' value={requestTo} onChange={(e) => setRequestTo(e.target.value)}>
+
+                                <div style={{ marginBottom: '24px' }}>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '8px',
+                                        fontWeight: '600',
+                                        fontSize: '14px',
+                                        color: '#495057'
+                                    }}>Request To <span style={{ color: '#dc3545' }}>*</span></label>
+                                    <select 
+                                        value={requestTo} 
+                                        onChange={(e) => setRequestTo(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            border: '1px solid #ced4da',
+                                            borderRadius: '8px',
+                                            fontSize: '14px',
+                                            backgroundColor: '#ffffff',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onFocus={(e) => {
+                                            e.target.style.borderColor = '#007bff';
+                                            e.target.style.boxShadow = '0 0 0 3px rgba(0,123,255,0.1)';
+                                        }}
+                                        onBlur={(e) => {
+                                            e.target.style.borderColor = '#ced4da';
+                                            e.target.style.boxShadow = 'none';
+                                        }}
+                                    >
                                         <option value={''}>Select Store / Location</option>
                                         {locationList
-                                            .filter((r) => r.name === "Warehouse") // Only include Warehouse in Request To options
+                                            .filter((r) => r.name === "Warehouse")
                                             .map((r) => (
                                             <option key={r.location_id} value={r.location_id}>
                                                 {r.location_name}
@@ -1836,11 +2099,9 @@ const RequestStockIM = () => {
                                         ))}
                                     </select>
                                 </div>
-                            </div>
 
-                            <div className='div-input-add-prod'>
-                                <div>
-                                    <button className='add-to-stock1' onClick={() => {
+                                <button 
+                                    onClick={() => {
                                         if (requestFrom) {
                                             setSearchProdVisible(false);
                                         } else {
@@ -1851,255 +2112,531 @@ const RequestStockIM = () => {
                                                 button: 'Try Again'
                                             });
                                         }
-                                    }}>
-                                        SEARCH PRODUCT
-                                    </button>
-                                </div>
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '14px',
+                                        backgroundColor: '#007bff',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontSize: '15px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        boxShadow: '0 2px 4px rgba(0,123,255,0.2)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.backgroundColor = '#0056b3';
+                                        e.target.style.transform = 'translateY(-1px)';
+                                        e.target.style.boxShadow = '0 4px 8px rgba(0,123,255,0.3)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.backgroundColor = '#007bff';
+                                        e.target.style.transform = 'translateY(0)';
+                                        e.target.style.boxShadow = '0 2px 4px rgba(0,123,255,0.2)';
+                                    }}
+                                >
+                                    🔍 SEARCH PRODUCT
+                                </button>
                             </div>
                         </Col>
 
-                        <Col md={9}>
-                            {/* RIGHT COLUMN CONTENT - Updated with inline controls */}
-                            <div className='tableContainer1' style={{ height: '52vh', overflowX: 'auto' }}>
-                                {currentRequestItems && currentRequestItems.length > 0 ? (
-                                    <table className='table'>
-                                        <thead>
-                                            <tr>
-                                                <th className='t2'>PRODUCT ID</th>
-                                                <th className='t2'>PRODUCT CODE</th>
-                                                <th className='t2'>PRODUCT DESCRIPTION</th>
-                                                <th className='th1' style={{ width: '150px' }}>QTY</th>
-                                                <th className='th1' style={{ width: '80px' }}>ACTION</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentRequestItems.map((p, i) => (
-                                                <tr className='table-row' key={i} style={{ cursor: 'default' }}>
-                                                    <td className='td-name'>{p.product_id}</td>
-                                                    <td className='td-name'>{p.product_name}</td>
-                                                    <td className='td-name'>{p.description}</td>
-                                                    <td style={{ padding: '8px' }}>
-                                                        <div style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            gap: '5px'
-                                                        }}>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    updateItemQuantity(p.product_id, p.qty - 1);
-                                                                }}
-                                                                disabled={p.qty <= 1}
-                                                                style={{
-                                                                    background: p.qty <= 1 ? '#e9ecef' : '#007bff',
-                                                                    color: p.qty <= 1 ? '#6c757d' : 'white',
-                                                                    border: 'none',
-                                                                    borderRadius: '4px',
-                                                                    width: '30px',
-                                                                    height: '30px',
-                                                                    cursor: p.qty <= 1 ? 'not-allowed' : 'pointer',
-                                                                    fontSize: '16px',
-                                                                    fontWeight: 'bold',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center',
-                                                                    transition: 'all 0.2s ease'
-                                                                }}
-                                                                onMouseEnter={(e) => {
-                                                                    if (p.qty > 1) {
-                                                                        e.target.style.backgroundColor = '#0056b3';
-                                                                        e.target.style.transform = 'scale(1.1)';
-                                                                    }
-                                                                }}
-                                                                onMouseLeave={(e) => {
-                                                                    if (p.qty > 1) {
-                                                                        e.target.style.backgroundColor = '#007bff';
-                                                                        e.target.style.transform = 'scale(1)';
-                                                                    }
-                                                                }}
-                                                                title="Decrease quantity"
-                                                            >
-                                                                −
-                                                            </button>
-
-                                                            <input
-                                                                type="number"
-                                                                value={p.qty}
-                                                                min="1"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                onChange={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const newQty = parseInt(e.target.value);
-                                                                    if (!isNaN(newQty) && newQty > 0) {
-                                                                        updateItemQuantity(p.product_id, newQty);
-                                                                    }
-                                                                }}
-                                                                style={{
-                                                                    width: '50px',
-                                                                    textAlign: 'center',
-                                                                    border: '1px solid #ced4da',
-                                                                    borderRadius: '4px',
-                                                                    padding: '5px',
-                                                                    fontSize: '14px',
-                                                                    outline: 'none'
-                                                                }}
-                                                                onFocus={(e) => e.target.style.borderColor = '#007bff'}
-                                                                onBlur={(e) => e.target.style.borderColor = '#ced4da'}
-                                                            />
-
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    updateItemQuantity(p.product_id, p.qty + 1);
-                                                                }}
-                                                                style={{
-                                                                    background: '#007bff',
-                                                                    color: 'white',
-                                                                    border: 'none',
-                                                                    borderRadius: '4px',
-                                                                    width: '30px',
-                                                                    height: '30px',
-                                                                    cursor: 'pointer',
-                                                                    fontSize: '16px',
-                                                                    fontWeight: 'bold',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center',
-                                                                    transition: 'all 0.2s ease'
-                                                                }}
-                                                                onMouseEnter={(e) => {
-                                                                    e.target.style.backgroundColor = '#0056b3';
-                                                                    e.target.style.transform = 'scale(1.1)';
-                                                                }}
-                                                                onMouseLeave={(e) => {
-                                                                    e.target.style.backgroundColor = '#007bff';
-                                                                    e.target.style.transform = 'scale(1)';
-                                                                }}
-                                                                title="Increase quantity"
-                                                            >
-                                                                +
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ padding: '8px', textAlign: 'center' }}>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                removeItemFromList(p.product_id);
-                                                            }}
-                                                            style={{
-                                                                background: '#dc3545',
-                                                                color: 'white',
-                                                                border: 'none',
-                                                                borderRadius: '4px',
-                                                                width: '35px',
-                                                                height: '35px',
-                                                                cursor: 'pointer',
-                                                                fontSize: '18px',
-                                                                fontWeight: 'bold',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                transition: 'all 0.2s ease',
-                                                                margin: '0 auto'
-                                                            }}
-                                                            onMouseEnter={(e) => {
-                                                                e.target.style.backgroundColor = '#c82333';
-                                                                e.target.style.transform = 'scale(1.1)';
-                                                            }}
-                                                            onMouseLeave={(e) => {
-                                                                e.target.style.backgroundColor = '#dc3545';
-                                                                e.target.style.transform = 'scale(1)';
-                                                            }}
-                                                            title="Remove item from list"
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                ) : (
-                                    // Empty State
-                                    <div style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        height: '100%',
-                                        textAlign: 'center',
-                                        color: '#6c757d',
-                                        padding: '40px 20px'
-                                    }}>
-                                        <div style={{
-                                            fontSize: '48px',
-                                            marginBottom: '20px',
-                                            opacity: 0.3
-                                        }}>
-                                            📦
-                                        </div>
-                                        <h4 style={{
-                                            color: '#495057',
-                                            marginBottom: '10px',
-                                            fontWeight: '500'
-                                        }}>
-                                            No items in your request list
-                                        </h4>
-                                        <p style={{
-                                            margin: '0',
-                                            fontSize: '14px',
-                                            maxWidth: '300px',
-                                            lineHeight: '1.4'
-                                        }}>
-                                            Start by adding products to build your request. Items will appear here once added.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <Container style={{
+                        <Col xs={12} lg={8} xl={9} style={{ padding: '0 15px' }}>
+                            {/* RIGHT COLUMN CONTENT - Request List Card */}
+                            <div style={{
+                                backgroundColor: '#ffffff',
+                                borderRadius: '12px',
+                                padding: '24px',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                border: '1px solid #e9ecef',
+                                height: '100%',
                                 display: 'flex',
-                                flexDirection: 'row',
-                                marginTop: '20px',
-                                marginLeft: '20px',
-                                justifyContent: 'space-between',
-                                height: '40px'
+                                flexDirection: 'column'
                             }}>
-                                <div style={{ justifySelf: 'center', marginTop: '20px' }}>
-                                    {totalRequestPages > 1 && currentRequestItems && currentRequestItems.length > 0 && (
-                                        <CustomPagination
-                                            currentPage={currentRequestPage}
-                                            totalPages={totalRequestPages}
-                                            onPageChange={handlePageChange}
-                                            color="green"
-                                        />
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '20px',
+                                    flexWrap: 'wrap',
+                                    gap: '15px'
+                                }}>
+                                    <h3 style={{
+                                        fontSize: '18px',
+                                        fontWeight: '600',
+                                        color: '#212529',
+                                        margin: 0
+                                    }}>Request List</h3>
+                                    {sortedStockInList.length > 0 && (
+                                        <div style={{
+                                            display: 'flex',
+                                            gap: '12px',
+                                            alignItems: 'center',
+                                            flexWrap: 'wrap'
+                                        }}>
+                                            {sortedStockInList.filter(item => isBelowMinThreshold(item.product_id)).length > 0 && (
+                                                <span style={{
+                                                    padding: '6px 12px',
+                                                    backgroundColor: '#fff3cd',
+                                                    color: '#856404',
+                                                    borderRadius: '6px',
+                                                    fontSize: '12px',
+                                                    fontWeight: '600',
+                                                    border: '1px solid #ffc107'
+                                                }}>
+                                                    ⚠️ {sortedStockInList.filter(item => isBelowMinThreshold(item.product_id)).length} Priority
+                                                </span>
+                                            )}
+                                            <span style={{
+                                                padding: '6px 12px',
+                                                backgroundColor: '#e7f3ff',
+                                                color: '#004085',
+                                                borderRadius: '6px',
+                                                fontSize: '12px',
+                                                fontWeight: '600',
+                                                border: '1px solid #b3d9ff'
+                                            }}>
+                                                Total: {sortedStockInList.length} item(s)
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
 
+                                <div style={{
+                                    flex: 1,
+                                    overflow: 'auto',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e9ecef',
+                                    minHeight: windowWidth <= 768 ? '300px' : '400px',
+                                    maxHeight: windowWidth <= 768 ? 'calc(100vh - 300px)' : 'calc(100vh - 350px)'
+                                }}>
+                                    {currentRequestItems && currentRequestItems.length > 0 ? (
+                                        <div style={{ 
+                                            overflowX: 'auto',
+                                            WebkitOverflowScrolling: 'touch',
+                                            width: '100%'
+                                        }}>
+                                            <table style={{
+                                                width: '100%',
+                                                borderCollapse: 'collapse',
+                                                margin: 0,
+                                                minWidth: windowWidth <= 768 ? '600px' : '100%'
+                                            }}>
+                                                <thead style={{
+                                                    position: 'sticky',
+                                                    top: 0,
+                                                    backgroundColor: '#f8f9fa',
+                                                    zIndex: 10
+                                                }}>
+                                                    <tr>
+                                                        <th style={{
+                                                            padding: windowWidth <= 768 ? '10px 8px' : '14px 12px',
+                                                            textAlign: 'left',
+                                                            borderBottom: '2px solid #dee2e6',
+                                                            fontWeight: '600',
+                                                            fontSize: windowWidth <= 768 ? '11px' : '13px',
+                                                            color: '#495057',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px'
+                                                        }}>Product Code</th>
+                                                        <th style={{
+                                                            padding: windowWidth <= 768 ? '10px 8px' : '14px 12px',
+                                                            textAlign: 'left',
+                                                            borderBottom: '2px solid #dee2e6',
+                                                            fontWeight: '600',
+                                                            fontSize: windowWidth <= 768 ? '11px' : '13px',
+                                                            color: '#495057',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px'
+                                                        }}>Description</th>
+                                                        <th style={{
+                                                            padding: windowWidth <= 768 ? '10px 8px' : '14px 12px',
+                                                            textAlign: 'center',
+                                                            borderBottom: '2px solid #dee2e6',
+                                                            fontWeight: '600',
+                                                            fontSize: windowWidth <= 768 ? '11px' : '13px',
+                                                            color: '#495057',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px',
+                                                            width: windowWidth <= 576 ? '120px' : '150px'
+                                                        }}>Quantity</th>
+                                                        <th style={{
+                                                            padding: windowWidth <= 768 ? '10px 8px' : '14px 12px',
+                                                            textAlign: 'center',
+                                                            borderBottom: '2px solid #dee2e6',
+                                                            fontWeight: '600',
+                                                            fontSize: windowWidth <= 768 ? '11px' : '13px',
+                                                            color: '#495057',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px',
+                                                            width: windowWidth <= 576 ? '60px' : '80px'
+                                                        }}>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {currentRequestItems.map((p, i) => {
+                                                        const isBelowMin = isBelowMinThreshold(p.product_id);
+                                                        const currentStock = getCurrentStock(p.product_id);
+                                                        const thresholds = getProductThresholds(p.product_id);
+                                                        const totalAfterRequest = currentStock + p.qty;
+                                                        const exceedsMax = totalAfterRequest > thresholds.max;
+                                                        
+                                                        return (
+                                                            <tr 
+                                                                key={i} 
+                                                                style={{ 
+                                                                    cursor: 'default',
+                                                                    backgroundColor: isBelowMin ? '#fff3cd' : (i % 2 === 0 ? 'white' : '#f8f9fa'),
+                                                                    borderLeft: isBelowMin ? '4px solid #ffc107' : 'none',
+                                                                    transition: 'background-color 0.2s ease'
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                    if (!isBelowMin) {
+                                                                        e.currentTarget.style.backgroundColor = '#f0f8ff';
+                                                                    }
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                    if (!isBelowMin) {
+                                                                        e.currentTarget.style.backgroundColor = i % 2 === 0 ? 'white' : '#f8f9fa';
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <td style={{
+                                                                    padding: windowWidth <= 768 ? '10px 8px' : '14px 12px',
+                                                                    fontSize: windowWidth <= 768 ? '12px' : '14px',
+                                                                    fontWeight: '500',
+                                                                    color: '#212529'
+                                                                }}>
+                                                                    {isBelowMin && (
+                                                                        <span style={{
+                                                                            display: 'inline-block',
+                                                                            marginRight: '8px',
+                                                                            fontSize: windowWidth <= 768 ? '14px' : '16px'
+                                                                        }} title="Below minimum threshold - Priority item">
+                                                                            ⚠️
+                                                                        </span>
+                                                                    )}
+                                                                    {p.product_name}
+                                                                </td>
+                                                                <td style={{
+                                                                    padding: windowWidth <= 768 ? '10px 8px' : '14px 12px',
+                                                                    fontSize: windowWidth <= 768 ? '12px' : '14px',
+                                                                    color: '#495057'
+                                                                }}>{p.description}</td>
+                                                                <td style={{ 
+                                                                    padding: windowWidth <= 768 ? '10px 8px' : '14px 12px', 
+                                                                    textAlign: 'center' 
+                                                                }}>
+                                                                    <div style={{
+                                                                        display: 'flex',
+                                                                        flexDirection: 'column',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        gap: '6px'
+                                                                    }}>
+                                                                        <div style={{
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            gap: '6px'
+                                                                        }}>
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    updateItemQuantity(p.product_id, p.qty - 1);
+                                                                                }}
+                                                                                disabled={p.qty <= 1}
+                                                                                style={{
+                                                                                    background: p.qty <= 1 ? '#e9ecef' : '#007bff',
+                                                                                    color: p.qty <= 1 ? '#6c757d' : 'white',
+                                                                                    border: 'none',
+                                                                                    borderRadius: '6px',
+                                                                                    width: windowWidth <= 576 ? '36px' : '32px',
+                                                                                    height: windowWidth <= 576 ? '36px' : '32px',
+                                                                                    cursor: p.qty <= 1 ? 'not-allowed' : 'pointer',
+                                                                                    fontSize: windowWidth <= 576 ? '18px' : '16px',
+                                                                                    fontWeight: 'bold',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center',
+                                                                                    transition: 'all 0.2s ease',
+                                                                                    boxShadow: p.qty <= 1 ? 'none' : '0 1px 3px rgba(0,0,0,0.1)',
+                                                                                    minWidth: windowWidth <= 576 ? '36px' : '32px',
+                                                                                    touchAction: 'manipulation'
+                                                                                }}
+                                                                                onMouseEnter={(e) => {
+                                                                                    if (p.qty > 1) {
+                                                                                        e.target.style.backgroundColor = '#0056b3';
+                                                                                        e.target.style.transform = 'scale(1.05)';
+                                                                                    }
+                                                                                }}
+                                                                                onMouseLeave={(e) => {
+                                                                                    if (p.qty > 1) {
+                                                                                        e.target.style.backgroundColor = '#007bff';
+                                                                                        e.target.style.transform = 'scale(1)';
+                                                                                    }
+                                                                                }}
+                                                                                title="Decrease quantity"
+                                                                            >
+                                                                                −
+                                                                            </button>
 
-                                <div style={{ display: 'flex', gap: '10px', marginRight: '10px' }}>
-                                    <Button
-                                        variant="danger"
-                                        onClick={clearListAlert}
-                                        disabled={!currentRequestItems || currentRequestItems.length === 0}
-                                    >
-                                        Clear List
-                                    </Button>
-                                    <Button
-                                        variant="primary"
-                                        onClick={sendRequest}
-                                        disabled={!currentRequestItems || currentRequestItems.length === 0}
-                                    >
-                                        Send Request
-                                    </Button>
+                                                                            <input
+                                                                                type="number"
+                                                                                value={p.qty}
+                                                                                min="1"
+                                                                                max={thresholds.max}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                onChange={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    const newQty = parseInt(e.target.value);
+                                                                                    if (!isNaN(newQty) && newQty > 0) {
+                                                                                        updateItemQuantity(p.product_id, newQty);
+                                                                                    }
+                                                                                }}
+                                                                                style={{
+                                                                                    width: windowWidth <= 576 ? '50px' : '60px',
+                                                                                    textAlign: 'center',
+                                                                                    border: exceedsMax ? '2px solid #dc3545' : '1px solid #ced4da',
+                                                                                    borderRadius: '6px',
+                                                                                    padding: windowWidth <= 576 ? '8px 4px' : '6px',
+                                                                                    fontSize: windowWidth <= 576 ? '13px' : '14px',
+                                                                                    fontWeight: '500',
+                                                                                    outline: 'none',
+                                                                                    backgroundColor: exceedsMax ? '#f8d7da' : 'white',
+                                                                                    transition: 'all 0.2s ease',
+                                                                                    touchAction: 'manipulation'
+                                                                                }}
+                                                                                onFocus={(e) => {
+                                                                                    e.target.style.borderColor = '#007bff';
+                                                                                    e.target.style.boxShadow = '0 0 0 3px rgba(0,123,255,0.1)';
+                                                                                }}
+                                                                                onBlur={(e) => {
+                                                                                    if (exceedsMax) {
+                                                                                        e.target.style.borderColor = '#dc3545';
+                                                                                        e.target.style.boxShadow = 'none';
+                                                                                    } else {
+                                                                                        e.target.style.borderColor = '#ced4da';
+                                                                                        e.target.style.boxShadow = 'none';
+                                                                                    }
+                                                                                }}
+                                                                                title={exceedsMax ? `Current: ${currentStock} + Requested: ${p.qty} = ${totalAfterRequest} (exceeds max: ${thresholds.max})` : `Current: ${currentStock}, Max threshold: ${thresholds.max}`}
+                                                                            />
+
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    updateItemQuantity(p.product_id, p.qty + 1);
+                                                                                }}
+                                                                                style={{
+                                                                                    background: exceedsMax ? '#dc3545' : '#007bff',
+                                                                                    color: 'white',
+                                                                                    border: 'none',
+                                                                                    borderRadius: '6px',
+                                                                                    width: windowWidth <= 576 ? '36px' : '32px',
+                                                                                    height: windowWidth <= 576 ? '36px' : '32px',
+                                                                                    cursor: 'pointer',
+                                                                                    fontSize: windowWidth <= 576 ? '18px' : '16px',
+                                                                                    fontWeight: 'bold',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'center',
+                                                                                    transition: 'all 0.2s ease',
+                                                                                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                                                                    minWidth: windowWidth <= 576 ? '36px' : '32px',
+                                                                                    touchAction: 'manipulation'
+                                                                                }}
+                                                                                onMouseEnter={(e) => {
+                                                                                    e.target.style.backgroundColor = exceedsMax ? '#c82333' : '#0056b3';
+                                                                                    e.target.style.transform = 'scale(1.05)';
+                                                                                }}
+                                                                                onMouseLeave={(e) => {
+                                                                                    e.target.style.backgroundColor = exceedsMax ? '#dc3545' : '#007bff';
+                                                                                    e.target.style.transform = 'scale(1)';
+                                                                                }}
+                                                                                title={exceedsMax ? `Warning: Current ${currentStock} + Requested ${p.qty} = ${totalAfterRequest} (exceeds max: ${thresholds.max})` : "Increase quantity"}
+                                                                            >
+                                                                                +
+                                                                            </button>
+                                                                        </div>
+                                                                        {exceedsMax && (
+                                                                            <div style={{
+                                                                                fontSize: '10px',
+                                                                                color: '#dc3545',
+                                                                                fontWeight: '600',
+                                                                                textAlign: 'center',
+                                                                                padding: '2px 6px',
+                                                                                backgroundColor: '#fff5f5',
+                                                                                borderRadius: '4px',
+                                                                                border: '1px solid #fecaca'
+                                                                            }}>
+                                                                                Max: {thresholds.max}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td style={{ padding: '14px 12px', textAlign: 'center' }}>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            removeItemFromList(p.product_id);
+                                                                        }}
+                                                                        style={{
+                                                                            background: '#dc3545',
+                                                                            color: 'white',
+                                                                            border: 'none',
+                                                                            borderRadius: '6px',
+                                                                            width: windowWidth <= 576 ? '40px' : '36px',
+                                                                            height: windowWidth <= 576 ? '40px' : '36px',
+                                                                            cursor: 'pointer',
+                                                                            fontSize: windowWidth <= 576 ? '20px' : '18px',
+                                                                            fontWeight: 'bold',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            transition: 'all 0.2s ease',
+                                                                            margin: '0 auto',
+                                                                            boxShadow: '0 2px 4px rgba(220,53,69,0.2)',
+                                                                            minWidth: windowWidth <= 576 ? '40px' : '36px',
+                                                                            touchAction: 'manipulation'
+                                                                        }}
+                                                                        onMouseEnter={(e) => {
+                                                                            e.target.style.backgroundColor = '#c82333';
+                                                                            e.target.style.transform = 'scale(1.1)';
+                                                                            e.target.style.boxShadow = '0 4px 8px rgba(220,53,69,0.3)';
+                                                                        }}
+                                                                        onMouseLeave={(e) => {
+                                                                            e.target.style.backgroundColor = '#dc3545';
+                                                                            e.target.style.transform = 'scale(1)';
+                                                                            e.target.style.boxShadow = '0 2px 4px rgba(220,53,69,0.2)';
+                                                                        }}
+                                                                        title="Remove item from list"
+                                                                    >
+                                                                        ×
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        // Empty State
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            height: '400px',
+                                            textAlign: 'center',
+                                            color: '#6c757d',
+                                            padding: '40px 20px'
+                                        }}>
+                                            <div style={{
+                                                fontSize: '64px',
+                                                marginBottom: '20px',
+                                                opacity: 0.3
+                                            }}>
+                                                📦
+                                            </div>
+                                            <h4 style={{
+                                                color: '#495057',
+                                                marginBottom: '10px',
+                                                fontWeight: '600',
+                                                fontSize: '18px'
+                                            }}>
+                                                No items in your request list
+                                            </h4>
+                                            <p style={{
+                                                margin: '0',
+                                                fontSize: '14px',
+                                                maxWidth: '300px',
+                                                lineHeight: '1.6',
+                                                color: '#6c757d'
+                                            }}>
+                                                Start by adding products to build your request. Items will appear here once added.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
-                            </Container>
+
+                                {/* Footer with Pagination and Actions */}
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: windowWidth <= 768 ? 'column' : 'row',
+                                    justifyContent: 'space-between',
+                                    alignItems: windowWidth <= 768 ? 'stretch' : 'center',
+                                    marginTop: '20px',
+                                    paddingTop: '20px',
+                                    borderTop: '1px solid #e9ecef',
+                                    gap: '15px'
+                                }}>
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center',
+                                        justifyContent: windowWidth <= 768 ? 'center' : 'flex-start'
+                                    }}>
+                                        {totalRequestPages > 1 && currentRequestItems && currentRequestItems.length > 0 && (
+                                            <CustomPagination
+                                                currentPage={currentRequestPage}
+                                                totalPages={totalRequestPages}
+                                                onPageChange={handlePageChange}
+                                                color="green"
+                                            />
+                                        )}
+                                    </div>
+
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        gap: '10px', 
+                                        alignItems: 'center',
+                                        flexWrap: 'wrap',
+                                        justifyContent: windowWidth <= 768 ? 'center' : 'flex-end',
+                                        width: windowWidth <= 768 ? '100%' : 'auto'
+                                    }}>
+                                        <Button
+                                            variant="danger"
+                                            onClick={clearListAlert}
+                                            disabled={!currentRequestItems || currentRequestItems.length === 0}
+                                            style={{
+                                                padding: windowWidth <= 576 ? '12px 16px' : '10px 20px',
+                                                borderRadius: '8px',
+                                                fontWeight: '600',
+                                                fontSize: windowWidth <= 576 ? '13px' : '14px',
+                                                transition: 'all 0.2s ease',
+                                                flex: windowWidth <= 576 ? '1' : 'none',
+                                                minWidth: windowWidth <= 576 ? '120px' : 'auto'
+                                            }}
+                                        >
+                                            Clear List
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            onClick={sendRequest}
+                                            disabled={!currentRequestItems || currentRequestItems.length === 0}
+                                            style={{
+                                                padding: windowWidth <= 576 ? '12px 16px' : '10px 24px',
+                                                borderRadius: '8px',
+                                                fontWeight: '600',
+                                                fontSize: windowWidth <= 576 ? '13px' : '14px',
+                                                transition: 'all 0.2s ease',
+                                                boxShadow: '0 2px 4px rgba(0,123,255,0.2)',
+                                                flex: windowWidth <= 576 ? '1' : 'none',
+                                                minWidth: windowWidth <= 576 ? '120px' : 'auto'
+                                            }}
+                                        >
+                                            {windowWidth <= 576 ? '📤 Send' : '📤 Send Request'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
                         </Col>
                     </Row>
                 </Container>
             </div>
+
         </>
     );
 };

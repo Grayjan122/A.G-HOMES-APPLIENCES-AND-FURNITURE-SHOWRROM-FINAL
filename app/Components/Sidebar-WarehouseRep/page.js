@@ -60,20 +60,20 @@ const SidebarWarehouseRep = () => {
       component: <DashboardWR />,
      
     },
-    {
-      key: 'inventory',
-      label: 'Inventory',
-      icon: '/assets/images/dash-icons/last-inventory.png',
-      component: <InventoryIM />,
-      children: [
-        {
-          key: 'inventory-ledger',
-          label: 'Inventory Ledger',
-          component: <InventoryLedgerIM/>,
-        },
-      ],
+    // {
+    //   key: 'inventory',
+    //   label: 'Inventory',
+    //   icon: '/assets/images/dash-icons/last-inventory.png',
+    //   component: <InventoryIM />,
+    //   children: [
+    //     // {
+    //     //   key: 'inventory-ledger',
+    //     //   label: 'Inventory Ledger',
+    //     //   component: <InventoryLedgerIM/>,
+    //     // },
+    //   ],
      
-    },
+    // },
      {
       key: 'combineRequestManagement',
       label: 'Request Management',

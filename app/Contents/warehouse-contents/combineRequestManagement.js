@@ -32,6 +32,7 @@ const UnifiedRequestManagement = () => {
     // Normal Stock Request states
     const [normalRequestList, setNormalRequestList] = useState([]);
     const [normalDeliverDetails, setNormalDeliverDetails] = useState([]);
+    const [normalDeclinedProducts, setNormalDeclinedProducts] = useState([]);
     const [normalRequestFromFilter, setNormalRequestFromFilter] = useState('');
     const [normalRequestByFilter, setNormalRequestByFilter] = useState('');
     const [normalSearchFilter, setNormalSearchFilter] = useState('');
@@ -48,6 +49,8 @@ const UnifiedRequestManagement = () => {
     const [normalTransferDriver, setNormalTransferDriver] = useState('');
     const [normalRID, setNormalRID] = useState('');
     const [normalRequestFromID, setNormalRequestFromID] = useState('');
+    const [normalSelectedProductsForDelivery, setNormalSelectedProductsForDelivery] = useState([]);
+    const [normalDeliveredProducts, setNormalDeliveredProducts] = useState([]);
 
     // Customize Request states
     const [customizeRequestList, setCustomizeRequestList] = useState([]);
@@ -213,18 +216,293 @@ const UnifiedRequestManagement = () => {
         }
     };
 
+    // Helper function to validate if a product is declined in the database
+    const validateProductIsDeclined = async (req_id, product_id) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'requestStock.php';
+        const ID = { reqID: req_id };
+        try {
+            const response = await axios.get(url, {
+                params: { json: JSON.stringify(ID), operation: "GetDeclinedProducts" }
+            });
+            
+            let declinedProductIds = [];
+            let data = response.data;
+            
+            // Parse response data
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                } catch (e) {
+                    console.error('Error parsing JSON string:', e);
+                    data = [];
+                }
+            }
+            
+            // Extract product IDs from response
+            if (Array.isArray(data)) {
+                declinedProductIds = data
+                    .map(id => parseInt(id))
+                    .filter(id => !isNaN(id));
+            } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+                declinedProductIds = Object.values(data)
+                    .map(id => parseInt(id))
+                    .filter(id => !isNaN(id));
+            }
+            
+            // Check if the specific product ID is in the declined list
+            const productIdNum = parseInt(product_id);
+            const isDeclined = declinedProductIds.includes(productIdNum);
+            
+            return isDeclined;
+        } catch (error) {
+            console.error("Error validating declined product:", error);
+            return false; // If error, assume not declined
+        }
+    };
+
+    const GetNormalDeclinedProducts = async (req_id) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'requestStock.php';
+        const ID = { reqID: req_id };
+        try {
+            const response = await axios.get(url, {
+                params: { json: JSON.stringify(ID), operation: "GetDeclinedProducts" }
+            });
+            
+            // Handle various response formats - Axios should auto-parse JSON
+            let declinedProductIds = [];
+            let data = response.data;
+            
+            // If response is a string, parse it
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                } catch (e) {
+                    console.error('Error parsing JSON string:', e);
+                    data = [];
+                }
+            }
+            
+            // Extract product IDs from response
+            if (Array.isArray(data)) {
+                declinedProductIds = data
+                    .map(id => parseInt(id))
+                    .filter(id => !isNaN(id));
+            } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+                // Handle object response (e.g., {0: 123, 1: 456})
+                declinedProductIds = Object.values(data)
+                    .map(id => parseInt(id))
+                    .filter(id => !isNaN(id));
+            }
+            
+            console.log(`[GetDeclinedProducts] Request ${req_id}: Found ${declinedProductIds.length} declined products from database:`, declinedProductIds);
+            
+            setNormalDeclinedProducts(declinedProductIds);
+            return declinedProductIds; // Return for immediate use
+        } catch (error) {
+            console.error("Error fetching declined products from database:", error);
+            console.error("Error details:", error.response?.data || error.message);
+            setNormalDeclinedProducts([]);
+            return [];
+        }
+    };
+
+    const GetNormalDeliveredProducts = async (req_id) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'requestStock.php';
+        const ID = { reqID: req_id };
+        try {
+            const response = await axios.get(url, {
+                params: { json: JSON.stringify(ID), operation: "GetDeliveredProducts" }
+            });
+            
+            let deliveredProductIds = [];
+            let data = response.data;
+            
+            console.log(`[GetDeliveredProducts] Raw response for request ${req_id}:`, data);
+            
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                } catch (e) {
+                    console.error('Error parsing JSON string:', e);
+                    data = [];
+                }
+            }
+            
+            // The API returns an array of product IDs directly, not objects
+            if (Array.isArray(data)) {
+                deliveredProductIds = data
+                    .map(id => {
+                        // Handle both direct IDs and objects with product_id
+                        if (typeof id === 'object' && id.product_id !== undefined) {
+                            return parseInt(id.product_id);
+                        }
+                        return parseInt(id);
+                    })
+                    .filter(id => !isNaN(id) && id > 0);
+            } else if (data && typeof data === 'object' && !Array.isArray(data)) {
+                // Handle object response (e.g., {0: 123, 1: 456})
+                deliveredProductIds = Object.values(data)
+                    .map(id => {
+                        if (typeof id === 'object' && id.product_id !== undefined) {
+                            return parseInt(id.product_id);
+                        }
+                        return parseInt(id);
+                    })
+                    .filter(id => !isNaN(id) && id > 0);
+            }
+            
+            console.log(`[GetDeliveredProducts] Request ${req_id}: Parsed ${deliveredProductIds.length} delivered product IDs:`, deliveredProductIds);
+            setNormalDeliveredProducts(deliveredProductIds);
+            return deliveredProductIds;
+        } catch (error) {
+            console.error("Error fetching delivered products:", error);
+            console.error("Error details:", error.response?.data || error.message);
+            setNormalDeliveredProducts([]);
+            return [];
+        }
+    };
+
+    const GetSelectedDeliveryItems = async (req_id) => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'requestStock.php';
+        const ID = { reqID: req_id };
+        try {
+            const response = await axios.get(url, {
+                params: { json: JSON.stringify(ID), operation: "GetSelectedDeliveryItems" }
+            });
+            
+            let selectedItems = [];
+            let data = response.data;
+            
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                } catch (e) {
+                    console.error('Error parsing JSON string:', e);
+                    data = [];
+                }
+            }
+            
+            if (Array.isArray(data)) {
+                selectedItems = data;
+            }
+            
+            console.log(`[GetSelectedDeliveryItems] Request ${req_id}: Found ${selectedItems.length} selected items from database`);
+            return selectedItems;
+        } catch (error) {
+            console.error("Error fetching selected delivery items:", error);
+            return [];
+        }
+    };
+
+    const SaveSelectedDeliveryItems = async (req_id, selectedProductIds) => {
+        const accountID = parseInt(sessionStorage.getItem('user_id'));
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'requestStock.php';
+        const ID = { 
+            reqID: req_id, 
+            accID: accountID,
+            selectedProducts: selectedProductIds 
+        };
+        try {
+            const response = await axios.get(url, {
+                params: { json: JSON.stringify(ID), operation: "SaveSelectedDeliveryItems" }
+            });
+            
+            if (response.data === 'Success' || response.data === '"Success"') {
+                console.log(`[SaveSelectedDeliveryItems] Successfully saved ${selectedProductIds.length} selected items for request ${req_id}`);
+                return true;
+            } else {
+                console.error('SaveSelectedDeliveryItems - Error:', response.data);
+                return false;
+            }
+        } catch (error) {
+            console.error("Error saving selected delivery items:", error);
+            return false;
+        }
+    };
+
     const GetNormalDeliveriesDetails = async (transaction_id) => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'requestStock.php';
         const ID = { reqID: transaction_id };
         try {
+            // Step 1: Fetch declined products FIRST from database to validate
+            const declinedProductIds = await GetNormalDeclinedProducts(transaction_id);
+            console.log(`[VALIDATION] Request ${transaction_id}: Validated ${declinedProductIds.length} declined products from database`);
+            
+            // Step 1.5: Fetch delivered products to track partial delivery status (get returned value)
+            const deliveredProductIds = await GetNormalDeliveredProducts(transaction_id);
+            
+            // Step 2: ALWAYS fetch ALL products from request_stock_details (not from selected_delivery table)
+            // This ensures we show ALL products (both delivered and pending) after partial delivery
             const response = await axios.get(url, {
                 params: { json: JSON.stringify(ID), operation: "GetRequestDetails" }
             });
-            setNormalDeliverDetails(response.data);
+            
+            const allProducts = Array.isArray(response.data) ? response.data : [];
+            console.log(`[GetNormalDeliveriesDetails] Fetched ${allProducts.length} total products from request_stock_details`);
+            
+            // Step 3: Filter out declined products ONLY (keep all others including delivered ones)
+            const declinedIdsAsNumbers = declinedProductIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+            const declinedIdsAsStrings = declinedProductIds.map(id => String(id));
+            
+            const filteredData = allProducts.filter(item => {
+                if (!item || item.product_id === undefined || item.product_id === null) {
+                    return true;
+                }
+                
+                const productIdNum = parseInt(item.product_id);
+                const productIdStr = String(item.product_id);
+                
+                const isDeclined = declinedIdsAsNumbers.includes(productIdNum) || 
+                                   declinedIdsAsStrings.includes(productIdStr) ||
+                                   declinedIdsAsNumbers.includes(item.product_id) ||
+                                   declinedIdsAsStrings.includes(item.product_id);
+                
+                return !isDeclined;
+            });
+            
+            console.log(`[GetNormalDeliveriesDetails] After filtering declined: ${filteredData.length} products remain (includes both delivered and pending)`);
+            console.log(`[GetNormalDeliveriesDetails] Delivered products: ${deliveredProductIds.length} (${JSON.stringify(deliveredProductIds)})`);
+            
+            // Step 4: Set the delivery details (includes ALL non-declined products)
+            setNormalDeliverDetails(filteredData);
+            
+            // Step 6: Load selected products from database for checkbox state (only if state is empty)
+            // This prevents overwriting user's manual selections
+            const selectedItems = await GetSelectedDeliveryItems(transaction_id);
+            const selectedProductIds = selectedItems
+                .filter(item => item.delivery_status === 'Selected')
+                .map(item => parseInt(item.product_id));
+            
+            setNormalSelectedProductsForDelivery(prev => {
+                // If state is empty, use database values (but only for pending items)
+                if (prev.length === 0) {
+                    // Filter to only include pending (not delivered) products for initial selection
+                    // Use the returned deliveredProductIds directly instead of state
+                    const pendingSelectedIds = selectedProductIds.filter(prodId => {
+                        return !deliveredProductIds.some(deliveredId => 
+                            parseInt(deliveredId) === prodId || 
+                            String(deliveredId) === String(prodId) ||
+                            parseInt(deliveredId) === parseInt(prodId)
+                        );
+                    });
+                    console.log(`[GetNormalDeliveriesDetails] Setting initial selection from database: ${pendingSelectedIds.length} pending products (out of ${selectedProductIds.length} total selected)`);
+                    return pendingSelectedIds;
+                }
+                // Otherwise, keep current selection (user has made manual changes)
+                console.log(`[GetNormalDeliveriesDetails] Keeping existing selection (${prev.length} products), not overwriting with database values`);
+                return prev;
+            });
+            
             setNormalCurrentPageDetails(1);
         } catch (error) {
             console.error("Error fetching normal deliveries details:", error);
+            setNormalDeliverDetails([]);
         }
     };
 
@@ -238,31 +516,109 @@ const UnifiedRequestManagement = () => {
             });
             return;
         }
+
+        // Check if any products are selected for partial delivery
+        if (normalSelectedProductsForDelivery.length === 0) {
+            showAlertError({
+                icon: "error",
+                title: "Wait!",
+                text: "Please select at least one product to deliver.",
+                button: 'Okay'
+            });
+            return;
+        }
+
+        // VALIDATION: Ensure we only send products that are NOT already delivered
+        const pendingProducts = normalFilteredDeliverDetails
+            .filter(item => {
+                const productId = parseInt(item.product_id);
+                return !normalDeliveredProducts.some(deliveredId => 
+                    parseInt(deliveredId) === productId || 
+                    String(deliveredId) === String(productId)
+                );
+            })
+            .map(item => parseInt(item.product_id));
+
+        // Filter selected products to only include pending (not delivered) products
+        const selectedProductIds = normalSelectedProductsForDelivery
+            .map(id => parseInt(id))
+            .filter(id => !isNaN(id) && id > 0)
+            .filter(id => pendingProducts.includes(id)); // Only include products that are still pending
+
+        if (selectedProductIds.length === 0) {
+            showAlertError({
+                icon: "error",
+                title: "Wait!",
+                text: "Selected products are already delivered. Please select different products.",
+                button: 'Okay'
+            });
+            return;
+        }
+
         const accountID = parseInt(sessionStorage.getItem('user_id'));
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'requestStock.php';
-        const ID = { accID: accountID, reqID: normalRID, driverName: normalTransferDriver };
+        
+        console.log('[DeliverNormalStock] State Check:');
+        console.log('  - normalSelectedProductsForDelivery (before filtering):', normalSelectedProductsForDelivery);
+        console.log('  - Pending products (not delivered):', pendingProducts);
+        console.log('  - Selected Product IDs (after filtering):', selectedProductIds);
+        console.log('  - Request ID:', normalRID);
+        console.log('  - Driver:', normalTransferDriver);
+        
+        const ID = { 
+            accID: accountID, 
+            reqID: parseInt(normalRID), 
+            driverName: normalTransferDriver,
+            selectedProducts: selectedProductIds // Array of product IDs to deliver (ensured as integers)
+        };
         try {
             const response = await axios.get(url, {
-                params: { json: JSON.stringify(ID), operation: "DeliverStock" }
+                params: { 
+                    json: JSON.stringify(ID), 
+                    operation: "DeliverStockPartial"
+                }
             });
-            if (response.data === 'Success') {
+            
+            console.log('DeliverStockPartial - Response:', response.data);
+            
+            if (response.data === 'Success' || response.data === '"Success"') {
+                // Update selected items status to "Delivered" in database
+                const baseURL = sessionStorage.getItem('baseURL');
+                const updateUrl = baseURL + 'requestStock.php';
+                const updateID = {
+                    reqID: parseInt(normalRID),
+                    productIds: selectedProductIds,
+                    status: 'Delivered'
+                };
+                try {
+                    await axios.get(updateUrl, {
+                        params: { json: JSON.stringify(updateID), operation: "UpdateSelectedDeliveryStatus" }
+                    });
+                } catch (error) {
+                    console.error("Error updating selected delivery status:", error);
+                }
+                
                 AlertSucces(
-                    "Successfully appointed a driver and it's ready to deliver",
+                    `Successfully delivered ${selectedProductIds.length} product(s). Driver: ${normalTransferDriver}`,
                     "success",
                     true,
                     'Ok'
                 );
                 setNormalAppointDriverVisible(true);
                 setNormalDeliveriesDataVisible(true);
+                setNormalSelectedProductsForDelivery([]);
                 GetNormalRequest();
-                Logs(accountID, 'Deliver the request #' + normalRID);
+                // Refresh delivered products list FIRST, then refresh details
+                await GetNormalDeliveredProducts(normalRID);
+                GetNormalDeliveriesDetails(normalRID); // Refresh to show updated delivery status
+                Logs(accountID, `Delivered ${selectedProductIds.length} product(s) from request #${normalRID}`);
                 
                 // Send notification to requesting location (Inventory Manager)
                 await createNotification({
                     type: 'delivery',
-                    title: 'Stock On Delivery',
-                    message: `Your stock request #${normalRID} is now on delivery. Driver: ${normalTransferDriver}`,
+                    title: 'Stock Partially Delivered',
+                    message: `${selectedProductIds.length} product(s) from request #${normalRID} are now on delivery. Driver: ${normalTransferDriver}`,
                     locationId: normalRequestFromID, // Send to requesting location
                     targetRole: 'Inventory Manager',
                     productId: null,
@@ -270,15 +626,64 @@ const UnifiedRequestManagement = () => {
                     referenceId: normalRID
                 });
             } else {
+                // Show the actual error message from backend
+                const errorMessage = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+                console.error('DeliverStockPartial - Error response:', errorMessage);
                 showAlertError({
                     icon: "error",
                     title: "Something Went Wrong!",
-                    text: 'Failed to deliver the stock!',
+                    text: errorMessage.includes('Error:') ? errorMessage : 'Failed to deliver the stock! ' + errorMessage,
                     button: 'Try Again'
                 });
             }
         } catch (error) {
             console.error("Error delivering normal stock:", error);
+            console.error("Error response data:", error.response?.data);
+            const errorMessage = error.response?.data || error.message || 'Failed to deliver the stock!';
+            showAlertError({
+                icon: "error",
+                title: "Error!",
+                text: typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage),
+                button: 'Try Again'
+            });
+        }
+    };
+
+    const handleProductSelectionForDelivery = async (productId) => {
+        const newSelection = normalSelectedProductsForDelivery.includes(productId)
+            ? normalSelectedProductsForDelivery.filter(id => id !== productId)
+            : [...normalSelectedProductsForDelivery, productId];
+        
+        setNormalSelectedProductsForDelivery(newSelection);
+        
+        // Save to database
+        if (normalRID) {
+            await SaveSelectedDeliveryItems(normalRID, newSelection);
+        }
+    };
+
+    const handleSelectAllProductsForDelivery = async () => {
+        const pendingProducts = normalFilteredDeliverDetails
+            .filter(item => {
+                const productId = parseInt(item.product_id);
+                // Check if product is NOT delivered - compare both as integers and strings
+                return !normalDeliveredProducts.some(deliveredId => 
+                    parseInt(deliveredId) === productId || 
+                    String(deliveredId) === String(productId) ||
+                    parseInt(deliveredId) === parseInt(item.product_id)
+                );
+            })
+            .map(item => parseInt(item.product_id));
+        
+        const newSelection = normalSelectedProductsForDelivery.length === pendingProducts.length
+            ? []
+            : pendingProducts;
+        
+        setNormalSelectedProductsForDelivery(newSelection);
+        
+        // Save to database
+        if (normalRID) {
+            await SaveSelectedDeliveryItems(normalRID, newSelection);
         }
     };
 
@@ -503,9 +908,12 @@ const UnifiedRequestManagement = () => {
     const customizeStartCardsIndex = (customizeCurrentCardsPage - 1) * CARDS_PER_PAGE;
     const customizeCurrentCardsItems = customizeFilteredData.slice(customizeStartCardsIndex, customizeStartCardsIndex + CARDS_PER_PAGE);
 
-    const normalTotalPagesDetails = Math.ceil(normalDeliverDetails.length / ITEMS_PER_DETAILS_PAGE);
+    // Use the already filtered data directly (no need for additional filtering since it's done in GetNormalDeliveriesDetails)
+    const normalFilteredDeliverDetails = normalDeliverDetails;
+
+    const normalTotalPagesDetails = Math.ceil(normalFilteredDeliverDetails.length / ITEMS_PER_DETAILS_PAGE);
     const normalStartIndexDetails = (normalCurrentPageDetails - 1) * ITEMS_PER_DETAILS_PAGE;
-    const normalCurrentItemsDetails = normalDeliverDetails.slice(normalStartIndexDetails, normalStartIndexDetails + ITEMS_PER_DETAILS_PAGE);
+    const normalCurrentItemsDetails = normalFilteredDeliverDetails.slice(normalStartIndexDetails, normalStartIndexDetails + ITEMS_PER_DETAILS_PAGE);
 
     // Reset pagination on filter change
     useEffect(() => {
@@ -603,14 +1011,72 @@ const UnifiedRequestManagement = () => {
                     <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
                         <div style={{ flex: 1, padding: '15px', backgroundColor: '#d4edda', borderRadius: '8px', border: '1px solid #28a745' }}>
                             <div style={{ fontSize: '14px', color: '#155724', marginBottom: '5px' }}>Total Items</div>
-                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#155724' }}>{normalDeliverDetails.length}</div>
+                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#155724' }}>{normalFilteredDeliverDetails.length}</div>
                         </div>
                         <div style={{ flex: 1, padding: '15px', backgroundColor: '#d1ecf1', borderRadius: '8px', border: '1px solid #17a2b8' }}>
                             <div style={{ fontSize: '14px', color: '#0c5460', marginBottom: '5px' }}>Total Quantity</div>
                             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#0c5460' }}>
-                                {normalDeliverDetails.reduce((sum, item) => sum + (parseInt(item.qty) || 0), 0)}
+                                {normalFilteredDeliverDetails.reduce((sum, item) => sum + (parseInt(item.qty) || 0), 0)}
                             </div>
                         </div>
+                        <div style={{ flex: 1, padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffc107' }}>
+                            <div style={{ fontSize: '14px', color: '#856404', marginBottom: '5px' }}>Delivered Items</div>
+                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#856404' }}>{normalDeliveredProducts.length}</div>
+                        </div>
+                        <div style={{ flex: 1, padding: '15px', backgroundColor: '#f8d7da', borderRadius: '8px', border: '1px solid #dc3545' }}>
+                            <div style={{ fontSize: '14px', color: '#721c24', marginBottom: '5px' }}>Pending Items</div>
+                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#721c24' }}>
+                                {normalFilteredDeliverDetails.filter(item => {
+                                    const productId = parseInt(item.product_id);
+                                    return !normalDeliveredProducts.some(deliveredId => 
+                                        parseInt(deliveredId) === productId || 
+                                        String(deliveredId) === String(productId) ||
+                                        parseInt(deliveredId) === parseInt(item.product_id)
+                                    );
+                                }).length}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontSize: '14px', color: '#495057' }}>
+                            <strong>Select products to deliver:</strong> {normalSelectedProductsForDelivery.length} selected
+                        </div>
+                        <button
+                            onClick={handleSelectAllProductsForDelivery}
+                            style={{
+                                padding: '6px 12px',
+                                backgroundColor: (() => {
+                                    const pendingProducts = normalFilteredDeliverDetails.filter(item => {
+                                        const productId = parseInt(item.product_id);
+                                        return !normalDeliveredProducts.some(deliveredId => 
+                                            parseInt(deliveredId) === productId || 
+                                            String(deliveredId) === String(productId) ||
+                                            parseInt(deliveredId) === parseInt(item.product_id)
+                                        );
+                                    });
+                                    return normalSelectedProductsForDelivery.length === pendingProducts.length ? '#dc3545' : '#007bff';
+                                })(),
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: '600'
+                            }}
+                        >
+                            {(() => {
+                                const pendingProducts = normalFilteredDeliverDetails.filter(item => {
+                                    const productId = parseInt(item.product_id);
+                                    return !normalDeliveredProducts.some(deliveredId => 
+                                        parseInt(deliveredId) === productId || 
+                                        String(deliveredId) === String(productId) ||
+                                        parseInt(deliveredId) === parseInt(item.product_id)
+                                    );
+                                });
+                                return normalSelectedProductsForDelivery.length === pendingProducts.length ? 'Deselect All' : 'Select All Pending';
+                            })()}
+                        </button>
                     </div>
 
                     <div style={{ border: '1px solid #ddd', borderRadius: '4px', display: 'flex', flexDirection: 'column', height: '500px' }}>
@@ -618,23 +1084,88 @@ const UnifiedRequestManagement = () => {
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead style={{ backgroundColor: '#f8f9fa', position: 'sticky', top: 0, zIndex: 1 }}>
                                     <tr>
-                                        <th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '25%' }}>Product Code</th>
-                                        <th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '55%' }}>Product Description</th>
-                                        <th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '20%' }}>Quantity</th>
+                                        <th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '5%' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={(() => {
+                                                    const pendingProducts = normalFilteredDeliverDetails.filter(item => {
+                                                        const productId = parseInt(item.product_id);
+                                                        return !normalDeliveredProducts.some(deliveredId => 
+                                                            parseInt(deliveredId) === productId || 
+                                                            String(deliveredId) === String(productId) ||
+                                                            parseInt(deliveredId) === parseInt(item.product_id)
+                                                        );
+                                                    });
+                                                    return pendingProducts.length > 0 && 
+                                                           normalSelectedProductsForDelivery.length === pendingProducts.length;
+                                                })()}
+                                                onChange={handleSelectAllProductsForDelivery}
+                                                style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                            />
+                                        </th>
+                                        <th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '20%' }}>Product Code</th>
+                                        <th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '45%' }}>Product Description</th>
+                                        <th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '15%' }}>Quantity</th>
+                                        <th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '15%' }}>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {normalCurrentItemsDetails.length > 0 ? (
-                                        normalCurrentItemsDetails.map((p, i) => (
-                                            <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                                                <td style={{ padding: '12px', fontWeight: '500' }}>{p.product_name}</td>
-                                                <td style={{ padding: '12px' }}>{p.description}</td>
-                                                <td style={{ padding: '12px', textAlign: 'center', fontWeight: '500', fontSize: '16px' }}>{p.qty}</td>
-                                            </tr>
-                                        ))
+                                        normalCurrentItemsDetails.map((p, i) => {
+                                            const productId = parseInt(p.product_id);
+                                            // Check if product is delivered - compare both as integers and strings
+                                            const isDelivered = normalDeliveredProducts.some(deliveredId => 
+                                                parseInt(deliveredId) === productId || 
+                                                String(deliveredId) === String(productId) ||
+                                                parseInt(deliveredId) === parseInt(p.product_id)
+                                            );
+                                            const isSelected = normalSelectedProductsForDelivery.some(selectedId =>
+                                                parseInt(selectedId) === productId ||
+                                                String(selectedId) === String(productId)
+                                            );
+                                            
+                                            return (
+                                                <tr 
+                                                    key={i} 
+                                                    style={{ 
+                                                        borderBottom: '1px solid #eee',
+                                                        backgroundColor: isDelivered ? '#d4edda' : (isSelected ? '#e7f3ff' : 'white')
+                                                    }}
+                                                >
+                                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                                        {!isDelivered ? (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSelected}
+                                                                onChange={() => handleProductSelectionForDelivery(productId)}
+                                                                style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                                            />
+                                                        ) : (
+                                                            <span style={{ color: '#28a745', fontSize: '18px' }}>✓</span>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ padding: '12px', fontWeight: '500' }}>{p.product_name}</td>
+                                                    <td style={{ padding: '12px' }}>{p.description}</td>
+                                                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: '500', fontSize: '16px' }}>{p.qty}</td>
+                                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                                        <span style={{
+                                                            padding: '4px 12px',
+                                                            borderRadius: '12px',
+                                                            fontSize: '12px',
+                                                            fontWeight: '600',
+                                                            backgroundColor: isDelivered ? '#d4edda' : '#fff3cd',
+                                                            color: isDelivered ? '#155724' : '#856404',
+                                                            border: `1px solid ${isDelivered ? '#28a745' : '#ffc107'}`
+                                                        }}>
+                                                            {isDelivered ? '✓ Delivered' : '⏳ Pending'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
-                                            <td colSpan="3" style={{ textAlign: "center", padding: "30px", fontStyle: "italic", color: '#666' }}>
+                                            <td colSpan="5" style={{ textAlign: "center", padding: "30px", fontStyle: "italic", color: '#666' }}>
                                                 <div style={{ fontSize: '48px', marginBottom: '15px' }}>📦</div>
                                                 <div style={{ fontSize: '16px' }}>No delivery details found</div>
                                             </td>
@@ -666,11 +1197,40 @@ const UnifiedRequestManagement = () => {
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setNormalDeliveriesDataVisible(true)}>
+                    <Button variant="secondary" onClick={() => {
+                        setNormalDeliveriesDataVisible(true);
+                        setNormalSelectedProductsForDelivery([]);
+                    }}>
                         Close
                     </Button>
-                    <Button variant="primary" onClick={() => { setNormalAppointDriverVisible(false); setNormalTransferDriver(''); }}>
-                        Deliver The Stock
+                    <Button 
+                        variant="primary" 
+                        onClick={() => { 
+                            if (normalSelectedProductsForDelivery.length === 0) {
+                                showAlertError({
+                                    icon: "warning",
+                                    title: "No Products Selected!",
+                                    text: "Please select at least one product to deliver.",
+                                    button: 'Okay'
+                                });
+                                return;
+                            }
+                            setNormalAppointDriverVisible(false); 
+                            setNormalTransferDriver(''); 
+                        }}
+                        disabled={(() => {
+                            const pendingProducts = normalFilteredDeliverDetails.filter(item => {
+                                const productId = parseInt(item.product_id);
+                                return !normalDeliveredProducts.some(deliveredId => 
+                                    parseInt(deliveredId) === productId || 
+                                    String(deliveredId) === String(productId) ||
+                                    parseInt(deliveredId) === parseInt(item.product_id)
+                                );
+                            });
+                            return pendingProducts.length === 0;
+                        })()}
+                    >
+                        Deliver Selected ({normalSelectedProductsForDelivery.length})
                     </Button>
                 </Modal.Footer>
             </Modal>
@@ -684,22 +1244,25 @@ const UnifiedRequestManagement = () => {
                 </Modal.Header>
                 <Modal.Body style={{ padding: '20px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <label style={{ fontSize: '1rem', fontWeight: '500', color: '#34495e' }}>
-                            Enter Driver name:
-                        </label>
-                        <input
-                            type="text"
-                            value={normalTransferDriver}
-                            onChange={(e) => setNormalTransferDriver(e.target.value)}
-                            placeholder="Enter driver name"
-                            style={{
-                                padding: '10px',
-                                border: '1px solid #ced4da',
-                                borderRadius: '8px',
-                                fontSize: '0.95rem',
-                                color: '#34495e'
-                            }}
-                        />
+                        <div>
+                            <label style={{ fontSize: '1rem', fontWeight: '500', color: '#34495e', marginBottom: '8px', display: 'block' }}>
+                                Enter Driver name: <span style={{ color: '#dc3545' }}>*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={normalTransferDriver}
+                                onChange={(e) => setNormalTransferDriver(e.target.value)}
+                                placeholder="Enter driver name"
+                                style={{
+                                    padding: '10px',
+                                    border: '1px solid #ced4da',
+                                    borderRadius: '8px',
+                                    fontSize: '0.95rem',
+                                    color: '#34495e',
+                                    width: '100%'
+                                }}
+                            />
+                        </div>
                     </div>
                 </Modal.Body>
                 <Modal.Footer style={{ borderTop: '1px solid #dee2e6', padding: '15px' }}>
@@ -1155,6 +1718,8 @@ const UnifiedRequestManagement = () => {
                                             key={i}
                                             onClick={() => {
                                                 setNormalDeliveriesDataVisible(false);
+                                                setNormalDeclinedProducts([]); // Reset declined products
+                                                setNormalSelectedProductsForDelivery([]); // Reset selection when opening modal
                                                 GetNormalDeliveriesData(request.request_stock_id);
                                                 GetNormalDeliveriesDetails(request.request_stock_id);
                                                 setNormalRID(request.request_stock_id);

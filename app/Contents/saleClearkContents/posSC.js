@@ -29,6 +29,7 @@ export default function CombinedSalePage() {
     GetCustomer();
     GetProduct();
     GetLocation();
+    GetInstallmentD(); // Fetch installment details for payment functionality
   }, []);
 
   const [locationList, setLocationList] = useState([]);
@@ -114,11 +115,23 @@ export default function CombinedSalePage() {
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerType, setCustomerType] = useState('customer'); // Default to customer, all sales require a customer
+  const [customerMode, setCustomerMode] = useState('old'); // 'old' or 'new'
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  
+  // New customer form fields
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerEmail, setNewCustomerEmail] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [newCustomerAddress, setNewCustomerAddress] = useState('');
+  
+  // Validation states for real-time feedback
+  const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [discountType, setDiscountType] = useState('percentage');
   const [discountValue, setDiscountValue] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [mainPOSCashAmount, setMainPOSCashAmount] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastTransaction, setLastTransaction] = useState(null);
   const [inventory, setInventory] = useState({});
@@ -152,6 +165,18 @@ export default function CombinedSalePage() {
   const [showCustomizationModal, setShowCustomizationModal] = useState(false);
   const [customizationType, setCustomizationType] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Installment Payment states
+  const [showInstallmentPaymentModal, setShowInstallmentPaymentModal] = useState(false);
+  const [installmentList, setInstallmentList] = useState([]);
+  const [installmentDList, setInstallmentDList] = useState([]);
+  const [selectedInstallmentForPayment, setSelectedInstallmentForPayment] = useState(null);
+  const [selectedPayments, setSelectedPayments] = useState([]);
+  const [payAllUnpaid, setPayAllUnpaid] = useState(false);
+  const [manualAdjustment, setManualAdjustment] = useState(false);
+  const [adjustedAmount, setAdjustedAmount] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [cashAmount, setCashAmount] = useState('');
   const [editingCartItem, setEditingCartItem] = useState(null);
 
   // Customization Management Modal
@@ -171,6 +196,10 @@ export default function CombinedSalePage() {
   
   // Refs for form fields
   const customerSearchRef = React.useRef(null);
+  const newCustomerNameRef = React.useRef(null);
+  const newCustomerEmailRef = React.useRef(null);
+  const newCustomerPhoneRef = React.useRef(null);
+  const newCustomerAddressRef = React.useRef(null);
   const deliveryAddressRef = React.useRef(null);
   const warehouseSelectRef = React.useRef(null);
   const partialPaymentRef = React.useRef(null);
@@ -206,9 +235,23 @@ export default function CombinedSalePage() {
 
   // Check if sale can be processed
   const canProcessSale = () => {
+    // For old customer mode, need selectedCustomer
+    // For new customer mode, need all fields filled and validated
+    const hasCustomer = customerMode === 'old' 
+      ? selectedCustomer !== null
+      : (newCustomerName.trim() && 
+         newCustomerEmail.trim() && 
+         validateEmailFormat(newCustomerEmail).valid &&
+         newCustomerPhone.trim() && 
+         validatePhoneNumber(newCustomerPhone).valid &&
+         newCustomerAddress.trim() &&
+         !customerList.some(c => c.cust_name.toLowerCase().trim() === newCustomerName.toLowerCase().trim()) &&
+         !customerList.some(c => c.email.toLowerCase().trim() === newCustomerEmail.toLowerCase().trim()) &&
+         !emailError && !phoneError);
+
     const checks = {
       hasItems: cart.length > 0,
-      hasCustomer: selectedCustomer !== null, // All sales require a customer
+      hasCustomer: hasCustomer, // All sales require a customer (old or new)
       hasValidPartialPayment: paymentPlan === 'full' && usePartialPayment 
         ? (partialPaymentAmount >= calculateMinimumPartialPayment())
         : true,
@@ -262,6 +305,558 @@ export default function CombinedSalePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Installment Payment Functions
+  const GetInstallmentD = async () => {
+    try {
+      const baseURL = sessionStorage.getItem('baseURL');
+      const response = await axios.get(`${baseURL}installment.php`, {
+        params: {
+          json: JSON.stringify([]),
+          operation: "GetInstallmentD1"
+        }
+      });
+      
+      if (Array.isArray(response.data)) {
+        setInstallmentDList(response.data);
+      } else {
+        console.error("Installment details response is not an array:", response.data);
+        setInstallmentDList([]);
+      }
+    } catch (error) {
+      console.error("Error fetching installment details:", error);
+      setInstallmentDList([]);
+    }
+  };
+
+  const GetInstallment = async (custId) => {
+    if (!custId) return;
+    try {
+      const baseURL = sessionStorage.getItem('baseURL');
+      const locationID = sessionStorage.getItem('location_id');
+      const response = await axios.get(`${baseURL}installment.php`, {
+        params: {
+          json: JSON.stringify({ locID: locationID, custID: custId }),
+          operation: "GetInstallment"
+        }
+      });
+      
+      if (Array.isArray(response.data)) {
+        setInstallmentList(response.data);
+      } else {
+        setInstallmentList([]);
+      }
+    } catch (error) {
+      console.error("Error fetching installments:", error);
+      setInstallmentList([]);
+    }
+  };
+
+  const calculateOverduePenalty = (payment) => {
+    const today = new Date();
+    const dueDate = new Date(payment.due_date);
+    const timeDifference = today.getTime() - dueDate.getTime();
+    const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
+    const originalAmount = parseFloat(payment.amount_due || 0);
+
+    let penaltyAmount = 0;
+    let penaltyDescription = '';
+    let penaltyBreakdown = [];
+    let graceDaysLeft = 0;
+
+    // Grace period includes due date: day 0 (due date) = grace day 1, days 0-2 = grace period (3 days total)
+    // Penalty applies from day 3 onwards (daysDifference >= 3)
+    if (payment.status !== 'Paid' && daysDifference >= 0) {
+      if (daysDifference >= 0 && daysDifference < 3) {
+        graceDaysLeft = 2 - daysDifference;
+        const graceDayNumber = daysDifference + 1;
+        penaltyDescription = `${daysDifference === 0 ? 'Due today (Grace day 1)' : daysDifference === 1 ? '1 day overdue (Grace day 2)' : '2 days overdue (Grace day 3)'} - ${graceDaysLeft} day${graceDaysLeft !== 1 ? 's' : ''} left`;
+      } else if (daysDifference >= 3) {
+        penaltyAmount = originalAmount * 0.05;
+        penaltyDescription = `${daysDifference} days overdue (5% penalty)`;
+        penaltyBreakdown.push({
+          type: 'Late Payment Penalty',
+          days: `${daysDifference} days`,
+          rate: '5%',
+          amount: penaltyAmount
+        });
+      }
+    }
+
+    const totalAmount = originalAmount + penaltyAmount;
+    const hasPenalty = penaltyAmount > 0;
+
+    return {
+      ...payment,
+      original_amount: originalAmount,
+      penalty_amount: penaltyAmount,
+      total_amount: totalAmount,
+      has_penalty: hasPenalty,
+      days_overdue: Math.max(0, daysDifference),
+      penalty_description: penaltyDescription,
+      penalty_breakdown: penaltyBreakdown,
+      penalty_rate: hasPenalty ? '5%' : '0%',
+      is_in_grace_period: daysDifference >= 0 && daysDifference < 3,
+      grace_days_left: daysDifference >= 0 && daysDifference < 3 ? (2 - daysDifference) : 0,
+      severity_level: daysDifference < 3 ? 'grace' : 'penalty'
+    };
+  };
+
+  const openInstallmentPaymentModal = () => {
+    setShowInstallmentPaymentModal(true);
+  };
+
+  const handleInstallmentSelection = (installment) => {
+    setSelectedInstallmentForPayment(installment);
+    setPaymentAmount('');
+    setCashAmount('');
+    // Filter installment details to only those for the selected customer's installments
+    const customerInstallmentIds = installmentList.filter(inst => 
+      inst.cust_id === selectedCustomer?.cust_id
+    ).map(inst => inst.installment_sales_id);
+    
+    const customerInstallmentDetails = installmentDList.filter(detail =>
+      customerInstallmentIds.includes(detail.installment_id)
+    );
+
+    const installmentSchedules = customerInstallmentDetails.filter(schedule =>
+      schedule.installment_id === installment.installment_sales_id
+    );
+
+    const today = new Date();
+    const unpaidPayments = installmentSchedules
+      .filter(payment => payment.status !== 'Paid')
+      .map(payment => calculateOverduePenalty(payment))
+      .sort((a, b) => parseInt(a.payment_number) - parseInt(b.payment_number));
+
+    // Always require all overdue payments
+    const overduePayments = unpaidPayments.filter(payment => payment.days_overdue >= 3);
+    
+    // If there are overdue payments, require all of them
+    // Otherwise, require at least the next due payment
+    if (overduePayments.length > 0) {
+      // All overdue payments are required
+      setSelectedPayments(overduePayments.map(p => p.ips_id));
+    } else if (unpaidPayments.length > 0) {
+      // At least the next payment is required
+      setSelectedPayments([unpaidPayments[0].ips_id]);
+    } else {
+      setSelectedPayments([]);
+    }
+  };
+
+  const handlePaymentSelection = (ipsId) => {
+    // Filter installment details to only those for the selected customer's installments
+    const customerInstallmentIds = installmentList.filter(inst => 
+      inst.cust_id === selectedCustomer?.cust_id
+    ).map(inst => inst.installment_sales_id);
+    
+    const customerInstallmentDetails = installmentDList.filter(detail =>
+      customerInstallmentIds.includes(detail.installment_id)
+    );
+    
+    const installmentSchedules = customerInstallmentDetails.filter(schedule =>
+      schedule.installment_id === selectedInstallmentForPayment.installment_sales_id
+    );
+
+    const today = new Date();
+    const unpaidPayments = installmentSchedules
+      .filter(payment => payment.status !== 'Paid')
+      .map(payment => calculateOverduePenalty(payment))
+      .sort((a, b) => parseInt(a.payment_number) - parseInt(b.payment_number));
+
+    const overduePayments = unpaidPayments.filter(payment => payment.days_overdue >= 3);
+
+    if (payAllUnpaid) {
+      setPayAllUnpaid(false);
+    }
+
+    const payment = unpaidPayments.find(p => p.ips_id === ipsId);
+    if (!payment) return; // Safety check
+    
+    const paymentNumber = parseInt(payment.payment_number);
+
+    setSelectedPayments(prev => {
+      // Check if payment is already selected
+      const isCurrentlySelected = prev.includes(ipsId);
+      
+      if (isCurrentlySelected) {
+        // Unchecking: Remove this payment and all payments after it
+        const updatedSelections = prev.filter(id => {
+          const p = unpaidPayments.find(payment => payment.ips_id === id);
+          if (!p) return false; // Safety check
+          return parseInt(p.payment_number) < paymentNumber;
+        });
+        return updatedSelections;
+      } else {
+        // Checking: Add this payment and ensure all overdue payments and payments before this are selected
+        const newSelections = [...prev];
+
+        // Always include all overdue payments
+        overduePayments.forEach(overduePayment => {
+          if (!newSelections.includes(overduePayment.ips_id)) {
+            newSelections.push(overduePayment.ips_id);
+          }
+        });
+
+        // Fill in all payments up to and including the selected payment number
+        for (let i = 1; i <= paymentNumber; i++) {
+          const targetPayment = unpaidPayments.find(p => parseInt(p.payment_number) === i);
+          if (targetPayment && !newSelections.includes(targetPayment.ips_id)) {
+            newSelections.push(targetPayment.ips_id);
+          }
+        }
+
+        return newSelections;
+      }
+    });
+  };
+
+  const canSelectPayment = (payment) => {
+    if (payAllUnpaid) return false;
+
+    // Filter installment details to only those for the selected customer's installments
+    const customerInstallmentIds = installmentList.filter(inst => 
+      inst.cust_id === selectedCustomer?.cust_id
+    ).map(inst => inst.installment_sales_id);
+    
+    const customerInstallmentDetails = installmentDList.filter(detail =>
+      customerInstallmentIds.includes(detail.installment_id)
+    );
+
+    const installmentSchedules = customerInstallmentDetails.filter(schedule =>
+      schedule.installment_id === selectedInstallmentForPayment.installment_sales_id
+    );
+
+    const today = new Date();
+    const unpaidPayments = installmentSchedules
+      .filter(p => p.status !== 'Paid')
+      .map(p => calculateOverduePenalty(p))
+      .sort((a, b) => parseInt(a.payment_number) - parseInt(b.payment_number));
+
+    const overduePayments = unpaidPayments.filter(p => p.days_overdue >= 3);
+
+    const allOverdueSelected = overduePayments.every(overduePayment =>
+      selectedPayments.includes(overduePayment.ips_id)
+    );
+
+    if (overduePayments.length > 0 && !allOverdueSelected) {
+      return payment.days_overdue >= 3;
+    }
+
+    const paymentNumber = parseInt(payment.payment_number);
+    for (let i = 1; i < paymentNumber; i++) {
+      const lowerPayment = unpaidPayments.find(p => parseInt(p.payment_number) === i);
+      if (lowerPayment && !selectedPayments.includes(lowerPayment.ips_id)) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handlePayAllUnpaid = () => {
+    setPayAllUnpaid(!payAllUnpaid);
+    if (!payAllUnpaid) {
+      setSelectedPayments([]);
+    }
+  };
+
+  const RecordInstallmentPayment = async () => {
+    try {
+      const baseURL = sessionStorage.getItem('baseURL');
+      const accountID = parseInt(sessionStorage.getItem('user_id'));
+      const locationID = parseInt(sessionStorage.getItem('location_id'));
+      const locName = sessionStorage.getItem('location_name');
+
+      if (!accountID || isNaN(accountID)) {
+        showAlertError({
+          icon: "error",
+          title: "Invalid Session!",
+          text: 'User session is invalid. Please log in again.',
+          button: 'OK'
+        });
+        return;
+      }
+
+      if (!locationID || isNaN(locationID)) {
+        showAlertError({
+          icon: "error",
+          title: "Location Missing!",
+          text: 'Location information is missing. Please log in again.',
+          button: 'OK'
+        });
+        return;
+      }
+
+      // Filter installment details to only those for the selected customer's installments
+      const customerInstallmentIds = installmentList.filter(inst => 
+        inst.cust_id === selectedCustomer?.cust_id
+      ).map(inst => inst.installment_sales_id);
+      
+      const customerInstallmentDetails = installmentDList.filter(detail =>
+        customerInstallmentIds.includes(detail.installment_id)
+      );
+
+      const customerInstallmentSchedules = customerInstallmentDetails.filter(schedule =>
+        schedule.installment_id === selectedInstallmentForPayment.installment_sales_id
+      );
+
+      const unpaidPayments = customerInstallmentSchedules
+        .filter(payment => payment.status !== 'Paid')
+        .map(payment => calculateOverduePenalty(payment))
+        .sort((a, b) => parseInt(a.payment_number) - parseInt(b.payment_number));
+
+      // Calculate required payments (overdue + next due)
+      const overduePayments = unpaidPayments.filter(payment => payment.days_overdue >= 3);
+      const requiredPayments = overduePayments.length > 0 
+        ? overduePayments 
+        : (unpaidPayments.length > 0 ? [unpaidPayments[0]] : []);
+      
+      const selectedPaymentsList = requiredPayments;
+      const totalAmountDue = selectedPaymentsList.reduce((sum, payment) => sum + payment.total_amount, 0);
+      const enteredAmount = parseFloat(paymentAmount) || 0;
+
+      // Validate payment amount
+      if (!paymentAmount || enteredAmount <= 0) {
+        showAlertError({
+          icon: "error",
+          title: "Payment Amount Required!",
+          text: 'Please enter the payment amount.',
+          button: 'OK'
+        });
+        return;
+      }
+
+      if (enteredAmount < totalAmountDue) {
+        showAlertError({
+          icon: "error",
+          title: "Insufficient Amount!",
+          text: `Payment amount (${formatCurrency(enteredAmount)}) is less than the required amount (${formatCurrency(totalAmountDue)}).`,
+          button: 'OK'
+        });
+        return;
+      }
+
+      // Validate cash amount
+      if (!cashAmount || cashAmountNum <= 0) {
+        showAlertError({
+          icon: "error",
+          title: "Cash Amount Required!",
+          text: 'Please enter the cash amount received.',
+          button: 'OK'
+        });
+        return;
+      }
+
+      if (cashAmountNum < enteredAmount) {
+        showAlertError({
+          icon: "error",
+          title: "Insufficient Cash!",
+          text: `Cash received (${formatCurrency(cashAmountNum)}) is less than the payment amount (${formatCurrency(enteredAmount)}).`,
+          button: 'OK'
+        });
+        return;
+      }
+
+      let paymentsToRecord = [];
+      let excessAmount = enteredAmount - totalAmountDue;
+
+      // Handle excess payment - credit to next payment if available
+      if (excessAmount > 0) {
+        // Find the next unpaid payment (lowest payment number that's not in selectedPaymentsList)
+        const maxSelectedPaymentNumber = selectedPaymentsList.length > 0
+          ? Math.max(...selectedPaymentsList.map(p => parseInt(p.payment_number)))
+          : 0;
+        
+        const nextPayment = unpaidPayments.find(p => 
+          parseInt(p.payment_number) > maxSelectedPaymentNumber
+        );
+
+        if (nextPayment) {
+          // Apply excess to next payment as a PARTIAL payment only
+          // Always leave at least 0.01 remaining to ensure it's treated as partial/unpaid
+          // This prevents the next payment from being marked as fully paid
+          const maxPartialCredit = nextPayment.total_amount - 0.01; // Leave at least 0.01 unpaid
+          const amountToCreditNextPayment = Math.min(excessAmount, maxPartialCredit);
+          
+          // Only credit if there's a meaningful amount to credit (at least 0.01)
+          if (amountToCreditNextPayment >= 0.01) {
+            paymentsToRecord = [
+              // Record selected payments with their full amounts
+              ...selectedPaymentsList.map(payment => ({
+                ips_id: payment.ips_id,
+                amount: payment.total_amount
+              })),
+              // Record next payment with PARTIAL excess amount credited (never full amount)
+              {
+                ips_id: nextPayment.ips_id,
+                amount: amountToCreditNextPayment
+              }
+            ];
+            
+            excessAmount = enteredAmount - totalAmountDue - amountToCreditNextPayment;
+            
+            // If there's still excess after crediting, inform the user
+            if (excessAmount > 0) {
+              showAlertError({
+                icon: "info",
+                title: "Partial Credit Applied",
+                text: `Excess payment of ${formatCurrency(amountToCreditNextPayment)} has been credited to Payment #${nextPayment.payment_number}. Remaining excess: ${formatCurrency(excessAmount)}.`,
+                button: 'OK'
+              });
+            }
+          } else {
+            // Excess is too small to credit meaningfully
+            paymentsToRecord = selectedPaymentsList.map(payment => ({
+              ips_id: payment.ips_id,
+              amount: payment.total_amount
+            }));
+            
+            // Warn about excess
+            if (excessAmount >= nextPayment.total_amount) {
+              showAlertError({
+                icon: "info",
+                title: "Excess Payment Notice",
+                text: `Your excess payment (${formatCurrency(excessAmount)}) would fully pay the next payment (${formatCurrency(nextPayment.total_amount)}). To avoid marking it as paid, only partial credits are allowed. Please process the next payment separately.`,
+                button: 'OK'
+              });
+            }
+          }
+        } else {
+          // No next payment available, just record selected payments
+          paymentsToRecord = selectedPaymentsList.map(payment => ({
+            ips_id: payment.ips_id,
+            amount: payment.total_amount
+          }));
+          
+          // Warn about excess but still proceed
+          if (excessAmount > 0) {
+            showAlertError({
+              icon: "warning",
+              title: "Excess Payment!",
+              text: `Payment amount exceeds required amount by ${formatCurrency(excessAmount)}. No next payment found to credit the excess.`,
+              button: 'OK'
+            });
+          }
+        }
+      } else {
+        // Exact amount - record selected payments
+        paymentsToRecord = selectedPaymentsList.map(payment => ({
+          ips_id: payment.ips_id,
+          amount: payment.total_amount
+        }));
+      }
+
+      // Handle manual adjustment override
+      if (manualAdjustment && adjustedAmount) {
+        const totalAdjusted = parseFloat(adjustedAmount);
+        const numberOfPayments = selectedPaymentsList.length;
+        const amountPerPayment = totalAdjusted / numberOfPayments;
+        
+        paymentsToRecord = selectedPaymentsList.map(payment => ({
+          ips_id: payment.ips_id,
+          amount: amountPerPayment
+        }));
+        
+        excessAmount = 0; // Manual adjustment doesn't allow excess
+      }
+
+      const pdaytails = {
+        installmentID: selectedInstallmentForPayment.installment_sales_id,
+        recordedBy: accountID,
+        locID: locationID
+      }
+
+      const response = await axios.get(`${baseURL}installment.php`, {
+        params: {
+          payments: JSON.stringify(paymentsToRecord),
+          json: JSON.stringify(pdaytails),
+          operation: "PayInstallment"
+        }
+      });
+
+      if (!isNaN(response.data) && response.data !== null && response.data !== "") {
+        // Calculate total amount actually recorded (may include next payment if excess was applied)
+        const recordedTotal = paymentsToRecord.reduce((sum, p) => sum + p.amount, 0);
+
+        // Get payment details for receipt
+        const paymentDetailsForReceipt = paymentsToRecord.map(record => {
+          const payment = customerInstallmentSchedules.find(p => p.ips_id === record.ips_id);
+          if (payment) {
+            const processed = calculateOverduePenalty(payment);
+            return {
+              ...processed,
+              amount_paid: record.amount // Actual amount paid (may differ from total_amount if excess credited)
+            };
+          }
+          return null;
+        }).filter(Boolean);
+
+        const transaction = {
+          receipt_id: response.data,
+          customer: selectedInstallmentForPayment,
+          payments: paymentDetailsForReceipt,
+          total_amount: enteredAmount,
+          amount_applied: recordedTotal,
+          excess_amount: excessAmount > 0 && paymentsToRecord.length > selectedPaymentsList.length ? excessAmount : 0,
+          payment_method: 'cash',
+          date: new Date().toLocaleDateString(),
+          time: new Date().toLocaleTimeString(),
+          location: locName || 'Store',
+          recorded_by: sessionStorage.getItem('user_name') || 'Staff',
+          wasAdjusted: manualAdjustment,
+          payment_type: 'Installment Payment'
+        };
+
+        setLastTransaction(transaction);
+        setShowReceipt(true);
+        
+        // Refresh data
+        GetInstallmentD();
+        GetInstallment(selectedCustomer.cust_id);
+        
+        // Reset modal
+        setShowInstallmentPaymentModal(false);
+        setSelectedInstallmentForPayment(null);
+        setSelectedPayments([]);
+        setPayAllUnpaid(false);
+        setManualAdjustment(false);
+        setAdjustedAmount('');
+        setPaymentAmount('');
+        setCashAmount('');
+
+        Logs(accountID, `Recorded installment payment for ${selectedInstallmentForPayment.cust_name}`);
+      } else {
+        showAlertError({
+          icon: "error",
+          title: "Payment Failed!",
+          text: 'Error recording payment: ' + response.data,
+          button: 'OK'
+        });
+      }
+    } catch (error) {
+      console.error("Error recording payment:", error);
+      showAlertError({
+        icon: "error",
+        title: "Payment Error!",
+        text: 'Error recording payment: ' + error.message,
+        button: 'OK'
+      });
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const formatCurrency = (amount) => {
+    return `₱${parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   // Get products based on mode
@@ -608,6 +1203,305 @@ export default function CombinedSalePage() {
     setLastTransaction(null);
   };
 
+  // Validate Philippine phone number
+  const validatePhoneNumber = (phone) => {
+    if (!phone || !phone.trim()) {
+      return { valid: false, error: 'Phone number is required' };
+    }
+
+    // Remove all spaces, dashes, and parentheses
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+    
+    // Philippine mobile phone patterns:
+    // 09XXXXXXXXX (11 digits, starts with 09)
+    // +639XXXXXXXXX (with +63 country code)
+    // 639XXXXXXXXX (without + but with 63 country code)
+    
+    // Check if it starts with +63
+    if (cleanPhone.startsWith('+63')) {
+      const number = cleanPhone.substring(3); // Remove +63
+      if (/^9\d{9}$/.test(number)) {
+        return { valid: true, error: '' };
+      }
+      return { valid: false, error: 'Invalid format. Should be +639XXXXXXXXX' };
+    }
+    
+    // Check if it starts with 63 (without +)
+    if (cleanPhone.startsWith('63') && cleanPhone.length === 12) {
+      const number = cleanPhone.substring(2); // Remove 63
+      if (/^9\d{9}$/.test(number)) {
+        return { valid: true, error: '' };
+      }
+      return { valid: false, error: 'Invalid format. Should be 639XXXXXXXXX' };
+    }
+    
+    // Check if it starts with 09 (11 digits)
+    if (/^09\d{9}$/.test(cleanPhone)) {
+      return { valid: true, error: '' };
+    }
+    
+    // Check if it's 9XXXXXXXXX (10 digits, starts with 9)
+    if (/^9\d{9}$/.test(cleanPhone) && cleanPhone.length === 10) {
+      return { valid: true, error: '' };
+    }
+    
+    return { 
+      valid: false, 
+      error: 'Invalid Philippine phone format. Use: 09XXXXXXXXX, +639XXXXXXXXX, or 639XXXXXXXXX' 
+    };
+  };
+
+  // Validate email format
+  const validateEmailFormat = (email) => {
+    if (!email || !email.trim()) {
+      return { valid: false, error: 'Email is required' };
+    }
+
+    // Enhanced email regex
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    
+    if (!emailRegex.test(email.trim())) {
+      return { valid: false, error: 'Invalid email format. Example: name@example.com' };
+    }
+
+    // Additional checks
+    if (email.trim().length > 254) {
+      return { valid: false, error: 'Email address is too long (max 254 characters)' };
+    }
+
+    const parts = email.trim().split('@');
+    if (parts.length !== 2) {
+      return { valid: false, error: 'Invalid email format' };
+    }
+
+    const [localPart, domain] = parts;
+    if (localPart.length === 0 || localPart.length > 64) {
+      return { valid: false, error: 'Email local part is invalid' };
+    }
+
+    if (!domain || domain.length === 0 || !domain.includes('.')) {
+      return { valid: false, error: 'Email domain is invalid' };
+    }
+
+    return { valid: true, error: '' };
+  };
+
+  // Real-time email validation
+  const handleEmailChange = (e) => {
+    const email = e.target.value;
+    setNewCustomerEmail(email);
+    
+    if (!email.trim()) {
+      setEmailError('');
+      return;
+    }
+
+    const emailValidation = validateEmailFormat(email);
+    if (!emailValidation.valid) {
+      setEmailError(emailValidation.error);
+    } else {
+      // Check if email already exists
+      const emailExists = customerList.some(customer => 
+        customer.email.toLowerCase().trim() === email.toLowerCase().trim()
+      );
+      if (emailExists) {
+        setEmailError('A customer with this email already exists');
+      } else {
+        setEmailError('');
+      }
+    }
+  };
+
+  // Real-time phone validation
+  const handlePhoneChange = (e) => {
+    const phone = e.target.value;
+    setNewCustomerPhone(phone);
+    
+    if (!phone.trim()) {
+      setPhoneError('');
+      return;
+    }
+
+    const phoneValidation = validatePhoneNumber(phone);
+    if (!phoneValidation.valid) {
+      setPhoneError(phoneValidation.error);
+    } else {
+      setPhoneError('');
+    }
+  };
+
+  // Validate new customer data
+  const validateNewCustomer = () => {
+    if (!newCustomerName.trim()) {
+      showAlertError({
+        icon: "error",
+        title: "Customer Name Required!",
+        text: 'Please enter customer name.',
+        button: 'Okay'
+      });
+      scrollToField(newCustomerNameRef);
+      return false;
+    }
+
+    if (!newCustomerEmail.trim()) {
+      showAlertError({
+        icon: "error",
+        title: "Customer Email Required!",
+        text: 'Please enter customer email.',
+        button: 'Okay'
+      });
+      scrollToField(newCustomerEmailRef);
+      return false;
+    }
+
+    // Validate email format
+    const emailValidation = validateEmailFormat(newCustomerEmail);
+    if (!emailValidation.valid) {
+      setEmailError(emailValidation.error);
+      showAlertError({
+        icon: "error",
+        title: "Invalid Email!",
+        text: emailValidation.error,
+        button: 'Okay'
+      });
+      scrollToField(newCustomerEmailRef);
+      return false;
+    }
+
+    // Check if email already exists
+    const emailExists = customerList.some(customer => 
+      customer.email.toLowerCase().trim() === newCustomerEmail.toLowerCase().trim()
+    );
+    if (emailExists) {
+      setEmailError('A customer with this email already exists');
+      showAlertError({
+        icon: "error",
+        title: "Email Already Exists!",
+        text: 'A customer with this email already exists. Please select from existing customers or use a different email.',
+        button: 'Okay'
+      });
+      scrollToField(newCustomerEmailRef);
+      return false;
+    }
+
+    if (!newCustomerPhone.trim()) {
+      showAlertError({
+        icon: "error",
+        title: "Customer Phone Required!",
+        text: 'Please enter customer phone number.',
+        button: 'Okay'
+      });
+      scrollToField(newCustomerPhoneRef);
+      return false;
+    }
+
+    // Validate phone number format
+    const phoneValidation = validatePhoneNumber(newCustomerPhone);
+    if (!phoneValidation.valid) {
+      setPhoneError(phoneValidation.error);
+      showAlertError({
+        icon: "error",
+        title: "Invalid Phone Number!",
+        text: phoneValidation.error,
+        button: 'Okay'
+      });
+      scrollToField(newCustomerPhoneRef);
+      return false;
+    }
+
+    if (!newCustomerAddress.trim()) {
+      showAlertError({
+        icon: "error",
+        title: "Customer Address Required!",
+        text: 'Please enter customer address.',
+        button: 'Okay'
+      });
+      scrollToField(newCustomerAddressRef);
+      return false;
+    }
+
+    // Check if customer name already exists
+    const nameExists = customerList.some(customer => 
+      customer.cust_name.toLowerCase().trim() === newCustomerName.toLowerCase().trim()
+    );
+
+    if (nameExists) {
+      showAlertError({
+        icon: "error",
+        title: "Customer Already Exists!",
+        text: 'A customer with this name already exists. Please select from existing customers or use a different name.',
+        button: 'Okay'
+      });
+      scrollToField(newCustomerNameRef);
+      return false;
+    }
+
+    return true;
+  };
+
+  // Create new customer
+  const createNewCustomer = async () => {
+    const baseURL = sessionStorage.getItem('baseURL');
+    const url = baseURL + 'customer.php';
+    const customerDetails = {
+      custName: newCustomerName.trim(),
+      custPhone: newCustomerPhone.trim(),
+      custEmail: newCustomerEmail.trim(),
+      custAddress: newCustomerAddress.trim()
+    };
+
+    try {
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify(customerDetails),
+          operation: "AddCustomer"
+        }
+      });
+
+      if (response.data === 'Success') {
+        // Refresh customer list
+        await GetCustomer();
+        
+        // Find and select the newly created customer
+        const updatedResponse = await axios.get(url, {
+          params: {
+            json: JSON.stringify([]),
+            operation: "GetCustomer"
+          }
+        });
+
+        const newCustomer = updatedResponse.data.find(customer => 
+          customer.cust_name.toLowerCase().trim() === newCustomerName.toLowerCase().trim() &&
+          customer.email.toLowerCase().trim() === newCustomerEmail.toLowerCase().trim()
+        );
+
+        if (newCustomer) {
+          setSelectedCustomer(newCustomer);
+          AlertSucces(
+            "New customer created successfully!",
+            "success",
+            true,
+            'Okay'
+          );
+          return newCustomer;
+        } else {
+          throw new Error('Customer created but not found in list');
+        }
+      } else {
+        throw new Error(response.data || 'Failed to create customer');
+      }
+    } catch (error) {
+      console.error("Error creating new customer:", error);
+      showAlertError({
+        icon: "error",
+        title: "Failed to Create Customer!",
+        text: error.response?.data || error.message || 'Failed to create new customer. Please try again.',
+        button: 'Try Again'
+      });
+      return null;
+    }
+  };
+
   const proceedPurchase = async () => {
     if (cart.length === 0) {
       showAlertError({
@@ -619,12 +1513,42 @@ export default function CombinedSalePage() {
       return;
     }
 
-    // All sales require a customer
-    if (!selectedCustomer) {
+    // Determine the customer to use for this purchase
+    let customerToUse = null;
+
+    // Handle new customer creation
+    if (customerMode === 'new') {
+      if (!validateNewCustomer()) {
+        return;
+      }
+
+      const newCustomer = await createNewCustomer();
+      if (!newCustomer) {
+        return; // Error already shown in createNewCustomer
+      }
+      // Use the newly created customer
+      customerToUse = newCustomer;
+    } else {
+      // Old customer mode - must have selected customer
+      if (!selectedCustomer) {
+        showAlertError({
+          icon: "error",
+          title: "Customer Required!",
+          text: 'Please select a customer to proceed.',
+          button: 'Okay'
+        });
+        scrollToField(customerSearchRef);
+        return;
+      }
+      customerToUse = selectedCustomer;
+    }
+
+    // Ensure we have a customer at this point
+    if (!customerToUse) {
       showAlertError({
         icon: "error",
-        title: "Customer Required!",
-        text: 'Please select a customer to proceed.',
+        title: "Customer Error!",
+        text: 'Unable to proceed without a customer. Please try again.',
         button: 'Okay'
       });
       return;
@@ -638,6 +1562,32 @@ export default function CombinedSalePage() {
         button: 'Okay'
       });
       return;
+    }
+
+    // Validate cash amount for cash payments
+    if (paymentMethod === 'cash') {
+      const cashAmountNum = parseFloat(mainPOSCashAmount) || 0;
+      const amountDue = calculateAmountDueToday();
+      
+      if (!mainPOSCashAmount || cashAmountNum <= 0) {
+        showAlertError({
+          icon: "error",
+          title: "Cash Amount Required!",
+          text: 'Please enter the cash amount received.',
+          button: 'Okay'
+        });
+        return;
+      }
+
+      if (cashAmountNum < amountDue) {
+        showAlertError({
+          icon: "error",
+          title: "Insufficient Cash!",
+          text: `Cash received (₱${cashAmountNum.toLocaleString()}) is less than the amount due (₱${amountDue.toLocaleString()}).`,
+          button: 'Okay'
+        });
+        return;
+      }
     }
 
     // Validate delivery information
@@ -687,7 +1637,7 @@ export default function CombinedSalePage() {
 
       if (paymentPlan === 'full') {
         const PurchaseDetails = {
-          custID: selectedCustomer.cust_id, // All sales require a customer
+          custID: customerToUse.cust_id, // All sales require a customer
           accID: accountID,
           locID: locId,
           payMethod: paymentMethod,
@@ -717,9 +1667,14 @@ export default function CombinedSalePage() {
           });
 
           if (!isNaN(response.data) && response.data !== null && response.data !== "") {
+            // Calculate change for cash payments
+            const cashAmountNum = paymentMethod === 'cash' ? parseFloat(mainPOSCashAmount) || 0 : 0;
+            const amountDue = calculateAmountDueToday();
+            const change = cashAmountNum > amountDue ? cashAmountNum - amountDue : 0;
+
             const transaction = {
               invoice_id: response.data,
-              customer: selectedCustomer,
+              customer: customerToUse,
               items: [...cart],
               subtotal: calculateSubtotal(),
               discount: calculateDiscount(),
@@ -731,7 +1686,9 @@ export default function CombinedSalePage() {
               installment_details: null,
               date: new Date().toLocaleDateString(),
               time: new Date().toLocaleTimeString(),
-              location: locName || 'Agora Showroom Main'
+              location: locName || 'Agora Showroom Main',
+              cash_received: cashAmountNum,
+              change: change
             };
 
             showReceiptModal(transaction);
@@ -749,11 +1706,11 @@ export default function CombinedSalePage() {
               const notificationData = {
                 type: 'inventory_sold',
                 title: 'Products Sold',
-                message: `Products sold at ${locName}. Invoice #${response.data}. Customer: ${selectedCustomer.cust_name}. Items: ${productDetails}`,
+                message: `Products sold at ${locName}. Invoice #${response.data}. Customer: ${customerToUse.cust_name}. Items: ${productDetails}`,
                 locationId: locId,
                 targetRole: 'Inventory Manager',
                 productId: cart[0]?.product_id || null,
-                customerId: selectedCustomer.cust_id,
+                customerId: customerToUse.cust_id,
                 referenceId: response.data
               };
 
@@ -824,7 +1781,7 @@ export default function CombinedSalePage() {
           monthlyPayment: installmentDetails.monthlyPayment,
           totalPayment: installmentDetails.monthlyPayment * installmentDetails.months,
           balance: installmentDetails.monthlyPayment * installmentDetails.months,
-          custID: selectedCustomer.cust_id,
+          custID: customerToUse.cust_id,
           locID: locId,
           accID: accountID,
           prodID: firstProductId,
@@ -848,11 +1805,16 @@ export default function CombinedSalePage() {
           });
 
           if (!isNaN(response.data) && response.data !== null && response.data !== "") {
+            // Calculate change for cash payments
+            const cashAmountNum = paymentMethod === 'cash' ? parseFloat(mainPOSCashAmount) || 0 : 0;
+            const amountDue = calculateDownpayment();
+            const change = cashAmountNum > amountDue ? cashAmountNum - amountDue : 0;
+
             const transaction = {
               remainingBal: installmentDetails.monthlyPayment * installmentDetails.months,
               downpaymentAmount: calculateDownpayment(),
               invoice_id: response.data,
-              customer: selectedCustomer,
+              customer: customerToUse,
               items: [...cart],
               subtotal: calculateSubtotal(),
               discount: calculateDiscount(),
@@ -869,7 +1831,9 @@ export default function CombinedSalePage() {
               },
               date: new Date().toLocaleDateString(),
               time: new Date().toLocaleTimeString(),
-              location: locName || 'Agora Showroom Main'
+              location: locName || 'Agora Showroom Main',
+              cash_received: cashAmountNum,
+              change: change
             };
 
             showReceiptModal(transaction);
@@ -887,11 +1851,11 @@ export default function CombinedSalePage() {
               const notificationData = {
                 type: 'inventory_sold',
                 title: 'Products Sold (Installment)',
-                message: `Products sold via installment at ${locName}. Invoice #${response.data}. Customer: ${selectedCustomer.cust_name}. Items: ${productDetails}`,
+                message: `Products sold via installment at ${locName}. Invoice #${response.data}. Customer: ${customerToUse.cust_name}. Items: ${productDetails}`,
                 locationId: locId,
                 targetRole: 'Inventory Manager',
                 productId: cart[0]?.product_id || null,
-                customerId: selectedCustomer.cust_id,
+                customerId: customerToUse.cust_id,
                 referenceId: response.data
               };
 
@@ -948,7 +1912,7 @@ export default function CombinedSalePage() {
       // Custom sales logic
       if (paymentPlan === 'full') {
         const PurchaseDetails = {
-          custID: selectedCustomer.cust_id,
+          custID: customerToUse.cust_id,
           accID: accountID,
           locID: locId,
           payMethod: paymentMethod,
@@ -999,9 +1963,14 @@ export default function CombinedSalePage() {
               'Okay'
             );
 
+            // Calculate change for cash payments
+            const cashAmountNum = paymentMethod === 'cash' ? parseFloat(mainPOSCashAmount) || 0 : 0;
+            const amountDue = calculateAmountDueToday();
+            const change = cashAmountNum > amountDue ? cashAmountNum - amountDue : 0;
+
             const transaction = {
               invoice_id: response.data,
-              customer: selectedCustomer,
+              customer: customerToUse,
               items: [...cart],
               subtotal: calculateSubtotal(),
               discount: calculateDiscount(),
@@ -1013,7 +1982,9 @@ export default function CombinedSalePage() {
               installment_details: null,
               date: new Date().toLocaleDateString(),
               time: new Date().toLocaleTimeString(),
-              location: locName || 'Agora Showroom Main'
+              location: locName || 'Agora Showroom Main',
+              cash_received: cashAmountNum,
+              change: change
             };
 
             showReceiptModal(transaction);
@@ -1026,11 +1997,11 @@ export default function CombinedSalePage() {
               const notificationData = {
                 type: 'custom_order',
                 title: 'New Customization Order',
-                message: `New customization order from ${locName}. Invoice #${response.data}. Customer: ${selectedCustomer.cust_name}. ${cart.length} item(s) ordered.`,
+                message: `New customization order from ${locName}. Invoice #${response.data}. Customer: ${customerToUse.cust_name}. ${cart.length} item(s) ordered.`,
                 locationId: requestTo,
                 targetRole: 'Warehouse Representative',
                 productId: null,
-                customerId: selectedCustomer.cust_id,
+                customerId: customerToUse.cust_id,
                 referenceId: response.data
               };
 
@@ -1086,7 +2057,7 @@ export default function CombinedSalePage() {
           monthlyPayment: installmentDetails.monthlyPayment,
           totalPayment: installmentDetails.monthlyPayment * installmentDetails.months,
           balance: installmentDetails.monthlyPayment * installmentDetails.months,
-          custID: selectedCustomer.cust_id,
+          custID: customerToUse.cust_id,
           locID: locId,
           accID: accountID,
           warehouseID: requestTo,
@@ -1117,11 +2088,16 @@ export default function CombinedSalePage() {
               'Okay'
             );
 
+            // Calculate change for cash payments
+            const cashAmountNum = paymentMethod === 'cash' ? parseFloat(mainPOSCashAmount) || 0 : 0;
+            const amountDue = calculateDownpayment();
+            const change = cashAmountNum > amountDue ? cashAmountNum - amountDue : 0;
+
             const transaction = {
               remainingBal: installmentDetails.monthlyPayment * installmentDetails.months,
               downpaymentAmount: calculateDownpayment(),
               invoice_id: response.data,
-              customer: selectedCustomer,
+              customer: customerToUse,
               items: [...cart],
               subtotal: calculateSubtotal(),
               discount: calculateDiscount(),
@@ -1138,7 +2114,9 @@ export default function CombinedSalePage() {
               },
               date: new Date().toLocaleDateString(),
               time: new Date().toLocaleTimeString(),
-              location: locName || 'Agora Showroom Main'
+              location: locName || 'Agora Showroom Main',
+              cash_received: cashAmountNum,
+              change: change
             };
 
             showReceiptModal(transaction);
@@ -1151,11 +2129,11 @@ export default function CombinedSalePage() {
               const notificationData = {
                 type: 'custom_order_installment',
                 title: 'New Customization Installment Order',
-                message: `New customization INSTALLMENT order from ${locName}. Invoice #${response.data}. Customer: ${selectedCustomer.cust_name}. ${cart.length} item(s) ordered. ${installmentDetails.months}-month plan.`,
+                message: `New customization INSTALLMENT order from ${locName}. Invoice #${response.data}. Customer: ${customerToUse.cust_name}. ${cart.length} item(s) ordered. ${installmentDetails.months}-month plan.`,
                 locationId: requestTo,
                 targetRole: 'Warehouse Representative',
                 productId: null,
-                customerId: selectedCustomer.cust_id,
+                customerId: customerToUse.cust_id,
                 referenceId: response.data
               };
 
@@ -1201,9 +2179,18 @@ export default function CombinedSalePage() {
   const resetForm = () => {
     setCart([]);
     setPaymentMethod("cash");
+    setMainPOSCashAmount('');
     // Keep customerType as 'customer' - all sales require a customer
+    setCustomerMode('old'); // Reset to old customer mode
     setSelectedCustomer(null);
     setCustomerSearchTerm('');
+    // Reset new customer fields
+    setNewCustomerName('');
+    setNewCustomerEmail('');
+    setNewCustomerPhone('');
+    setNewCustomerAddress('');
+    setEmailError('');
+    setPhoneError('');
     setDiscountValue(0);
     setPaymentPlan('full');
     setDownpaymentAmount(0);
@@ -1322,7 +2309,7 @@ export default function CombinedSalePage() {
                     A.G HOME APPLIANCE AND FURNITURE SHOWROOM
                   </h4>
                   <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                    <div>Invoice #{lastTransaction.invoice_id}</div>
+                    <div>{lastTransaction.payment_type === 'Installment Payment' ? `Receipt #${lastTransaction.receipt_id}` : `Invoice #${lastTransaction.invoice_id}`}</div>
                     <div>{lastTransaction.date} • {lastTransaction.time}</div>
                     <div>{lastTransaction.location}</div>
                   </div>
@@ -1346,17 +2333,69 @@ export default function CombinedSalePage() {
                   </div>
                 </div>
 
-                {/* Items Purchased */}
-                <div style={{ marginBottom: '24px' }}>
-                  <h5 style={{ fontWeight: '600', marginBottom: '8px', color: '#1f2937' }}>
-                    Items Purchased
-                  </h5>
-                  <div style={{
-                    padding: '12px',
-                    background: '#f9fafb',
-                    borderRadius: '8px'
-                  }}>
-                    {lastTransaction.items.map((item, index) => (
+                {/* Items Purchased or Payments Recorded */}
+                {lastTransaction.payment_type === 'Installment Payment' ? (
+                  <div style={{ marginBottom: '24px' }}>
+                    <h5 style={{ fontWeight: '600', marginBottom: '8px', color: '#1f2937' }}>
+                      Payments Recorded
+                    </h5>
+                    <div style={{
+                      padding: '12px',
+                      background: '#f9fafb',
+                      borderRadius: '8px'
+                    }}>
+                      {lastTransaction.payments && lastTransaction.payments.map((payment, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            paddingTop: index > 0 ? '12px' : 0,
+                            paddingBottom: '12px',
+                            borderBottom: index < lastTransaction.payments.length - 1 ? '1px solid #e5e7eb' : 'none'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                                Payment #{payment.payment_number}
+                              </div>
+                              <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
+                                Due: {formatDate(payment.due_date)}
+                              </div>
+                              {payment.has_penalty && (
+                                <div style={{ fontSize: '12px', color: '#dc2626', marginBottom: '4px' }}>
+                                  Penalty: {formatCurrency(payment.penalty_amount)}
+                                </div>
+                              )}
+                              {payment.amount_paid && payment.amount_paid !== payment.total_amount && (
+                                <div style={{ fontSize: '12px', color: '#059669', marginBottom: '4px', fontStyle: 'italic' }}>
+                                  💰 Partial: {formatCurrency(payment.amount_paid)} of {formatCurrency(payment.total_amount)}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ fontWeight: '600', textAlign: 'right', color: '#10b981' }}>
+                              {payment.amount_paid ? formatCurrency(payment.amount_paid) : formatCurrency(payment.total_amount)}
+                              {payment.amount_paid && payment.amount_paid < payment.total_amount && (
+                                <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: '400' }}>
+                                  of {formatCurrency(payment.total_amount)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: '24px' }}>
+                    <h5 style={{ fontWeight: '600', marginBottom: '8px', color: '#1f2937' }}>
+                      Items Purchased
+                    </h5>
+                    <div style={{
+                      padding: '12px',
+                      background: '#f9fafb',
+                      borderRadius: '8px'
+                    }}>
+                      {lastTransaction.items && lastTransaction.items.map((item, index) => (
                       <div
                         key={index}
                         style={{
@@ -1409,9 +2448,10 @@ export default function CombinedSalePage() {
                           </div>
                         </div>
                       </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Payment Summary */}
                 <div style={{ marginBottom: '24px' }}>
@@ -1460,15 +2500,57 @@ export default function CombinedSalePage() {
                         </div>
                       </>
                     ) : lastTransaction.payment_plan === 'installment' ? (
+                      <>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '18px',
+                          fontWeight: '600'
+                        }}>
+                          <span>ORIGINAL PRICE:</span>
+                          <span style={{ color: '#7c3aed' }}>
+                            ₱{lastTransaction.total.toLocaleString()}
+                          </span>
+                        </div>
+                        {lastTransaction.payment_method === 'cash' && lastTransaction.cash_received && (
+                          <>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              marginTop: '8px'
+                            }}>
+                              <span>Cash Received:</span>
+                              <span>₱{lastTransaction.cash_received.toLocaleString()}</span>
+                            </div>
+                            {lastTransaction.change > 0 && (
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                color: '#10b981',
+                                marginTop: '8px',
+                                paddingTop: '8px',
+                                borderTop: '1px solid #e5e7eb'
+                              }}>
+                                <span>Change:</span>
+                                <span>₱{lastTransaction.change.toLocaleString()}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </>
+                    ) : lastTransaction.payment_type === 'Installment Payment' ? (
                       <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         fontSize: '18px',
-                        fontWeight: '600'
+                        fontWeight: '600',
+                        color: '#10b981'
                       }}>
-                        <span>ORIGINAL PRICE:</span>
-                        <span style={{ color: '#7c3aed' }}>
-                          ₱{lastTransaction.total.toLocaleString()}
+                        <span>Total Amount Paid:</span>
+                        <span>
+                          {formatCurrency(lastTransaction.total_amount)}
                         </span>
                       </div>
                     ) : (
@@ -1547,6 +2629,64 @@ export default function CombinedSalePage() {
                           <span>Amount Paid Today:</span>
                           <span>₱{(lastTransaction.amount_paid || 0).toLocaleString()}</span>
                         </div>
+                      </>
+                    ) : lastTransaction.payment_type === 'Installment Payment' ? (
+                      <>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
+                          <span style={{ fontWeight: '500' }}>Payment Type:</span>
+                          <span style={{ color: '#10b981', fontWeight: '600' }}>Installment Payment</span>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
+                          <span style={{ fontWeight: '500' }}>Installment ID:</span>
+                          <span>{lastTransaction.customer.installment_sales_id}</span>
+                        </div>
+                        {lastTransaction.wasAdjusted && (
+                          <div style={{
+                            marginTop: '8px',
+                            padding: '8px',
+                            background: '#dbeafe',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            color: '#1e40af',
+                            fontWeight: '500'
+                          }}>
+                            ⚠️ Amount manually adjusted by clerk
+                          </div>
+                        )}
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#10b981',
+                          marginTop: '8px',
+                          paddingTop: '8px',
+                          borderTop: '1px solid #e5e7eb'
+                        }}>
+                          <span>Amount Received:</span>
+                          <span>{formatCurrency(lastTransaction.total_amount)}</span>
+                        </div>
+                        {lastTransaction.excess_amount > 0 && (
+                          <div style={{
+                            marginTop: '8px',
+                            padding: '8px',
+                            background: '#dbeafe',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#1e40af',
+                            fontWeight: '500'
+                          }}>
+                            ℹ️ Excess amount of {formatCurrency(lastTransaction.excess_amount)} was credited to the next payment
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>
@@ -2009,6 +3149,590 @@ export default function CombinedSalePage() {
                 >
                   ✓ Close
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Installment Payment Modal */}
+        {showInstallmentPaymentModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: '16px'
+          }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '16px',
+              maxWidth: '900px',
+              width: '100%',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <div style={{
+                padding: '24px',
+                borderBottom: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
+                  Record Installment Payment
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowInstallmentPaymentModal(false);
+                    setSelectedInstallmentForPayment(null);
+                    setSelectedPayments([]);
+                    setPayAllUnpaid(false);
+                    setManualAdjustment(false);
+                    setAdjustedAmount('');
+                    setPaymentAmount('');
+                    setCashAmount('');
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: '#6b7280'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{
+                padding: '24px',
+                overflowY: 'auto',
+                flex: 1
+              }}>
+                {!selectedInstallmentForPayment ? (
+                  <div>
+                    {/* Customer Search Section */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#1f2937' }}>
+                        Search Customer *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Search customers by name, email, or phone..."
+                        value={customerSearchTerm}
+                        onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          boxSizing: 'border-box',
+                          marginBottom: '12px'
+                        }}
+                      />
+                      
+                      <div style={{
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        background: '#f9fafb'
+                      }}>
+                        {filteredCustomers.length === 0 ? (
+                          <div style={{
+                            padding: '12px',
+                            textAlign: 'center',
+                            color: '#6b7280',
+                            fontSize: '14px'
+                          }}>
+                            {customerSearchTerm
+                              ? 'No customers found matching your search.'
+                              : 'Type to search for customers...'}
+                          </div>
+                        ) : (
+                          filteredCustomers.map(customer => (
+                            <div
+                              key={customer.cust_id}
+                              onClick={() => {
+                                setSelectedCustomer(customer);
+                                GetInstallment(customer.cust_id);
+                                setCustomerSearchTerm('');
+                                setPaymentAmount(''); // Reset payment amount when selecting customer
+                                setCashAmount(''); // Reset cash amount when selecting customer
+                              }}
+                              style={{
+                                padding: '12px',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid #e5e7eb',
+                                background: selectedCustomer?.cust_id === customer.cust_id ? '#e0e7ff' : 'transparent',
+                                transition: 'background 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (selectedCustomer?.cust_id !== customer.cust_id) {
+                                  e.currentTarget.style.background = '#f3f4f6';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (selectedCustomer?.cust_id !== customer.cust_id) {
+                                  e.currentTarget.style.background = 'transparent';
+                                }
+                              }}
+                            >
+                              <div style={{ fontSize: '14px', fontWeight: '500' }}>{customer.cust_name}</div>
+                              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                                {customer.phone} • {customer.email}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      
+                      {selectedCustomer && (
+                        <div style={{
+                          marginTop: '12px',
+                          padding: '12px',
+                          background: '#e0e7ff',
+                          borderRadius: '8px',
+                          border: '1px solid #c7d2fe'
+                        }}>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af', marginBottom: '4px' }}>
+                            Selected Customer: {selectedCustomer.cust_name}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#3730a3' }}>
+                            {selectedCustomer.phone} • {selectedCustomer.email}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Installment Plans Section */}
+                    {selectedCustomer && (() => {
+                      // Filter installments to only show those for the selected customer
+                      const customerInstallments = installmentList.filter(inst => 
+                        inst.cust_id === selectedCustomer.cust_id
+                      );
+                      
+                      // Filter installment details to only show details for this customer's installments
+                      const customerInstallmentIds = customerInstallments.map(inst => inst.installment_sales_id);
+                      const customerInstallmentDetails = installmentDList.filter(detail =>
+                        customerInstallmentIds.includes(detail.installment_id)
+                      );
+                      
+                      return (
+                        <>
+                          <h5 style={{ marginBottom: '16px' }}>Select Installment Plan</h5>
+                          {customerInstallments.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                              No active installment plans found for this customer.
+                            </div>
+                          ) : (
+                            <div style={{
+                              display: 'grid',
+                              gap: '12px'
+                            }}>
+                              {customerInstallments.map((installment) => {
+                                const schedules = customerInstallmentDetails.filter(s => s.installment_id === installment.installment_sales_id);
+                                const unpaidCount = schedules.filter(s => s.status !== 'Paid').length;
+                                const paidCount = schedules.filter(s => s.status === 'Paid').length;
+                                return (
+                            <div
+                              key={installment.installment_sales_id}
+                              onClick={() => handleInstallmentSelection(installment)}
+                              style={{
+                                padding: '16px',
+                                border: '2px solid #e5e7eb',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                background: '#f9fafb'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = '#7c3aed';
+                                e.currentTarget.style.background = '#f3f4f6';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = '#e5e7eb';
+                                e.currentTarget.style.background = '#f9fafb';
+                              }}
+                            >
+                              <div style={{ fontWeight: '600', marginBottom: '8px' }}>
+                                Installment ID: {installment.installment_sales_id}
+                              </div>
+                              <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                                <div>Balance: {formatCurrency(installment.balance)}</div>
+                                <div>Progress: {paidCount} / {schedules.length} payments</div>
+                                {unpaidCount > 0 && (
+                                  <div style={{ color: '#dc2626', marginTop: '4px' }}>
+                                    {unpaidCount} unpaid payment{unpaidCount > 1 ? 's' : ''}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                    
+                    {!selectedCustomer && (
+                      <div style={{
+                        textAlign: 'center',
+                        padding: '40px',
+                        color: '#6b7280',
+                        background: '#f9fafb',
+                        borderRadius: '8px',
+                        border: '1px dashed #e5e7eb'
+                      }}>
+                        Please search and select a customer to view their installment plans.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ marginBottom: '16px', padding: '12px', background: '#f0f9ff', borderRadius: '8px' }}>
+                      <div style={{ fontWeight: '600' }}>Installment ID: {selectedInstallmentForPayment.installment_sales_id}</div>
+                      <div style={{ fontSize: '14px', color: '#6b7280' }}>Customer: {selectedInstallmentForPayment.cust_name}</div>
+                      <div style={{ fontSize: '14px', color: '#6b7280' }}>Balance: {formatCurrency(selectedInstallmentForPayment.balance)}</div>
+                    </div>
+
+                    {(() => {
+                      // Filter installment details to only those for the selected customer's installments
+                      const customerInstallmentIds = installmentList.filter(inst => 
+                        inst.cust_id === selectedCustomer?.cust_id
+                      ).map(inst => inst.installment_sales_id);
+                      
+                      const customerInstallmentDetails = installmentDList.filter(detail =>
+                        customerInstallmentIds.includes(detail.installment_id)
+                      );
+
+                      const installmentSchedules = customerInstallmentDetails.filter(schedule =>
+                        schedule.installment_id === selectedInstallmentForPayment.installment_sales_id
+                      );
+
+                      const unpaidPayments = installmentSchedules
+                        .filter(payment => payment.status !== 'Paid')
+                        .map(payment => calculateOverduePenalty(payment))
+                        .sort((a, b) => parseInt(a.payment_number) - parseInt(b.payment_number));
+
+                      // Calculate overdue payments (required payments)
+                      const overduePayments = unpaidPayments.filter(payment => payment.days_overdue >= 3);
+                      
+                      // Required payments: all overdue + next due payment (if no overdue)
+                      const requiredPayments = overduePayments.length > 0 
+                        ? overduePayments 
+                        : (unpaidPayments.length > 0 ? [unpaidPayments[0]] : []);
+                      
+                      // Calculate minimum amount due (required payments)
+                      const minimumAmountDue = requiredPayments.reduce((sum, payment) => sum + payment.total_amount, 0);
+                      
+                      // Use required payments as selected payments
+                      const selectedPaymentsList = requiredPayments;
+                      
+                      const totalAmount = minimumAmountDue;
+                      
+                      // Calculate change
+                      const paymentAmountNum = parseFloat(paymentAmount) || 0;
+                      const cashAmountNum = parseFloat(cashAmount) || 0;
+                      const change = cashAmountNum > paymentAmountNum ? cashAmountNum - paymentAmountNum : 0;
+
+                      return (
+                        <>
+                          {/* Payment List - Read Only */}
+                          <div style={{
+                            maxHeight: '300px',
+                            overflowY: 'auto',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            marginBottom: '16px'
+                          }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <thead style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
+                                <tr>
+                                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Payment #</th>
+                                  <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Due Date</th>
+                                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
+                                  <th style={{ padding: '12px', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                                  <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {unpaidPayments.map((payment) => {
+                                  const isRequired = requiredPayments.some(p => p.ips_id === payment.ips_id);
+                                  return (
+                                    <tr
+                                      key={payment.ips_id}
+                                      style={{
+                                        background: isRequired ? '#fef2f2' : 'white',
+                                        borderLeft: isRequired ? '4px solid #dc2626' : 'none'
+                                      }}
+                                    >
+                                      <td style={{ padding: '12px' }}>
+                                        {payment.payment_number}
+                                        {payment.days_overdue >= 3 && (
+                                          <span style={{ marginLeft: '8px', padding: '2px 6px', background: '#dc2626', color: 'white', borderRadius: '4px', fontSize: '11px' }}>
+                                            OVERDUE
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td style={{ padding: '12px' }}>{formatDate(payment.due_date)}</td>
+                                      <td style={{ padding: '12px', textAlign: 'right' }}>{formatCurrency(payment.original_amount)}</td>
+                                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600', color: payment.has_penalty ? '#dc2626' : '#10b981' }}>
+                                        {formatCurrency(payment.total_amount)}
+                                        {payment.has_penalty && (
+                                          <div style={{ fontSize: '11px', color: '#dc2626' }}>
+                                            +{formatCurrency(payment.penalty_amount)} penalty
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                                        {isRequired && (
+                                          <span style={{ 
+                                            padding: '4px 8px', 
+                                            background: '#dc2626', 
+                                            color: 'white', 
+                                            borderRadius: '4px', 
+                                            fontSize: '11px',
+                                            fontWeight: '600'
+                                          }}>
+                                            REQUIRED
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                          
+                          {overduePayments.length > 0 && (
+                            <div style={{
+                              padding: '12px',
+                              background: '#fef2f2',
+                              border: '1px solid #dc2626',
+                              borderRadius: '8px',
+                              marginBottom: '16px'
+                            }}>
+                              <div style={{ color: '#dc2626', fontWeight: '600', fontSize: '14px' }}>
+                                ⚠️ {overduePayments.length} Overdue Payment{overduePayments.length > 1 ? 's' : ''} Must Be Paid
+                              </div>
+                            </div>
+                          )}
+
+                          <div style={{
+                            padding: '16px',
+                            background: '#f0fdf4',
+                            borderRadius: '8px',
+                            border: '1px solid #10b981',
+                            marginBottom: '16px'
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                              <span style={{ fontWeight: '600', fontSize: '16px' }}>Minimum Amount Due:</span>
+                              <span style={{ fontWeight: '700', fontSize: '20px', color: '#10b981' }}>
+                                {formatCurrency(minimumAmountDue)}
+                              </span>
+                            </div>
+                            
+                            {/* Payment Amount Input */}
+                            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #bbf7d0' }}>
+                              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#065f46' }}>
+                                Amount to Pay *
+                              </label>
+                              <input
+                                type="number"
+                                value={paymentAmount}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+                                    setPaymentAmount(value);
+                                  }
+                                }}
+                                placeholder={`Minimum: ${formatCurrency(minimumAmountDue)}`}
+                                min={minimumAmountDue}
+                                step="0.01"
+                                style={{
+                                  width: '100%',
+                                  padding: '12px',
+                                  border: paymentAmount && parseFloat(paymentAmount) >= minimumAmountDue ? '2px solid #10b981' : '2px solid #dc2626',
+                                  borderRadius: '8px',
+                                  fontSize: '16px',
+                                  fontWeight: '600',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                              {paymentAmount && parseFloat(paymentAmount) > 0 && (
+                                <div style={{ marginTop: '8px', fontSize: '13px' }}>
+                                  {parseFloat(paymentAmount) >= minimumAmountDue ? (
+                                    <div style={{ color: '#10b981', fontWeight: '600' }}>
+                                      ✓ Payment Amount: {formatCurrency(parseFloat(paymentAmount))}
+                                    </div>
+                                  ) : (
+                                    <div style={{ color: '#dc2626', fontWeight: '600' }}>
+                                      ⚠️ Amount is less than required. Minimum: {formatCurrency(minimumAmountDue)}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Cash Amount Input */}
+                            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #bbf7d0' }}>
+                              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#065f46' }}>
+                                Cash Received *
+                              </label>
+                              <input
+                                type="number"
+                                value={cashAmount}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+                                    setCashAmount(value);
+                                  }
+                                }}
+                                placeholder="Enter cash amount"
+                                min={paymentAmountNum}
+                                step="0.01"
+                                style={{
+                                  width: '100%',
+                                  padding: '12px',
+                                  border: cashAmountNum >= paymentAmountNum ? '2px solid #10b981' : '2px solid #e5e7eb',
+                                  borderRadius: '8px',
+                                  fontSize: '16px',
+                                  fontWeight: '600',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                              {cashAmount && parseFloat(cashAmount) > 0 && (
+                                <div style={{ marginTop: '8px', fontSize: '13px' }}>
+                                  {cashAmountNum >= paymentAmountNum ? (
+                                    <div style={{ color: '#10b981', fontWeight: '600' }}>
+                                      ✓ Cash: {formatCurrency(cashAmountNum)}
+                                      {change > 0 && (
+                                        <span style={{ marginLeft: '8px', color: '#059669' }}>
+                                          | Change: {formatCurrency(change)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div style={{ color: '#dc2626', fontWeight: '600' }}>
+                                      ⚠️ Cash is less than payment amount. Short: {formatCurrency(paymentAmountNum - cashAmountNum)}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            
+                            {selectedPaymentsList.some(p => p.has_penalty) && (
+                              <div style={{ marginTop: '12px', fontSize: '13px', color: '#dc2626', padding: '8px', background: '#fef2f2', borderRadius: '6px' }}>
+                                Includes penalty fees for overdue payments
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              <div style={{
+                padding: '16px',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '12px'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowInstallmentPaymentModal(false);
+                    setSelectedInstallmentForPayment(null);
+                    setSelectedPayments([]);
+                    setPayAllUnpaid(false);
+                    setManualAdjustment(false);
+                    setAdjustedAmount('');
+                    setPaymentAmount('');
+                    setCashAmount('');
+                  }}
+                  style={{
+                    padding: '10px 24px',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Cancel
+                </button>
+                {selectedInstallmentForPayment && (() => {
+                  // Calculate total amount due for button state
+                  const customerInstallmentIds = installmentList.filter(inst => 
+                    inst.cust_id === selectedCustomer?.cust_id
+                  ).map(inst => inst.installment_sales_id);
+                  
+                  const customerInstallmentDetails = installmentDList.filter(detail =>
+                    customerInstallmentIds.includes(detail.installment_id)
+                  );
+
+                  const installmentSchedules = customerInstallmentDetails.filter(schedule =>
+                    schedule.installment_id === selectedInstallmentForPayment.installment_sales_id
+                  );
+
+                  const unpaidPayments = installmentSchedules
+                    .filter(payment => payment.status !== 'Paid')
+                    .map(payment => calculateOverduePenalty(payment))
+                    .sort((a, b) => parseInt(a.payment_number) - parseInt(b.payment_number));
+
+                  const selectedPaymentsList = payAllUnpaid ? unpaidPayments : unpaidPayments.filter(p =>
+                    selectedPayments.includes(p.ips_id)
+                  );
+
+                  // Calculate required payments
+                  const overduePayments = unpaidPayments.filter(payment => payment.days_overdue >= 3);
+                  const requiredPayments = overduePayments.length > 0 
+                    ? overduePayments 
+                    : (unpaidPayments.length > 0 ? [unpaidPayments[0]] : []);
+                  const totalAmountDue = requiredPayments.reduce((sum, payment) => sum + payment.total_amount, 0);
+                  
+                  const paymentAmountNum = parseFloat(paymentAmount || 0);
+                  const cashAmountNum = parseFloat(cashAmount || 0);
+                  
+                  const isDisabled = !paymentAmount || 
+                                     paymentAmountNum < totalAmountDue ||
+                                     !cashAmount ||
+                                     cashAmountNum < paymentAmountNum;
+
+                  return (
+                    <button
+                      onClick={RecordInstallmentPayment}
+                      disabled={isDisabled}
+                      style={{
+                        padding: '10px 24px',
+                        background: isDisabled ? '#d1d5db' : '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        cursor: isDisabled ? 'not-allowed' : 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Record Payment
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -2715,6 +4439,40 @@ export default function CombinedSalePage() {
                   position: 'relative'
                 }}
               >
+                {/* Pay Installment Button - Highlighted Above Cart */}
+                <button
+                  onClick={openInstallmentPaymentModal}
+                  style={{
+                    width: '100%',
+                    padding: '14px 20px',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    marginBottom: '20px',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                  }}
+                >
+                  <span style={{ fontSize: '20px' }}>💰</span>
+                  <span>Pay Installment</span>
+                </button>
+
                 <h2 style={{ 
                   fontSize: '24px', 
                   fontWeight: 'bold', 
@@ -2738,11 +4496,78 @@ export default function CombinedSalePage() {
 
                 {/* Customer Type Selection - HIDDEN: All sales require a customer */}
 
-                {/* Customer Search and Selection - Always shown */}
-                {true && (
+                {/* Customer Selection Mode Toggle */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '20px', fontWeight: '500', marginBottom: '12px' }}>
+                    Customer Selection *
+                  </label>
+                  <div style={{
+                    display: 'flex',
+                    gap: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <button
+                      onClick={() => {
+                        setCustomerMode('old');
+                        setSelectedCustomer(null);
+                        setCustomerSearchTerm('');
+                        setNewCustomerName('');
+                        setNewCustomerEmail('');
+                        setNewCustomerPhone('');
+                        setNewCustomerAddress('');
+                        setEmailError('');
+                        setPhoneError('');
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: customerMode === 'old' ? '#7c3aed' : '#f3f4f6',
+                        color: customerMode === 'old' ? 'white' : '#1f2937',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      👤 Existing Customer
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCustomerMode('new');
+                        setSelectedCustomer(null);
+                        setCustomerSearchTerm('');
+                        setNewCustomerName('');
+                        setNewCustomerEmail('');
+                        setNewCustomerPhone('');
+                        setNewCustomerAddress('');
+                        setEmailError('');
+                        setPhoneError('');
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: customerMode === 'new' ? '#10b981' : '#f3f4f6',
+                        color: customerMode === 'new' ? 'white' : '#1f2937',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      ➕ New Customer
+                    </button>
+                  </div>
+                </div>
+
+                {/* Old Customer Search and Selection */}
+                {customerMode === 'old' && (
                   <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', fontSize: '20px', fontWeight: '500', marginBottom: '8px' }}>
-                      Select Customer *
+                    <label style={{ display: 'block', fontSize: '18px', fontWeight: '500', marginBottom: '8px' }}>
+                      Search Existing Customer *
                     </label>
                     <div style={{ position: 'relative', marginBottom: '8px' }}>
                       <input
@@ -2815,6 +4640,224 @@ export default function CombinedSalePage() {
                         </div>
                         <div style={{ fontSize: '12px', color: '#3730a3' }}>
                           {selectedCustomer.phone} • {selectedCustomer.email}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* New Customer Form */}
+                {customerMode === 'new' && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{
+                      padding: '16px',
+                      background: '#f0fdf4',
+                      borderRadius: '8px',
+                      border: '2px solid #bbf7d0',
+                      marginBottom: '12px'
+                    }}>
+                      <p style={{
+                        margin: '0 0 12px 0',
+                        fontSize: '13px',
+                        color: '#166534',
+                        fontWeight: '600'
+                      }}>
+                        ℹ️ Enter customer information. Customer will be created when you proceed with purchase.
+                      </p>
+                    </div>
+
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
+                        Customer Name * <span style={{ color: '#dc2626' }}>(Must be unique)</span>
+                      </label>
+                      <input
+                        ref={newCustomerNameRef}
+                        type="text"
+                        value={newCustomerName}
+                        onChange={(e) => setNewCustomerName(e.target.value)}
+                        placeholder="Enter customer full name"
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      {newCustomerName && customerList.some(customer => 
+                        customer.cust_name.toLowerCase().trim() === newCustomerName.toLowerCase().trim()
+                      ) && (
+                        <div style={{
+                          marginTop: '4px',
+                          fontSize: '12px',
+                          color: '#dc2626',
+                          fontWeight: '500'
+                        }}>
+                          ⚠️ A customer with this name already exists!
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
+                        Email Address * <span style={{ color: '#dc2626' }}>(Must be unique)</span>
+                      </label>
+                      <input
+                        ref={newCustomerEmailRef}
+                        type="email"
+                        value={newCustomerEmail}
+                        onChange={handleEmailChange}
+                        placeholder="Enter customer email (e.g., name@example.com)"
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: emailError ? '2px solid #dc2626' : '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          boxSizing: 'border-box',
+                          transition: 'border-color 0.2s'
+                        }}
+                        onBlur={() => {
+                          if (newCustomerEmail.trim()) {
+                            const emailValidation = validateEmailFormat(newCustomerEmail);
+                            if (!emailValidation.valid) {
+                              setEmailError(emailValidation.error);
+                            } else {
+                              const emailExists = customerList.some(customer => 
+                                customer.email.toLowerCase().trim() === newCustomerEmail.toLowerCase().trim()
+                              );
+                              setEmailError(emailExists ? 'A customer with this email already exists' : '');
+                            }
+                          }
+                        }}
+                      />
+                      {emailError && (
+                        <div style={{
+                          marginTop: '6px',
+                          padding: '8px',
+                          fontSize: '12px',
+                          color: '#dc2626',
+                          fontWeight: '500',
+                          background: '#fee2e2',
+                          borderRadius: '6px',
+                          border: '1px solid #fecaca'
+                        }}>
+                          ⚠️ {emailError}
+                        </div>
+                      )}
+                      {newCustomerEmail && !emailError && validateEmailFormat(newCustomerEmail).valid && (
+                        <div style={{
+                          marginTop: '6px',
+                          fontSize: '12px',
+                          color: '#10b981',
+                          fontWeight: '500'
+                        }}>
+                          ✓ Valid email format
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
+                        Phone Number * <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '400' }}>(Philippine format)</span>
+                      </label>
+                      <input
+                        ref={newCustomerPhoneRef}
+                        type="tel"
+                        value={newCustomerPhone}
+                        onChange={handlePhoneChange}
+                        placeholder="Enter phone number (e.g., 09123456789, +639123456789)"
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: phoneError ? '2px solid #dc2626' : '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          boxSizing: 'border-box',
+                          transition: 'border-color 0.2s'
+                        }}
+                        onBlur={() => {
+                          if (newCustomerPhone.trim()) {
+                            const phoneValidation = validatePhoneNumber(newCustomerPhone);
+                            if (!phoneValidation.valid) {
+                              setPhoneError(phoneValidation.error);
+                            } else {
+                              setPhoneError('');
+                            }
+                          }
+                        }}
+                      />
+                      {phoneError && (
+                        <div style={{
+                          marginTop: '6px',
+                          padding: '8px',
+                          fontSize: '12px',
+                          color: '#dc2626',
+                          fontWeight: '500',
+                          background: '#fee2e2',
+                          borderRadius: '6px',
+                          border: '1px solid #fecaca'
+                        }}>
+                          ⚠️ {phoneError}
+                        </div>
+                      )}
+                      {newCustomerPhone && !phoneError && validatePhoneNumber(newCustomerPhone).valid && (
+                        <div style={{
+                          marginTop: '6px',
+                          fontSize: '12px',
+                          color: '#10b981',
+                          fontWeight: '500'
+                        }}>
+                          ✓ Valid Philippine phone number
+                        </div>
+                      )}
+                      <div style={{
+                        marginTop: '6px',
+                        fontSize: '11px',
+                        color: '#6b7280',
+                        fontStyle: 'italic'
+                      }}>
+                        Acceptable formats: 09XXXXXXXXX, +639XXXXXXXXX, or 639XXXXXXXXX
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '6px', color: '#374151' }}>
+                        Address *
+                      </label>
+                      <textarea
+                        ref={newCustomerAddressRef}
+                        value={newCustomerAddress}
+                        onChange={(e) => setNewCustomerAddress(e.target.value)}
+                        placeholder="Enter customer address"
+                        rows={3}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          boxSizing: 'border-box',
+                          resize: 'vertical',
+                          fontFamily: 'inherit'
+                        }}
+                      />
+                    </div>
+
+                    {newCustomerName && newCustomerEmail && newCustomerPhone && newCustomerAddress && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        background: '#e0e7ff',
+                        borderRadius: '6px',
+                        border: '1px solid #c7d2fe'
+                      }}>
+                        <div style={{ fontSize: '13px', fontWeight: '500', color: '#1e40af', marginBottom: '4px' }}>
+                          ✓ Customer Information Ready
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#3730a3' }}>
+                          Customer will be created when you proceed with purchase.
                         </div>
                       </div>
                     )}
@@ -3444,7 +5487,7 @@ export default function CombinedSalePage() {
                 </div>
 
                 {/* Payment Method */}
-                <div style={{
+                {/* <div style={{
                   marginBottom: '16px',
                   opacity: ((!customerType && saleMode === 'inventory') || ((customerType === 'customer' || saleMode === 'custom') && !selectedCustomer)) ? 0.5 : 1,
                   pointerEvents: ((!customerType && saleMode === 'inventory') || ((customerType === 'customer' || saleMode === 'custom') && !selectedCustomer)) ? 'none' : 'auto'
@@ -3491,7 +5534,7 @@ export default function CombinedSalePage() {
                       Card
                     </button>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Delivery Option */}
                 <div style={{ marginBottom: '16px' }}>
@@ -3752,6 +5795,76 @@ export default function CombinedSalePage() {
                       </>
                     )}
                   </div>
+
+                  {/* Cash Input - Only for Cash Payment */}
+                  {paymentMethod === 'cash' && (
+                    <div style={{
+                      background: '#f0fdf4',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      marginBottom: '8px',
+                      border: '1px solid #bbf7d0'
+                    }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        marginBottom: '8px',
+                        color: '#065f46'
+                      }}>
+                        Cash Received *
+                      </label>
+                      <input
+                        type="number"
+                        value={mainPOSCashAmount}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+                            setMainPOSCashAmount(value);
+                          }
+                        }}
+                        placeholder={`Enter cash amount (min: ₱${calculateAmountDueToday().toLocaleString()})`}
+                        min={calculateAmountDueToday()}
+                        step="0.01"
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: (() => {
+                            const cashNum = parseFloat(mainPOSCashAmount) || 0;
+                            const amountDue = calculateAmountDueToday();
+                            return cashNum >= amountDue ? '2px solid #10b981' : '2px solid #e5e7eb';
+                          })(),
+                          borderRadius: '6px',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      {mainPOSCashAmount && parseFloat(mainPOSCashAmount) > 0 && (() => {
+                        const cashNum = parseFloat(mainPOSCashAmount);
+                        const amountDue = calculateAmountDueToday();
+                        const change = cashNum - amountDue;
+                        return (
+                          <div style={{ marginTop: '8px', fontSize: '13px' }}>
+                            {cashNum >= amountDue ? (
+                              <div style={{ color: '#10b981', fontWeight: '600' }}>
+                                ✓ Cash: ₱{cashNum.toLocaleString()}
+                                {change > 0 && (
+                                  <span style={{ marginLeft: '8px', color: '#059669' }}>
+                                    | Change: ₱{change.toLocaleString()}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <div style={{ color: '#dc2626', fontWeight: '600' }}>
+                                ⚠️ Cash is less than amount due. Short: ₱{(amountDue - cashNum).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 {/* Sales Processing Guide/Checklist */}
@@ -3809,7 +5922,26 @@ export default function CombinedSalePage() {
 
                         {/* Customer Selection - Required for all sales */}
                         <div 
-                          onClick={() => !checks.hasCustomer && scrollToField(customerSearchRef)}
+                          onClick={() => {
+                            if (!checks.hasCustomer) {
+                              if (customerMode === 'old') {
+                                scrollToField(customerSearchRef);
+                              } else {
+                                // For new customer mode, focus on the first empty field
+                                if (!newCustomerName.trim()) {
+                                  scrollToField(newCustomerNameRef);
+                                } else if (!newCustomerEmail.trim()) {
+                                  scrollToField(newCustomerEmailRef);
+                                } else if (!newCustomerPhone.trim()) {
+                                  scrollToField(newCustomerPhoneRef);
+                                } else if (!newCustomerAddress.trim()) {
+                                  scrollToField(newCustomerAddressRef);
+                                } else {
+                                  scrollToField(newCustomerNameRef);
+                                }
+                              }
+                            }
+                          }}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -3840,8 +5972,12 @@ export default function CombinedSalePage() {
                             fontWeight: checks.hasCustomer ? '500' : '600'
                           }}>
                             {checks.hasCustomer
-                              ? `Customer: ${selectedCustomer?.cust_name}`
-                              : 'Select a customer'}
+                              ? customerMode === 'new'
+                                ? `New Customer: ${newCustomerName}`
+                                : `Customer: ${selectedCustomer?.cust_name}`
+                              : customerMode === 'new'
+                                ? 'Complete customer information'
+                                : 'Select a customer'}
                             {!checks.hasCustomer && (
                               <span style={{ fontSize: '11px', marginLeft: '6px', color: '#0369a1' }}>
                                 (click to focus)
@@ -4015,14 +6151,39 @@ export default function CombinedSalePage() {
                   onClick={proceedPurchase}
                   disabled={
                     cart.length === 0 ||
-                    !selectedCustomer ||
-                    (paymentPlan === 'full' && usePartialPayment && (!partialPaymentAmount || partialPaymentAmount < calculateMinimumPartialPayment()))
+                    (customerMode === 'old' && !selectedCustomer) ||
+                    (customerMode === 'new' && (
+                      !newCustomerName.trim() || 
+                      !newCustomerEmail.trim() || 
+                      !validateEmailFormat(newCustomerEmail).valid ||
+                      !newCustomerPhone.trim() || 
+                      !validatePhoneNumber(newCustomerPhone).valid ||
+                      !newCustomerAddress.trim() ||
+                      emailError ||
+                      phoneError ||
+                      customerList.some(c => c.cust_name.toLowerCase().trim() === newCustomerName.toLowerCase().trim()) ||
+                      customerList.some(c => c.email.toLowerCase().trim() === newCustomerEmail.toLowerCase().trim())
+                    )) ||
+                    (paymentPlan === 'full' && usePartialPayment && (!partialPaymentAmount || partialPaymentAmount < calculateMinimumPartialPayment())) ||
+                    (paymentMethod === 'cash' && (!mainPOSCashAmount || parseFloat(mainPOSCashAmount) < calculateAmountDueToday()))
                   }
                   style={{
                     width: '100%',
                     marginTop: '24px',
                     background: (cart.length === 0 ||
-                      !selectedCustomer ||
+                      (customerMode === 'old' && !selectedCustomer) ||
+                      (customerMode === 'new' && (
+                        !newCustomerName.trim() || 
+                        !newCustomerEmail.trim() || 
+                        !validateEmailFormat(newCustomerEmail).valid ||
+                        !newCustomerPhone.trim() || 
+                        !validatePhoneNumber(newCustomerPhone).valid ||
+                        !newCustomerAddress.trim() ||
+                        emailError ||
+                        phoneError ||
+                        customerList.some(c => c.cust_name.toLowerCase().trim() === newCustomerName.toLowerCase().trim()) ||
+                        customerList.some(c => c.email.toLowerCase().trim() === newCustomerEmail.toLowerCase().trim())
+                      )) ||
                       (paymentPlan === 'full' && usePartialPayment && (!partialPaymentAmount || partialPaymentAmount < calculateMinimumPartialPayment()))
                     ) ? '#d1d5db' : '#7c3aed',
                     color: 'white',
@@ -4032,7 +6193,19 @@ export default function CombinedSalePage() {
                     fontWeight: '600',
                     fontSize: '16px',
                     cursor: (cart.length === 0 ||
-                      !selectedCustomer ||
+                      (customerMode === 'old' && !selectedCustomer) ||
+                      (customerMode === 'new' && (
+                        !newCustomerName.trim() || 
+                        !newCustomerEmail.trim() || 
+                        !validateEmailFormat(newCustomerEmail).valid ||
+                        !newCustomerPhone.trim() || 
+                        !validatePhoneNumber(newCustomerPhone).valid ||
+                        !newCustomerAddress.trim() ||
+                        emailError ||
+                        phoneError ||
+                        customerList.some(c => c.cust_name.toLowerCase().trim() === newCustomerName.toLowerCase().trim()) ||
+                        customerList.some(c => c.email.toLowerCase().trim() === newCustomerEmail.toLowerCase().trim())
+                      )) ||
                       (paymentPlan === 'full' && usePartialPayment && (!partialPaymentAmount || partialPaymentAmount < calculateMinimumPartialPayment()))
                     ) ? 'not-allowed' : 'pointer',
                     transition: 'all 0.3s ease'

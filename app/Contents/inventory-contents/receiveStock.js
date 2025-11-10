@@ -112,39 +112,39 @@ const ReceiveStockIM = () => {
     }, [rs_StoreID]);
 
     const GetRequest = async () => {
-
-        // alert(rs_StoreID);
-
-        // setProdId(id);
-
-        // alert(sessionStorage.getItem('location_id'));
-        // return;
-        const LocationID = parseInt(sessionStorage.getItem('location_id'));
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'requestStock.php';
+        
+        // If no store is selected or "Select All Location" is selected, fetch all "On Delivery" deliveries
+        // Otherwise, filter by the selected location
+        // Convert rs_StoreID to string first to handle both string and number types
+        const storeIDStr = rs_StoreID ? String(rs_StoreID).trim() : '';
         const ID = {
-            locID: rs_StoreID,
-            status: 'OnDeliver',
-            reqType: 'ReqFrom'
-
+            locID: (storeIDStr !== '' && storeIDStr !== ' ' && !isNaN(parseInt(storeIDStr))) ? parseInt(storeIDStr) : 0,
+            status: 'On Delivery'
         }
 
         try {
             const response = await axios.get(url, {
                 params: {
-                    json: JSON.stringify(ID), // Send an empty object if required
-                    operation: "GetRequest3"
+                    json: JSON.stringify(ID),
+                    operation: "GetNormalDeliveriesForReceiving"
                 }
             });
-            // console.log(response.data);
 
-            setReceivStockList(response.data);
-
-
+            // Handle response - check if it's an error object or data array
+            if (response.data && typeof response.data === 'object' && response.data.error) {
+                console.error("Error from backend:", response.data.error);
+                setReceivStockList([]);
+            } else {
+                const deliveryData = Array.isArray(response.data) ? response.data : [];
+                console.log('[GetRequest] Fetched', deliveryData.length, 'deliveries for receiving');
+                setReceivStockList(deliveryData);
+            }
 
         } catch (error) {
-            console.error("Error fetching request list:", error);
-
+            console.error("Error fetching delivery list:", error);
+            setReceivStockList([]);
         }
         return;
     };
@@ -154,13 +154,15 @@ const ReceiveStockIM = () => {
     const [viewRequestDetailVisibl, setViewRequestDetailVisible] = useState(true);
 
 
-    const triggerModal = (operation, id) => {
+    const triggerModal = async (operation, r_delivery_id) => {
         switch (operation) {
             case 'viewRequestDetails':
-                // alert(id);
-                // setRequestList1([]);
-                GetRequestDetails(id);
-                GetRequestD(id);
+                // r_delivery_id is the delivery batch ID from request_delivery table
+                // Ensure both functions complete before opening modal
+                await Promise.all([
+                    GetRequestDetails(r_delivery_id),
+                    GetRequestD(r_delivery_id)
+                ]);
                 setViewRequestDetailVisible(false);
                 break;
         }
@@ -174,6 +176,7 @@ const ReceiveStockIM = () => {
     const [s_reqStatus, setS_ReqStatus] = useState('');
     const [reqFromId, setReqFromId] = useState('');
     const [reqToId, setReqToId] = useState('');
+    const [r_delivery_id, setR_Delivery_ID] = useState(''); // Store the delivery batch ID
 
     const [dFrom, setDFrom] = useState('');
     const [driver, setDriver] = useState('');
@@ -217,121 +220,93 @@ const ReceiveStockIM = () => {
         return formattedDate || formattedTime || '';
     };
 
-    const GetRequestDetails = async (req_id) => {
-        // setProdId(id);
-
-        // alert(sessionStorage.getItem('location_id'));
-        // const LocationID = parseInt(sessionStorage.getItem('location_id'));
+    const GetRequestDetails = async (r_delivery_id) => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'requestStock.php';
-        // const url = "http://localhost/capstone-api/api/products.php";
-        // alert(LocationID);
         const ID = {
-            reqID: req_id,
-            // locID: LocationID
+            r_delivery_id: r_delivery_id
         }
-
-        try {
-            const response = await axios.get(url, {
-                params: {
-                    json: JSON.stringify(ID), // Send an empty object if required
-                    operation: "GetRequestDetails"
-                }
-            });
-            // alert(response.data[0].product_name);
-            // setRequestDetails(response.data);
-            // console.log(response.data);
-            // console.log('Hellow');
-            // alert(response.data);
-            setRequestDetails(response.data);
-
-
-
-        } catch (error) {
-            console.error("Error fetching request details:", error);
-
-        }
-        return;
-    };
-
-    const GetTrackRequestTimeandDate = async (req_id, status) => {
-
-        const baseURL = sessionStorage.getItem('baseURL');
-        const url = baseURL + 'requestStock.php';
-        // const url = `${getBaseURL()}requestStock.php`;
-        const ID = {
-            reqID: req_id,
-            status: status
-        };
 
         try {
             const response = await axios.get(url, {
                 params: {
                     json: JSON.stringify(ID),
-                    operation: "GetReqDateAndTime"
+                    operation: "GetNormalDeliveryDetailsFromBatch"
                 }
             });
 
-            if (response.data && response.data.length > 0) {
-                // format "Jan 12, 2025 • 10:30 AM"
-                setReqDateTime(formatDateTime(response.data[0].date, response.data[0].time));
+            // Handle error response
+            if (response.data && typeof response.data === 'object' && response.data.error) {
+                console.error("Error from backend:", response.data.error);
+                setRequestDetails([]);
             } else {
-                return "";
+                const deliveryDetails = Array.isArray(response.data) ? response.data : [];
+                console.log(`[GetRequestDetails] Fetched ${deliveryDetails.length} products from request_delivery_details`);
+                setRequestDetails(deliveryDetails);
             }
+
         } catch (error) {
-            console.error("Error fetching request data:", error);
-            return "";
+            console.error("Error fetching delivery details:", error);
+            setRequestDetails([]);
         }
+        return;
     };
 
-    const GetRequestD = async (req_id) => {
-        // setProdId(id);
+    // This function is no longer needed as we get date/time directly from request_delivery
+    // Keeping it for backward compatibility but it won't be used
+    const GetTrackRequestTimeandDate = async (req_id, status) => {
+        // Date and time are now fetched directly from request_delivery in GetRequestD
+        return "";
+    };
 
-        // alert(sessionStorage.getItem('location_id'));
-        const LocationID = parseInt(sessionStorage.getItem('location_id'));
+    const GetRequestD = async (r_delivery_id) => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'requestStock.php';
-        // const url = "http://localhost/capstone-api/api/products.php";
-        // alert(LocationID);
         const ID = {
-            reqID: req_id,
-            locID: LocationID
-
+            r_delivery_id: r_delivery_id
         }
 
         try {
             const response = await axios.get(url, {
                 params: {
-                    json: JSON.stringify(ID), // Send an empty object if required
-                    operation: "GetRequestD2"
+                    json: JSON.stringify(ID),
+                    operation: "GetNormalDeliveryInfo"
                 }
             });
-            // alert(response.data[0].product_name);
-            // setRequestDetails(response.data);
-            const data = response.data[0];
 
-            setS_ReqBy(response.data[0].fname + " " + response.data[0].mname + " " + response.data[0].lname);
-            setS_ReqID(response.data[0].request_stock_id);
-            setS_ReqDate(response.data[0].date);
-            setS_ReqFrom(response.data[0].reqFrom);
-            setS_ReqStatus(response.data[0].request_status);
-            setReqFromId(response.data[0].request_from);
-            setReqToId(response.data[0].request_to);
-            setDriver(response.data[0].driverName || 'Not Assigned');
-            setDFrom(response.data[0].reqTo);
+            // Handle error response
+            if (response.data && typeof response.data === 'object' && response.data.error) {
+                console.error("Error from backend:", response.data.error);
+                return;
+            }
+
+            const data = Array.isArray(response.data) ? response.data[0] : response.data;
+            if (!data) {
+                console.error("No delivery data found for r_delivery_id:", r_delivery_id);
+                return;
+            }
+
+            setS_ReqBy(`${data.fname || ''} ${data.mname || ''} ${data.lname || ''}`.trim());
+            setS_ReqID(data.request_stock_id);
+            setS_ReqDate(data.date);  // delivery_date from request_delivery
+            setS_ReqFrom(data.reqFrom);
+            setS_ReqStatus(data.delivery_status || data.request_status);  // Use delivery_status from request_delivery
+            setReqFromId(data.request_from);
+            setReqToId(data.request_to);
+            setDriver(data.driverName || 'Not Assigned');
+            setDFrom(data.reqTo);
             setRs_StoreID(data.request_from);
-            GetTrackRequestTimeandDate(data.request_stock_id, data.request_status);
-
-
-            // console.log(response.data);
-            // console.log('Hellow');
-            // alert(response.data);
-
-
+            setR_Delivery_ID(r_delivery_id); // Store the delivery batch ID for receiving
+            
+            // Format date and time from request_delivery
+            if (data.date && data.delivery_time) {
+                setReqDateTime(formatDateTime(data.date, data.delivery_time));
+            } else {
+                setReqDateTime('');
+            }
 
         } catch (error) {
-            console.error("Error fetching request details:", error);
-
+            console.error("Error fetching delivery info:", error);
         }
         return;
     };
@@ -346,12 +321,13 @@ const ReceiveStockIM = () => {
 
 
     const GetCurrentSotreInventory = async () => {
-        // setProdId(id);
-        // alert(location_id);
+        if (!rs_StoreID) {
+            setCurrentStoreInventory([]);
+            return;
+        }
+
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'inventory.php';
-        // const url = "http://localhost/capstone-api/api/products.php";
-
 
         const locDetails = {
             locID: rs_StoreID,
@@ -362,28 +338,23 @@ const ReceiveStockIM = () => {
         try {
             const response = await axios.get(url, {
                 params: {
-                    json: JSON.stringify(locDetails), // Send an empty object if required
+                    json: JSON.stringify(locDetails),
                     operation: "GetInventory"
                 }
             });
-            // alert(response.data[0].product_name);
+            
             if (response.data) {
                 setCurrentStoreInventory(response.data);
-                console.log(response.data);
-
-
+                console.log('[GetCurrentSotreInventory] Fetched', response.data.length, 'inventory items');
             } else {
                 setCurrentStoreInventory([]);
             }
-            // alert('success');
 
         } catch (error) {
             console.error("Error fetching inventory:", error);
-
+            setCurrentStoreInventory([]);
         }
         return;
-
-
     };
 
 
@@ -408,43 +379,75 @@ const ReceiveStockIM = () => {
     };
 
     const ReveiceStock = async () => {
-
+        // Validate that we have delivery details
+        if (!requestDetails || requestDetails.length === 0) {
+            showAlertError({
+                icon: "error",
+                title: "No Delivery Details!",
+                text: 'Delivery details are missing. Please refresh and try again.',
+                button: 'OK'
+            });
+            return;
+        }
 
         const oldProduct = [];
         const newProduct = [];
         const report = [];
-        GetCurrentSotreInventory();
+        
+        // Ensure we have current inventory before processing
+        await GetCurrentSotreInventory();
 
+        console.log('[ReveiceStock] Deliver Details:', requestDetails);
+        console.log('[ReveiceStock] Deliver Details Length:', requestDetails.length);
+        console.log('[ReveiceStock] Current Inventory:', currentStoreInventory);
+        console.log('[ReveiceStock] Current Inventory Length:', currentStoreInventory.length);
+        console.log('[ReveiceStock] Request ID:', s_reqID);
+        console.log('[ReveiceStock] Store ID:', rs_StoreID);
 
-
-        console.log('Deliver Details:', requestDetails);
-        console.log('Current Inventory:', currentStoreInventory);
+        if (!requestDetails || requestDetails.length === 0) {
+            showAlertError({
+                icon: "error",
+                title: "No Delivery Details!",
+                text: 'Delivery details are missing. Please close and reopen the delivery details.',
+                button: 'OK'
+            });
+            return;
+        }
 
         requestDetails.forEach((invProd) => {
+            // Ensure we have valid product_id and qty
+            if (!invProd.product_id || !invProd.qty || invProd.qty <= 0) {
+                console.error('[ReveiceStock] Invalid product data:', invProd);
+                return; // Skip invalid products
+            }
+
             const match = currentStoreInventory.find(delProd =>
-                delProd.product_id == invProd.product_id
+                String(delProd.product_id) === String(invProd.product_id)
             );
 
             if (match) {
                 oldProduct.push({
-                    ...invProd,
-                    qty: invProd.qty + match.qty
+                    product_id: parseInt(invProd.product_id),
+                    qty: parseInt(invProd.qty) + parseInt(match.qty || 0)
                 });
 
                 report.push({
-                    prodID: match.product_id,
-                    pastBalance: match.qty,
-                    qty: invProd.qty,
-                    currentBalance: invProd.qty + match.qty
+                    prodID: parseInt(match.product_id),
+                    pastBalance: parseInt(match.qty || 0),
+                    qty: parseInt(invProd.qty),
+                    currentBalance: parseInt(invProd.qty) + parseInt(match.qty || 0)
                 });
 
             } else {
-                newProduct.push(invProd);
+                newProduct.push({
+                    product_id: parseInt(invProd.product_id),
+                    qty: parseInt(invProd.qty)
+                });
                 report.push({
-                    prodID: invProd.product_id,
+                    prodID: parseInt(invProd.product_id),
                     pastBalance: 0,
-                    qty: invProd.qty,
-                    currentBalance: invProd.qty + 0
+                    qty: parseInt(invProd.qty),
+                    currentBalance: parseInt(invProd.qty)
                 });
             }
         });
@@ -458,6 +461,7 @@ const ReceiveStockIM = () => {
 
         const ID = {
             reqID: s_reqID,
+            r_delivery_id: r_delivery_id, // Pass the specific delivery batch ID
             accID: accountID,
             locID: parseInt(rs_StoreID)
         }
@@ -508,38 +512,40 @@ const ReceiveStockIM = () => {
                 await createNotification({
                     type: 'delivery',
                     title: 'Delivery Received',
-                    message: `Stock request #${s_reqID} has been successfully received by ${s_reqFrom}.`,
+                    message: `Delivery #${r_delivery_id} has been successfully received by ${s_reqFrom}.`,
                     locationId: reqToId, // Warehouse location (delivery from)
                     targetRole: 'Warehouse Representative',
                     productId: null,
                     customerId: null,
-                    referenceId: s_reqID
+                    referenceId: r_delivery_id
                 });
                 
                 return;
 
 
             } else {
-                // alert(response.data);
-
-                // setMessage('Failed to recieve the stock!' + response.data);
-                // setAlertBG('#dc7a80');
-                // // setAlertBG('#0ced93');
-                // setAlertVariant('danger');
-                // setAlert1(true);
-                console.log(response.data);
-
+                // Check if response.data contains error message
+                const errorMessage = typeof response.data === 'string' && response.data.startsWith('Error:') 
+                    ? response.data 
+                    : 'Failed to receive the delivery!';
+                
+                console.error('[ReveiceStock] Error response:', response.data);
+                console.error('[ReveiceStock] Request ID:', s_reqID);
+                console.error('[ReveiceStock] Delivery ID:', r_delivery_id);
+                console.error('[ReveiceStock] Old Products:', oldProduct);
+                console.error('[ReveiceStock] New Products:', newProduct);
+                console.error('[ReveiceStock] Reports:', report);
 
                 showAlertError({
                     icon: "error",
-                    title: "Something Went Wrong!",
-                    text: 'Failed to recieve the delivery!',
-                    button: 'Try Again'
+                    title: "Failed to Receive Delivery!",
+                    text: errorMessage + '\n\nPlease check the console for details.',
+                    button: 'OK'
                 });
 
                 setViewRequestDetailVisible(true);
                 setContinueR(true);
-                GetRequest();
+                GetRequest(); // Refresh the list to show the delivery again
                 return;
             }
             // alert('success');
@@ -588,9 +594,13 @@ const ReceiveStockIM = () => {
                     <Button variant="secondary" onClick={() => { setContinueR(true) }}>
                         Close
                     </Button>
-                    <Button variant="primary" onClick={() => {
-                        GetCurrentSotreInventory();
-                        ReveiceStock();
+                    <Button variant="primary" onClick={async () => {
+                        // Ensure inventory is loaded before receiving
+                        await GetCurrentSotreInventory();
+                        // Small delay to ensure state is updated
+                        setTimeout(() => {
+                            ReveiceStock();
+                        }, 100);
                     }}>
                         Continue
                     </Button>
@@ -609,7 +619,7 @@ const ReceiveStockIM = () => {
                     <div className="r-details-head">
                         <div className='r-d-div'>
                             <div className='r-1'><strong>REQUEST ID:</strong> {s_reqID}</div>
-                            <div><strong>REQUEST DATE:</strong> {formatDate(s_reqDate)}</div>
+                            <div><strong>DELIVERY DATE:</strong> {formatDate(s_reqDate)}</div>
 
                         </div>
                         <div><strong>DELIVERY FROM:</strong> {dFrom}</div>
@@ -617,7 +627,7 @@ const ReceiveStockIM = () => {
                         <div><strong>STATUS:</strong>
                             <span style={{
                                 marginLeft: '8px',
-                                color: s_reqStatus === 'Pending' ? 'red' : s_reqStatus === 'Approved' ? 'green' : 'black',
+                                color: s_reqStatus === 'On Delivery' ? 'goldenrod' : s_reqStatus === 'Delivered' ? 'green' : 'black',
                                 fontWeight: 'bold'
                             }}>
                                 {s_reqStatus} | {reqDateTime}
@@ -758,14 +768,18 @@ const ReceiveStockIM = () => {
                                 className="requestCard"
                                 key={i}
                                 onClick={() => {
-                                    triggerModal('viewRequestDetails', p.request_stock_id);
+                                    triggerModal('viewRequestDetails', p.r_delivery_id);
                                 }}
                             >
                                 <div className="cardContent">
                                     <div className="cardDetails">
                                         <div className="cardRow">
+                                            <span className="cardLabel">DELIVERY ID:</span>
+                                            <span className="cardValue" style={{ fontWeight: 'bold', fontSize: '18px' }}>#{p.r_delivery_id}</span>
+                                        </div>
+                                        <div className="cardRow">
                                             <span className="cardLabel">REQUEST ID:</span>
-                                            <span className="cardValue" style={{ fontWeight: 'bold', fontSize: '18px' }}>{p.request_stock_id}</span>
+                                            <span className="cardValue">{p.request_stock_id}</span>
                                         </div>
                                         <div className="cardRow">
                                             <span className="cardLabel">DELIVERY FROM:</span>
@@ -781,23 +795,23 @@ const ReceiveStockIM = () => {
                                                 className="cardValue"
                                                 style={{
                                                     color:
-                                                        p.request_status === 'Pending'
-                                                            ? 'red'
-                                                            : p.request_status === 'Approved'
+                                                        p.delivery_status === 'On Delivery'
+                                                            ? 'goldenrod'
+                                                            : p.delivery_status === 'Delivered'
                                                                 ? 'green'
                                                                 : 'black',
                                                     fontWeight: 'bold'
                                                 }}
                                             >
-                                                {p.request_status}
+                                                {p.delivery_status}
                                             </span>
                                         </div>
                                     </div>
 
                                     <div className="statusIcon">
-                                        {p.request_status === 'Pending' && <span>⟳</span>}
-                                        {p.request_status === 'Approved' && <span>✅</span>}
-                                        {p.request_status !== 'Pending' && p.request_status !== 'Approved' && <span>📦</span>}
+                                        {p.delivery_status === 'On Delivery' && <span>🚚</span>}
+                                        {p.delivery_status === 'Delivered' && <span>✅</span>}
+                                        {p.delivery_status !== 'On Delivery' && p.delivery_status !== 'Delivered' && <span>📦</span>}
                                     </div>
                                 </div>
                             </div>

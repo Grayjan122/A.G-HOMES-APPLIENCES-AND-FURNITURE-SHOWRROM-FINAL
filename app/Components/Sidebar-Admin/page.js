@@ -30,6 +30,7 @@ import BranchAdmin from '@/app/Contents/admin-contents/branch';
 import SidebarInventory from '../Sidebar-Inventory/page';
 import DashboardAdmin from '@/app/Contents/admin-contents/dashboardAdmin';
 import ProfileSetting from '@/app/Components/profileSetting/userProfilePage';
+import ProductTypeAdmin from '@/app/Contents/admin-contents/productType';
 
 const Sidebar = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -91,6 +92,11 @@ const Sidebar = () => {
           label: 'Category',
           component: <CategoryAdmin />,
         },
+        {
+          key: 'product-types',
+          label: 'Product Types',
+          component: <ProductTypeAdmin />,
+        },
       ]
     },
     {
@@ -106,11 +112,11 @@ const Sidebar = () => {
       icon: '/assets/images/dash-icons/last-inventory.png',
       component: <InventoryIM />,
       children: [
-        {
-          key: 'inventory-ledger',
-          label: 'Inventory Ledger',
-          component: <InventoryLedgerAdmin />,
-        },
+        // {
+        //   key: 'inventory-ledger',
+        //   label: 'Inventory Ledger',
+        //   component: <InventoryLedgerAdmin />,
+        // },
       ],
     },
     {

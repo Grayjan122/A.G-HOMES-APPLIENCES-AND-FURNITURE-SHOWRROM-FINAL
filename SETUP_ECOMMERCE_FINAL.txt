@@ -1,0 +1,148 @@
+╔════════════════════════════════════════════════════════════════╗
+║     E-COMMERCE SHOP - FINAL SETUP (SEPARATE CUSTOMERS)         ║
+╚════════════════════════════════════════════════════════════════╝
+
+🎯 IMPORTANT: E-commerce uses SEPARATE customer tables!
+
+Your walk-in customers table is SAFE and UNTOUCHED! ✅
+
+═══════════════════════════════════════════════════════════════
+
+⚡ 3-STEP SETUP:
+
+STEP 1: DATABASE
+────────────────────────────────────────────────────────────────
+Run this file in your database (phpMyAdmin or MySQL Workbench):
+
+   📄 ecommerce_database_update.sql
+
+This creates NEW tables:
+   • ecommerce_customers (for online shop)
+   • ecommerce_orders
+   • ecommerce_order_items
+   • ecommerce_wishlist
+   • ecommerce_cart
+
+Your EXISTING tables are NOT modified:
+   • customers (walk-in) - UNTOUCHED ✅
+   • customer_sales - UNTOUCHED ✅
+   • All other tables - UNTOUCHED ✅
+
+────────────────────────────────────────────────────────────────
+
+STEP 2: BACKEND API
+────────────────────────────────────────────────────────────────
+Copy the PHP file to XAMPP:
+
+From: C:\Users\USER\capstone2\backend-api-files\customer.php
+To:   C:\xampp\htdocs\capstone-api\api\customer.php
+
+OPTION A - Automatic (Recommended):
+   • Double-click: backend-api-files\COPY_TO_XAMPP.bat
+
+OPTION B - Manual:
+   • Copy customer.php manually to XAMPP folder
+
+THEN update inventory.php:
+   • See: backend-api-files\INVENTORY_PHP_UPDATE.txt
+
+────────────────────────────────────────────────────────────────
+
+STEP 3: TEST
+────────────────────────────────────────────────────────────────
+Start your development server:
+
+   npm run dev
+
+Visit the shop:
+
+   http://localhost:3000/shop
+
+Test with account:
+   Email: shop@example.com
+   Password: shop123
+
+═══════════════════════════════════════════════════════════════
+
+📊 DATA STRUCTURE:
+
+WALK-IN SYSTEM (Existing - Untouched):
+┌──────────────────────────────────────┐
+│ customers (walk-in customers)        │
+│ customer_sales (POS sales)           │
+│ customer_sales_details (sale items)  │
+└──────────────────────────────────────┘
+
+E-COMMERCE SYSTEM (New - Separate):
+┌──────────────────────────────────────┐
+│ ecommerce_customers (online)         │
+│ ecommerce_orders (online orders)     │
+│ ecommerce_order_items (order items)  │
+│ ecommerce_wishlist (wishlists)       │
+│ ecommerce_cart (shopping carts)      │
+└──────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════
+
+🔑 KEY DIFFERENCES:
+
+Walk-In Customers:
+   - Field: cust_id
+   - No password (not needed)
+   - Managed by POS system
+
+E-Commerce Customers:
+   - Field: ecommerce_customer_id
+   - Has password (for login)
+   - Managed by online shop
+
+═══════════════════════════════════════════════════════════════
+
+✅ VERIFICATION CHECKLIST:
+
+After setup, verify:
+   □ ecommerce_database_update.sql executed successfully
+   □ customer.php exists in XAMPP api folder
+   □ inventory.php updated with new function
+   □ http://localhost:3000/shop opens
+   □ Can create new account
+   □ Can login with test account
+   □ Walk-in customer system still works normally
+
+═══════════════════════════════════════════════════════════════
+
+🎯 FEATURES:
+
+✅ Browse products
+✅ Search & filter
+✅ View product details
+✅ See stock at each location ⭐
+✅ Create account (separate from walk-in)
+✅ Login securely
+✅ Shopping cart
+✅ Add/remove items
+✅ Mobile responsive
+
+═══════════════════════════════════════════════════════════════
+
+📞 HELP:
+
+See these files for detailed info:
+   • ECOMMERCE_SEPARATE_CUSTOMERS_INFO.md
+   • ECOMMERCE_SETUP_GUIDE.md
+   • SHOP_QUICK_START.md
+
+═══════════════════════════════════════════════════════════════
+
+🎉 READY TO LAUNCH!
+
+Your e-commerce shop is ready with:
+   ✓ Separate customer database
+   ✓ No conflicts with walk-in system
+   ✓ Clean data separation
+   ✓ All features working
+
+Visit: http://localhost:3000/shop
+
+═══════════════════════════════════════════════════════════════
+
