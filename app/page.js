@@ -12,6 +12,7 @@ import Modal from 'react-bootstrap/Modal';
 import Alert from 'react-bootstrap/Alert';
 import { LogInSuccess } from './Components/SweetAlert/logIn';
 import { showAlertError } from './Components/SweetAlert/error';
+import { AlertSucces } from './Components/SweetAlert/success';
 
 export default function HomePage() {
   const [show, setShow] = useState(false);
@@ -966,30 +967,47 @@ export default function HomePage() {
         timeout: 15000
       });
 
-      console.log('Password reset response:', response.data);
+      let result = response.data;
+      if (typeof result === 'string') {
+        try {
+          result = JSON.parse(result);
+        } catch (parseError) {
+          console.warn('Unable to parse reset password response string:', result);
+          result = null;
+        }
+      } else if (result == null && response.request?.responseText) {
+        try {
+          result = JSON.parse(response.request.responseText);
+        } catch (parseError) {
+          console.warn('Unable to parse responseText for reset password:', response.request.responseText);
+          result = null;
+        }
+      }
 
-      if (response.data.success) {
-        showAlertError({
-          icon: "success",
-          title: "Password Reset!",
-          text: 'Your password has been successfully reset. You can now login with your new password.',
-          button: 'OK'
-        });
+      console.log('Password reset response:', result);
+
+      if ((result && result.success) || (!result && response.status === 200)) {
+        AlertSucces(
+          'Your password has been successfully reset. You can now login with your new password.',
+          'success',
+          true,
+          'OK'
+        );
         closeForgotPassword();
       } else {
         // Check for password history violation
-        if (response.data.error_code === 'PASSWORD_HISTORY_VIOLATION') {
-          setPasswordError(response.data.message || response.data.error);
+        if (result && result.error_code === 'PASSWORD_HISTORY_VIOLATION') {
+          setPasswordError(result.message || result.error);
           showAlertError({
             icon: "warning",
             title: "🔒 Password Previously Used",
             text: '⚠️ Security Policy ou cannot reuse any of your last 5 passwords.',
             button: 'Okay'
-        });
-         
+          });
+
         } else {
           // Other errors
-          throw new Error(response.data.error || 'Failed to reset password');
+          throw new Error(result?.error || 'Failed to reset password');
         }
       }
     } catch (error) {
@@ -1131,11 +1149,34 @@ export default function HomePage() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '15px'
+            gap: '15px',
+            padding: '10px'
           }}>
-            <Image src={'/assets/images/AG.png'} width={90} height={90} alt='logo' className='logo' />
-            <h1 style={{ color: 'white', textAlign: 'center', margin: 0 }}>A.G Home Appliance <br />
-              & Furniture Showroom</h1>
+            <Image 
+              src={'/assets/images/AG.png'} 
+              width={90} 
+              height={90} 
+              alt='logo' 
+              className='logo' 
+              style={{
+                width: 'clamp(60px, 15vw, 90px)',
+                height: 'clamp(60px, 15vw, 90px)',
+                objectFit: 'contain'
+              }}
+            />
+            <h1 style={{ 
+              color: 'white', 
+              textAlign: 'center', 
+              margin: 0,
+              fontSize: 'clamp(16px, 4vw, 28px)',
+              lineHeight: '1.3',
+              fontWeight: '600',
+              padding: '0 10px',
+              wordWrap: 'break-word'
+            }}>
+              A.G Home Appliance <br />
+              & Furniture Showroom
+            </h1>
           </div>
 
           <form onSubmit={login} className='log-in-form'>
@@ -1267,7 +1308,7 @@ export default function HomePage() {
             </div>
 
             {/* Shop Link */}
-            <div style={{
+            {/* <div style={{
               marginTop: '10px',
               textAlign: 'center'
             }}>
@@ -1301,7 +1342,7 @@ export default function HomePage() {
               >
                 🛒 Visit Our Shop
               </button>
-            </div>
+            </div> */}
           </form>
         </div>
 

@@ -584,7 +584,7 @@ const InventoryIM = () => {
                                         <tbody>
                                             {currentItems1.map((item, index) => {
                                                 // Define types that reduce stock (subtract from inventory)
-                                                const negativeTypes = ['Installment Sales', 'Sales', 'Transfer Stock', 'Stock Adjustment (Subtract)'];
+                                                const negativeTypes = ['Installment Sales', 'Sales', 'Transfer Out', 'Stock Adjustment (Subtract)'];
                                                 const isNegativeType = negativeTypes.includes(item.type);
 
                                                 // Determine if this is a positive change (adds to stock)
@@ -699,7 +699,7 @@ const InventoryIM = () => {
                         Set Inventory Thresholds
                     </Modal.Title>
                 </Modal.Header>
-                <Modal.Body style={{ padding: '30px' }}>
+                <Modal.Body style={{ padding: '30px', height: '70vh', overflowY: 'auto' }}>
                     {selectedItemForThreshold && (
                         <>
                             <div style={{
@@ -1456,6 +1456,7 @@ const InventoryIM = () => {
                                             Store {sortField === 'location_name' && (sortDirection === 'asc' ? '↑' : '↓')}
                                         </th>
                                         <th style={{ padding: '14px', textAlign: 'left', borderBottom: '2px solid #dee2e6', fontWeight: '600', fontSize: '14px', color: '#495057' }}>Stock Thresholds</th>
+                                        <th style={{ padding: '14px', textAlign: 'left', borderBottom: '2px solid #dee2e6', fontWeight: '600', fontSize: '14px', color: '#495057' }}>Edit Stock Thresholds</th>
                                         <th style={{ padding: '14px', textAlign: 'left', borderBottom: '2px solid #dee2e6', fontWeight: '600', fontSize: '14px', color: '#495057' }}>Action</th>
                                     </tr>
                                 </thead>
@@ -1635,8 +1636,14 @@ const InventoryIM = () => {
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* Edit Button - Under Threshold */}
-                                                                    <button
+                                                                 
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td>
+                                                           {/* Edit Button - Under Threshold */}
+                                                           <button
                                                                         onClick={() => openThresholdModal(item)}
                                                                         style={{
                                                                             width: '100%',
@@ -1669,9 +1676,6 @@ const InventoryIM = () => {
                                                                         <span style={{ fontSize: '14px' }}>✏️</span>
                                                                         <span>Edit Thresholds</span>
                                                                     </button>
-                                                                </div>
-                                                            );
-                                                        })()}
                                                     </td>
                                                     <td style={{ padding: '14px' }}>
                                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>

@@ -8,6 +8,7 @@ const NotificationBell = () => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [showDropdown, setShowDropdown] = useState(false);
+    const [showAllModal, setShowAllModal] = useState(false);
     const [loading, setLoading] = useState(false);
     const dropdownRef = useRef(null);
     const bellButtonRef = useRef(null);
@@ -329,13 +330,122 @@ const NotificationBell = () => {
                                 className="view-all-btn"
                                 onClick={() => {
                                     setShowDropdown(false);
-                                    // You can navigate to a full notifications page here
+                                    setShowAllModal(true);
                                 }}
                             >
                                 View all notifications
                             </button>
                         </div>
                     )}
+                </div>,
+                document.body
+            )}
+
+            {/* View All Notifications Modal */}
+            {showAllModal && typeof document !== 'undefined' && createPortal(
+                <div 
+                    className="notification-modal-overlay"
+                    onClick={() => setShowAllModal(false)}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        zIndex: 10000,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px'
+                    }}
+                >
+                    <div 
+                        className="notification-modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            width: '100%',
+                            maxWidth: '800px',
+                            maxHeight: '90vh',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+                        }}
+                    >
+                        <div className="notification-header" style={{ borderRadius: '12px 12px 0 0' }}>
+                            <h3>All Notifications</h3>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                {unreadCount > 0 && (
+                                    <button 
+                                        className="mark-all-read-btn"
+                                        onClick={markAllAsRead}
+                                    >
+                                        Mark all as read
+                                    </button>
+                                )}
+                                <button 
+                                    onClick={() => setShowAllModal(false)}
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.2)',
+                                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                                        color: 'white',
+                                        padding: '6px 12px',
+                                        borderRadius: '6px',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.background = 'rgba(255, 255, 255, 0.3)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.background = 'rgba(255, 255, 255, 0.2)';
+                                    }}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="notification-list" style={{ flex: 1, overflowY: 'auto', maxHeight: 'calc(90vh - 120px)' }}>
+                            {notifications.length === 0 ? (
+                                <div className="no-notifications">
+                                    <span className="no-notif-icon">🔔</span>
+                                    <p>No notifications</p>
+                                </div>
+                            ) : (
+                                notifications.map((notif) => {
+                                    const isUnread = notif.is_read == 0 || notif.is_read === false;
+                                    return (
+                                        <div 
+                                            key={notif.notification_id}
+                                            className={`notification-item ${isUnread ? 'unread' : ''}`}
+                                            onClick={() => {
+                                                if (isUnread) {
+                                                    markAsRead(notif.notification_id);
+                                                }
+                                            }}
+                                        >
+                                            <div 
+                                                className="notification-icon"
+                                                style={{ backgroundColor: getNotificationColor(notif.type) }}
+                                            >
+                                                {getNotificationIcon(notif.type)}
+                                            </div>
+                                            <div className="notification-content">
+                                                <div className="notification-title">{notif.title}</div>
+                                                <div className="notification-message">{notif.message}</div>
+                                                <div className="notification-time">{formatTimeAgo(notif.created_at)}</div>
+                                            </div>
+                                            {isUnread && <div className="unread-dot"></div>}
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
                 </div>,
                 document.body
             )}

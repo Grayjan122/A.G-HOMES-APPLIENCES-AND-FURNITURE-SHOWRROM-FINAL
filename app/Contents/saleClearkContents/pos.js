@@ -373,105 +373,102 @@ export default function SalePage() {
     const baseURL = sessionStorage.getItem('baseURL');
     const url = baseURL + 'sales.php';
 
-    if (paymentPlan == 'full') {
-      if (paymentMethod == 'cash') {
-        const amountPaid = calculateTotal();
+    if (paymentPlan === 'full') {
+      // Full payment works with any payment method (cash, card, gcash, etc.)
+      const amountPaid = calculateTotal();
 
-        const PurchaseDetails = {
-          custID: customerType === 'walk-in' ? null : selectedCustomer.cust_id,
-          accID: accountID,
-          locID: locId,
-          payMethod: paymentMethod,
-          subTotal: calculateSubtotal(),
-          discount: calculateDiscount(),
-          discountValue: discountValue,
-          total: calculateTotal(),
-          paymentPlan: paymentPlan,
-          amountPaid: amountPaid
-        };
+      const PurchaseDetails = {
+        custID: customerType === 'walk-in' ? null : selectedCustomer.cust_id,
+        accID: accountID,
+        locID: locId,
+        payMethod: paymentMethod,
+        subTotal: calculateSubtotal(),
+        discount: calculateDiscount(),
+        discountValue: discountValue,
+        total: calculateTotal(),
+        paymentPlan: paymentPlan,
+        amountPaid: amountPaid
+      };
 
-        console.log(PurchaseDetails);
+      console.log(PurchaseDetails);
 
-        try {
-          const operation = customerType === 'walk-in' ? "walkSale" : "customerSale";
+      try {
+        const operation = customerType === 'walk-in' ? "walkSale" : "customerSale";
 
-          const response = await axios.get(url, {
-            params: {
-              salesDetails: JSON.stringify(cart),
-              updateIn: JSON.stringify(updateInventory),
-              reportInventory: JSON.stringify(report),
-              json: JSON.stringify(PurchaseDetails),
-              operation: operation
-            }
+        const response = await axios.get(url, {
+          params: {
+            salesDetails: JSON.stringify(cart),
+            updateIn: JSON.stringify(updateInventory),
+            reportInventory: JSON.stringify(report),
+            json: JSON.stringify(PurchaseDetails),
+            operation: operation
+          }
+        });
+
+        if (!isNaN(response.data) && response.data !== null && response.data !== "") {
+          // Create transaction object for receipt
+          const transaction = {
+            invoice_id: response.data,
+            customer: customerType === 'walk-in' ? 'walk-in' : selectedCustomer,
+            items: [...cart],
+            subtotal: calculateSubtotal(),
+            discount: calculateDiscount(),
+            total: calculateTotal(),
+            payment_method: paymentMethod,
+            payment_plan: paymentPlan,
+            amount_paid: amountPaid,
+            installment_details: null,
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString(),
+            location: locName || 'Agora Showroom Main'
+          };
+
+          // Show receipt modal
+          showReceiptModal(transaction);
+
+          GetInventory();
+
+          // Reset form
+          setCart([]);
+          setPaymentMethod("cash");
+          setCustomerType('');
+          setSelectedCustomer(null);
+          setCustomerSearchTerm('');
+          setDiscountValue(0);
+          setPaymentPlan('full');
+          setDownpaymentAmount(0);
+          setCustomDownpayment(0);
+          setInstallmentDetails({
+            months: 3,
+            interestRate: 0,
+            monthlyPayment: 0,
+            totalWithInterest: 0
           });
 
-          if (!isNaN(response.data) && response.data !== null && response.data !== "") {
-            // Create transaction object for receipt
-            const transaction = {
-              invoice_id: response.data,
-              customer: customerType === 'walk-in' ? 'walk-in' : selectedCustomer,
-              items: [...cart],
-              subtotal: calculateSubtotal(),
-              discount: calculateDiscount(),
-              total: calculateTotal(),
-              payment_method: paymentMethod,
-              payment_plan: paymentPlan,
-              amount_paid: amountPaid,
-              installment_details: null,
-              date: new Date().toLocaleDateString(),
-              time: new Date().toLocaleTimeString(),
-              location: locName || 'Agora Showroom Main'
-            };
+          const activity = customerType === 'walk-in' ?
+            `Processed a walk-in customer sale at ${locName}, Invoice #${response.data}` :
+            `Processed a customer sale at ${locName}, Invoice #${response.data}`;
 
-            // Show receipt modal
-            showReceiptModal(transaction);
+          Logs(accountID, activity);
 
-            GetInventory();
-
-            // Reset form
-            setCart([]);
-            setPaymentMethod("cash");
-            setCustomerType('');
-            setSelectedCustomer(null);
-            setCustomerSearchTerm('');
-            setDiscountValue(0);
-            setPaymentPlan('full');
-            setDownpaymentAmount(0);
-            setCustomDownpayment(0);
-            setInstallmentDetails({
-              months: 3,
-              interestRate: 0,
-              monthlyPayment: 0,
-              totalWithInterest: 0
-            });
-
-            const activity = customerType === 'walk-in' ?
-              `Processed a walk-in customer sale at ${locName}, Invoice #${response.data}` :
-              `Processed a customer sale at ${locName}, Invoice #${response.data}`;
-
-            Logs(accountID, activity);
-
-          } else {
-            console.log(response.data);
-            showAlertError({
-              icon: "error",
-              title: "Something Went Wrong!",
-              text: 'Failed to process the sale!',
-              button: 'Try Again'
-            });
-          }
-
-        } catch (error) {
-          console.error("Error processing the sale:", error);
+        } else {
+          console.log(response.data);
           showAlertError({
             icon: "error",
-            title: "Error!",
-            text: 'An error occurred while processing the sale.',
+            title: "Something Went Wrong!",
+            text: 'Failed to process the sale!',
             button: 'Try Again'
           });
         }
-      } else {
-        console.log('Other payment!!');
+
+      } catch (error) {
+        console.error("Error processing the sale:", error);
+        showAlertError({
+          icon: "error",
+          title: "Error!",
+          text: 'An error occurred while processing the sale.',
+          button: 'Try Again'
+        });
       }
 
     } else if (paymentPlan == 'installment') {

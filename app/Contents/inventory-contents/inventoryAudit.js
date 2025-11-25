@@ -720,7 +720,7 @@ const InventoryLedgerIM = () => {
                                             <td style={typeStyle}>{p.type}</td>
                                             <td style={{textAlign: 'center'}}>{p.past_balance}</td>
                                             <td style={qtyStyle}>
-                                                {isNegative ? '-' : isPositive ? '+' : ''}{p.qty}
+                                                {p.qty}
                                             </td>
                                             <td style={{textAlign: 'center', fontWeight: '500'}}>{p.current_balance}</td>
                                             <td>{formatDate(p.date)}</td>

@@ -30,7 +30,24 @@ import BranchAdmin from '@/app/Contents/admin-contents/branch';
 import SidebarInventory from '../Sidebar-Inventory/page';
 import DashboardAdmin from '@/app/Contents/admin-contents/dashboardAdmin';
 import ProfileSetting from '@/app/Components/profileSetting/userProfilePage';
+import OrdersManagement from '@/app/Contents/admin-contents/Orders/page';
 import ProductTypeAdmin from '@/app/Contents/admin-contents/productType';
+import ProductPartsAssignment from '@/app/Contents/admin-contents/productPartsAssignment';
+import DiscountController from '@/app/Contents/admin-contents/discountController';
+import CustomizeInventorySC from '@/app/Contents/saleClearkContents/customizInventory';
+import ReceiveStockIM from '@/app/Contents/inventory-contents/receiveStock';
+import RequestStockIM from '@/app/Contents/inventory-contents/requestStockIM';
+import TrackRequestIM from '@/app/Contents/inventory-contents/trackRequest';
+import TransferRequestManagement from '@/app/Contents/inventory-contents/transferRequestManagement';
+import UnifiedRequestManagement from '@/app/Contents/warehouse-contents/combineRequestManagement';
+import CombinedRequests from '@/app/Contents/warehouse-contents/requestPage';
+import DeliveryCustomizeWR from '@/app/Contents/warehouse-contents/customizeDelivery';
+import CombinedSalePage from '@/app/Contents/saleClearkContents/posSC';
+import TransferStock from '@/app/Contents/inventory-contents/transferStock';
+import ReceiveTransferDelivery from '@/app/Contents/inventory-contents/receiveTransferDelivery';
+import PaymentBehavior from '@/app/Contents/saleClearkContents/paymentBehavior';
+import DeliveryTracking from '@/app/Contents/saleClearkContents/deliveryTracking';
+import ReceiveCustomizeSC from '@/app/Contents/saleClearkContents/receiveCustomize';
 
 const Sidebar = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -97,6 +114,11 @@ const Sidebar = () => {
           label: 'Product Types',
           component: <ProductTypeAdmin />,
         },
+        {
+          key: 'product-parts',
+          label: 'Parts Assignment',
+          component: <ProductPartsAssignment />,
+        },
       ]
     },
     {
@@ -108,15 +130,59 @@ const Sidebar = () => {
     },
     {
       key: 'inventory',
-      label: 'INVENTORY',
+      label: 'Inventory',
       icon: '/assets/images/dash-icons/last-inventory.png',
       component: <InventoryIM />,
       children: [
+        {
+          key: 'receive-stock',
+          label: 'Receive Stock',
+          component: <ReceiveStockIM />,
+        },
+      
         // {
-        //   key: 'inventory-ledger',
-        //   label: 'Inventory Ledger',
-        //   component: <InventoryLedgerAdmin />,
+        //   key: 'request-stock',
+        //   label: 'Request Stock',
+        //   component: <RequestStockIM />,
         // },
+
+        // {
+        //   // key: 'transfer-request',
+        //   // label: 'Transfer Request',
+        //   // component: <TransferRequestWR />,
+        // },
+        {
+          key: 'inventory-ledger',
+          label: 'Inventory Ledger',
+          component: <InventoryLedgerIM/>,
+        },
+        {
+          key: 'customize-inventory',
+          label: 'Customize Inventory',
+          component: <CustomizeInventorySC />,
+        },
+      ],
+    },
+    {
+      key: 'request-management',
+      label: 'Request Stock',
+      icon: '/assets/images/dash-icons/last-request.png',
+      component: <RequestStockIM />,
+      children: [
+        {
+          key: 'track-request',
+          label: 'Track Request',
+          component: <TrackRequestIM />,
+        },
+      ],
+    },
+    {
+      key: 'transfer-request-list',
+        label: 'Transfer Request List',
+      icon: '/assets/images/dash-icons/transfer.png',
+      component: <TransferRequestManagement />,
+      children: [
+       
       ],
     },
     {
@@ -140,6 +206,20 @@ const Sidebar = () => {
     //   children: []
     // },
     {
+      key: 'orders',
+      label: 'ORDERS',
+      icon: '/assets/images/dash-icons/orders.png',
+      component: <OrdersManagement />,
+      children: []
+    },
+    {
+      key: 'discount',
+      label: 'DISCOUNT',
+      icon: '/assets/images/dash-icons/discount.png',
+      component: <DiscountController />,
+      children: []
+    },
+    {
       key: 'customer',
       label: 'CUSTOMER',
       icon: '/assets/images/dash-icons/last-customer.png',
@@ -153,6 +233,83 @@ const Sidebar = () => {
       component: <User />,
       children: []
     },
+    {
+      key: 'combineRequestManagement',
+      label: 'Request Management',
+      icon: '/assets/images/dash-icons/last-req-management.png',
+      component: <UnifiedRequestManagement />,
+      children: [
+        {
+          key: 'request-all',
+          label: 'Product Requests',
+          component: <CombinedRequests />,
+        },
+       
+      ],
+    },
+    {
+      key: 'deliverycustomize',
+      label: 'Delivery',
+      icon: '/assets/images/dash-icons/last-track-delivery1.png',
+      component: <DeliveryCustomizeWR />,
+    },
+    {
+      key: 'pos1',
+      label: 'POS',
+      icon: '/assets/images/dash-icons/last-pos1.png',
+      component: <CombinedSalePage />,
+      children: []
+    },
+    {
+      key: 'transfer-stock',
+      label: 'Transfer Stock',
+      icon: '/assets/images/dash-icons/transfer.png',
+      component: <TransferStock />,
+      children: [
+        // {
+        //   key: 'transfer-request-list',
+        //   label: 'Transfer Request List',
+        //   component: <TransferRequestManagement />,
+        // },
+        {
+          key: 'receive-transfer-delivery',
+          label: 'Receive Transfer Delivery',
+          component: <ReceiveTransferDelivery />,
+        },
+      ],
+    },
+    {
+      key: 'installments',
+      label: 'INSTALLMENTS',
+      icon: '/assets/images/dash-icons/last-installment1.png',
+      component: <PaymentBehavior />,
+      children: []
+    },
+    {
+      key: 'delivery',
+      label: 'DELIVERY TRACKING',
+      icon: '/assets/images/dash-icons/last-track-delivery1.png',
+      component: <DeliveryTracking />,
+      children: []
+    },
+    {
+      key: 'customize',
+      label: 'CUSTOMIZE INVENTORY',
+      icon: '/assets/images/dash-icons/last-customer1.png',
+      component: <CustomizeInventorySC />,
+      children: [
+        {
+          key: 'customizeRecieve',
+          label: 'Receive Customize',
+          icon: '/assets/images/sale.png',
+          component: <ReceiveCustomizeSC />
+        }
+      ]
+    },
+
+
+
+
     {
       key: 'audit',
       label: 'AUDIT LOG',

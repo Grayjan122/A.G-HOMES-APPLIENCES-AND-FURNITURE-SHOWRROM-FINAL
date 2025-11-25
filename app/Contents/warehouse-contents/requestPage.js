@@ -20,6 +20,8 @@ const CombinedRequests = () => {
     const [stockRequestDetails, setStockRequestDetails] = useState([]);
     const [currentStoreInventory, setCurrentStoreInventory] = useState([]);
     const [s_reqID, setS_ReqID] = useState('');
+    const [s_idMaker, setS_idMaker] = useState('');
+
     const [s_reqDate, setS_ReqDate] = useState('');
     const [s_reqBy, setS_ReqBy] = useState('');
     const [s_reqFrom, setS_ReqFrom] = useState('');
@@ -37,6 +39,7 @@ const CombinedRequests = () => {
     const [semiDetails, setSemiDetails] = useState([]);
     const [fullDetails, setFullDetails] = useState([]);
     const [c_reqID, setC_ReqID] = useState('');
+    const [c_idMaker, setC_idMaker] = useState('');
     const [c_salesID, setC_SalesID] = useState('');
     const [c_reqDate, setC_ReqDate] = useState('');
     const [c_reqTime, setC_ReqTime] = useState('');
@@ -312,6 +315,7 @@ const CombinedRequests = () => {
 
             setS_ReqBy(`${data.fname || ''} ${data.mname || ''} ${data.lname || ''}`.trim());
             setS_ReqID(data.request_stock_id);
+            setS_idMaker(data.id_maker);
             setS_ReqDate(data.date);
             setS_ReqFrom(data.reqFrom);
             setS_ReqStatus(data.request_status);
@@ -319,7 +323,7 @@ const CombinedRequests = () => {
             setReqToId(data.request_to);
 
             if (data.request_status === 'Pending') {
-                GetTrackRequestTimeandDate(data.request_stock_id, 'Request Sent');
+                GetTrackRequestTimeandDate(data.request_stock_id, 'Pending');
             } else {
                 GetTrackRequestTimeandDate(data.request_stock_id, data.request_status);
             }
@@ -574,12 +578,12 @@ const CombinedRequests = () => {
                 await createNotification({
                     type: 'stock_request',
                     title: 'Stock Request Approved',
-                    message: `Your stock request #${s_reqID} has been approved by ${s_reqFrom} and is now on production.`,
+                    message: `Your stock request #${s_idMaker || s_reqID} has been approved by ${s_reqFrom} and is now on production.`,
                     locationId: reqFromId, // Send to requesting location
                     targetRole: 'Inventory Manager',
                     productId: null,
                     customerId: null,
-                    referenceId: s_reqID
+                    referenceId: s_idMaker || s_reqID
                 });
             } else {
                 console.error('AcceptRequestWR failed:', {
@@ -782,12 +786,12 @@ const CombinedRequests = () => {
                     await createNotification({
                         type: 'stock_request',
                         title: 'Stock Request Declined',
-                        message: `Your stock request #${s_reqID} has been declined by ${s_reqFrom}. Please contact them for more information.`,
+                        message: `Your stock request #${s_idMaker || s_reqID} has been declined by ${s_reqFrom}. Please contact them for more information.`,
                         locationId: reqFromId,
                         targetRole: 'Inventory Manager',
                         productId: null,
                         customerId: null,
-                        referenceId: s_reqID
+                        referenceId: s_idMaker || s_reqID
                     });
                     return; // Success, exit function
                 }
@@ -879,7 +883,7 @@ const CombinedRequests = () => {
         }
     };
 
-    const GetStatsAndDate = async (stats, CR_ID) => {
+    const GetStatsAndDate = async (stats, CR_ID, fallbackDate = null, fallbackTime = null) => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'customizeProducts.php';
         const ID = { stats: stats, CD_ID: CR_ID };
@@ -889,11 +893,30 @@ const CombinedRequests = () => {
                 params: { json: JSON.stringify(ID), operation: "GetTheStatusDate" }
             });
 
-            const formattedDate = formatDate(response.data[0].date);
-            const formattedTime = formatTime(response.data[0].time);
-            setDateAndTime(`${formattedDate}, ${formattedTime}`);
+            if (response.data && response.data.length > 0 && response.data[0].date) {
+                const formattedDate = formatDate(response.data[0].date);
+                const formattedTime = formatTime(response.data[0].time);
+                setDateAndTime(`${formattedDate}, ${formattedTime}`);
+            } else {
+                // Fallback: use provided date/time or 'N/A'
+                if (fallbackDate && fallbackTime) {
+                    const formattedDate = formatDate(fallbackDate);
+                    const formattedTime = formatTime(fallbackTime);
+                    setDateAndTime(`${formattedDate}, ${formattedTime}`);
+                } else {
+                    setDateAndTime('N/A');
+                }
+            }
         } catch (error) {
             console.error("Error fetching status date:", error);
+            // Fallback on error
+            if (fallbackDate && fallbackTime) {
+                const formattedDate = formatDate(fallbackDate);
+                const formattedTime = formatTime(fallbackTime);
+                setDateAndTime(`${formattedDate}, ${formattedTime}`);
+            } else {
+                setDateAndTime('N/A');
+            }
         }
     };
 
@@ -1056,6 +1079,7 @@ const CombinedRequests = () => {
     const openStockModal = async (request) => {
         setCurrentStockPage(1);
         setDeclinedProducts([]); // Reset declined products initially
+        setReqDateTime(""); // Reset date/time
         await GetStockRequestD(request.request_stock_id);
         await GetCurrentStoreInventory(location_id);
         await GetStockRequestDetails(request.request_stock_id); // This will trigger useEffect to load declined products
@@ -1064,7 +1088,7 @@ const CombinedRequests = () => {
 
     const openCustomizeModal = async (request) => {
         const salesId = request.customize_sales_id;
-
+        setC_idMaker(request.id_maker || request.customize_req_id);
         setC_ReqID(request.customize_req_id);
         setC_SalesID(request.customize_sales_id);
         setC_ReqDate(formatDate(request.date));
@@ -1076,7 +1100,8 @@ const CombinedRequests = () => {
         setC_ReqToId(request.req_to);
         setC_ReqDateTime(request.date + " • " + request.time);
         setC_ReqBy(request.lname + ", " + request.fname + " " + request.mname);
-        GetStatsAndDate(request.status, request.customize_req_id);
+        setDateAndTime(null); // Reset date/time
+        await GetStatsAndDate(request.status, request.customize_req_id, request.date, request.time);
 
         const [semiData, fullData] = await Promise.all([GetSemiDetails(), GetFullDetails()]);
 
@@ -1097,14 +1122,14 @@ const CombinedRequests = () => {
         ...stockRequestList.map(req => ({
             ...req,
             type: 'stock',
-            id: req.request_stock_id,
+            id: req.id_maker || req.request_stock_id,
             displayDate: req.date,
             displayTime: req.time
         })),
         ...customizeRequestList.filter(req => req.status === 'Pending').map(req => ({
             ...req,
             type: 'customize',
-            id: req.customize_req_id,
+            id: req.id_maker || req.customize_req_id,
             displayDate: req.date,
             displayTime: req.time
         }))
@@ -1130,7 +1155,7 @@ const CombinedRequests = () => {
 
                     <div className="r-details-head">
                         <div className='r-d-div'>
-                            <div className='r-1'><strong>REQUEST ID:</strong> {s_reqID}</div>
+                            <div className='r-1'><strong>REQUEST ID:</strong> {s_idMaker} </div>
                             <div><strong>REQUEST DATE:</strong> {s_reqDate ? formatDate(s_reqDate) : 'N/A'}</div>
                         </div>
                         <div><strong>REQUEST FROM:</strong> {s_reqFrom}</div>
@@ -1141,7 +1166,7 @@ const CombinedRequests = () => {
                                 color: s_reqStatus === 'Pending' ? 'red' : s_reqStatus === 'Approved' ? 'green' : 'black',
                                 fontWeight: 'bold'
                             }}>
-                                {s_reqStatus} | {reqDateTime}
+                                {s_reqStatus} {reqDateTime ? `| ${reqDateTime}` : ''}
                             </span>
                         </div>
                     </div>
@@ -1298,7 +1323,7 @@ const CombinedRequests = () => {
                 <Modal.Body className='request-modal-body'>
                     <div className="r-details-head">
                         <div className='r-d-div'>
-                            <div><strong>CUSTOMIZE REQUEST ID:</strong> {c_reqID}</div>
+                            <div><strong>REQUEST ID:</strong> {c_idMaker}</div>
                             <div><strong>REQUEST DATE:</strong> {c_reqDate}</div>
                         </div>
 
@@ -1311,7 +1336,7 @@ const CombinedRequests = () => {
                                 color: c_reqStatus === 'Pending' ? 'red' : c_reqStatus === 'Approved' ? 'green' : 'black',
                                 fontWeight: 'bold'
                             }}>
-                                {c_reqStatus} | {dateAndTime}
+                                {c_reqStatus} {dateAndTime ? `| ${dateAndTime}` : ''}
                             </span>
                         </div>
                     </div>
@@ -1478,7 +1503,7 @@ const CombinedRequests = () => {
                                         </div>
 
                                         <div className="cardRow" style={{ maxWidth: '100%' }}>
-                                            <span className="cardLabel" style={{ fontSize: '18px' }}>{req.type === 'stock' ? 'REQUEST ID:' : 'CUSTOMIZE REQUEST ID:'}</span>
+                                            <span className="cardLabel" style={{ fontSize: '18px' }}>{req.type === 'stock' ? 'REQUEST ID:' : 'REQUEST ID:'}</span>
                                             <span className="cardValue" style={{ fontSize: '18px', fontWeight: 'bold' }}>{req.id}</span>
                                         </div>
 

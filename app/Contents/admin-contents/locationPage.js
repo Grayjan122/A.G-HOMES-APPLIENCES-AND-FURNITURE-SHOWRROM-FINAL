@@ -121,9 +121,26 @@ const Location = () => {
         }
       });
 
-      setLocationTypeList(response.data);
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        setLocationTypeList(response.data);
+        console.log('✅ Location types loaded:', response.data.length, 'types');
+      } else {
+        console.warn('⚠️ No location types found or invalid response:', response.data);
+        showAlertError({
+          icon: "warning",
+          title: "No Location Types Available",
+          text: 'No location types found. Please add location types first before adding locations.',
+          button: 'OK'
+        });
+      }
     } catch (error) {
       console.error("Error fetching location type list:", error);
+      showAlertError({
+        icon: "error",
+        title: "Error Loading Location Types",
+        text: 'Failed to load location types. Please refresh the page and try again.',
+        button: 'OK'
+      });
     }
   }
 
@@ -188,6 +205,30 @@ const Location = () => {
       return;
     }
 
+    // Validate location type ID exists in the list
+    const locTypeIDInt = parseInt(locTypeID, 10);
+    if (isNaN(locTypeIDInt)) {
+      showAlertError({
+        icon: "error",
+        title: "Invalid Location Type!",
+        text: 'Please select a valid location type.',
+        button: 'OK'
+      });
+      return;
+    }
+
+    // Check if the location type exists in the list
+    const locationTypeExists = locationTypeList.some(lt => parseInt(lt.loc_type_id, 10) === locTypeIDInt);
+    if (!locationTypeExists) {
+      showAlertError({
+        icon: "error",
+        title: "Location Type Not Found!",
+        text: 'The selected location type is invalid. Please refresh the page and try again.',
+        button: 'OK'
+      });
+      return;
+    }
+
     const baseURL = sessionStorage.getItem('baseURL');
     const url = baseURL + 'location.php';
     const locationDetails = {
@@ -196,8 +237,8 @@ const Location = () => {
       phone: locPhone,
       email: locEmail,
       address: locAddress,
-      branchID: locBranchID,
-      locTypeID: locTypeID
+      branchID: parseInt(locBranchID, 10), // Ensure it's an integer
+      locTypeID: locTypeIDInt // Ensure it's an integer
     }
 
     try {
@@ -218,15 +259,47 @@ const Location = () => {
           'Okay'
         );
       } else {
-        showAlertError({
-          icon: "error",
-          title: "Something Went Wrong!",
-          text: 'Failed to add new location!',
-          button: 'Try Again'
-        });
+        // Check if it's a foreign key constraint error
+        const errorMessage = response.data?.message || response.data || 'Unknown error';
+        const errorStr = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+        
+        if (errorStr.includes('foreign key') || errorStr.includes('loc_type_id') || errorStr.includes('Integrity constraint')) {
+          showAlertError({
+            icon: "error",
+            title: "Invalid Location Type!",
+            text: 'The selected location type is invalid or does not exist in the database. Please select a valid location type from the dropdown.',
+            button: 'OK'
+          });
+        } else {
+          showAlertError({
+            icon: "error",
+            title: "Something Went Wrong!",
+            text: errorStr || 'Failed to add new location!',
+            button: 'Try Again'
+          });
+        }
+        console.log('Error response:', response.data);
       }
     } catch (error) {
       console.error("Error adding new location", error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to add location';
+      const errorStr = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+      
+      if (errorStr.includes('foreign key') || errorStr.includes('loc_type_id') || errorStr.includes('Integrity constraint')) {
+        showAlertError({
+          icon: "error",
+          title: "Invalid Location Type!",
+          text: 'The selected location type is invalid or does not exist in the database. Please select a valid location type from the dropdown.',
+          button: 'OK'
+        });
+      } else {
+        showAlertError({
+          icon: "error",
+          title: "Error",
+          text: errorStr,
+          button: 'OK'
+        });
+      }
     }
   }
 
@@ -301,6 +374,30 @@ const Location = () => {
   }
 
   const updateLocation = async () => {
+    // Validate location type ID exists in the list
+    const locTypeIDInt = parseInt(locTypeID, 10);
+    if (isNaN(locTypeIDInt)) {
+      showAlertError({
+        icon: "error",
+        title: "Invalid Location Type!",
+        text: 'Please select a valid location type.',
+        button: 'OK'
+      });
+      return;
+    }
+
+    // Check if the location type exists in the list
+    const locationTypeExists = locationTypeList.some(lt => parseInt(lt.loc_type_id, 10) === locTypeIDInt);
+    if (!locationTypeExists) {
+      showAlertError({
+        icon: "error",
+        title: "Location Type Not Found!",
+        text: 'The selected location type is invalid. Please refresh the page and try again.',
+        button: 'OK'
+      });
+      return;
+    }
+
     const baseURL = sessionStorage.getItem('baseURL');
     const url = baseURL + 'location.php';
     const locationDetails = {
@@ -309,9 +406,9 @@ const Location = () => {
       phone: locPhone,
       email: locEmail,
       address: locAddress,
-      branchID: locBranchID,
-      locID: locID,
-      locTypeID: locTypeID
+      branchID: parseInt(locBranchID, 10), // Ensure it's an integer
+      locID: parseInt(locID, 10), // Ensure it's an integer
+      locTypeID: locTypeIDInt // Ensure it's an integer
     }
 
     try {
@@ -332,15 +429,47 @@ const Location = () => {
           'Okay'
         );
       } else {
-        showAlertError({
-          icon: "error",
-          title: "Something Went Wrong!",
-          text: 'Failed to update location details!',
-          button: 'Try Again'
-        });
+        // Check if it's a foreign key constraint error
+        const errorMessage = response.data?.message || response.data || 'Unknown error';
+        const errorStr = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+        
+        if (errorStr.includes('foreign key') || errorStr.includes('loc_type_id') || errorStr.includes('Integrity constraint')) {
+          showAlertError({
+            icon: "error",
+            title: "Invalid Location Type!",
+            text: 'The selected location type is invalid or does not exist in the database. Please select a valid location type from the dropdown.',
+            button: 'OK'
+          });
+        } else {
+          showAlertError({
+            icon: "error",
+            title: "Something Went Wrong!",
+            text: errorStr || 'Failed to update location details!',
+            button: 'Try Again'
+          });
+        }
+        console.log('Error response:', response.data);
       }
     } catch (error) {
       console.error("Error updating location details:", error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update location';
+      const errorStr = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+      
+      if (errorStr.includes('foreign key') || errorStr.includes('loc_type_id') || errorStr.includes('Integrity constraint')) {
+        showAlertError({
+          icon: "error",
+          title: "Invalid Location Type!",
+          text: 'The selected location type is invalid or does not exist in the database. Please select a valid location type from the dropdown.',
+          button: 'OK'
+        });
+      } else {
+        showAlertError({
+          icon: "error",
+          title: "Error",
+          text: errorStr,
+          button: 'OK'
+        });
+      }
     }
   }
 

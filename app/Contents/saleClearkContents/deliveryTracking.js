@@ -25,6 +25,9 @@ export default function DeliveryTracking() {
   const [currentPage, setCurrentPage] = useState(1);
   const [completedCurrentPage, setCompletedCurrentPage] = useState(1);
   const [baseURL, setBaseURL] = useState('');
+  const [location_id, setLocation_id] = useState('');
+  const [driverList, setDriverList] = useState([]);
+  const [driverOption, setDriverOption] = useState('');
   
   const itemsPerPage = 9;
 
@@ -33,6 +36,7 @@ export default function DeliveryTracking() {
       const url = sessionStorage.getItem('baseURL') || 'http://localhost/capstone-api/api/';
       setBaseURL(url);
     }
+    setLocation_id(sessionStorage.getItem('location_id'));
   }, []);
 
   useEffect(() => {
@@ -40,6 +44,7 @@ export default function DeliveryTracking() {
       fetchDeliveries();
       fetchDeliveriesDetails();
       fetchDeliveryTracking();
+      fetchDrivers();
     }
   }, [baseURL, activeTab]);
   const [deliveriesDetails, setDeliveriesDetails] = useState([]);
@@ -53,10 +58,10 @@ export default function DeliveryTracking() {
           json: JSON.stringify([])
         }
       });
-      console.log(response.data);
-
-      if (response.data) {
-        setDeliveries(Array.isArray(response.data) ? response.data : []);
+     
+      const d = response.data.filter(location => location.location_id === parseInt(location_id));
+      if (d) {
+        setDeliveries(Array.isArray(d) ? d : []);
       }
     } catch (error) {
       console.error('Error fetching deliveries:', error);
@@ -108,6 +113,26 @@ export default function DeliveryTracking() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchDrivers = async () => {
+    try {
+      const response = await axios.get(baseURL + 'delivery.php', {
+        params: {
+          json: JSON.stringify([]),
+          operation: 'GetDrivers'
+        }
+      });
+      setDriverList(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error fetching driver list:', error);
+      setDriverList([]);
+    }
+  };
+
+  const formatDriverName = (driver) => {
+    if (!driver) return '';
+    return [driver.fname, driver.nname, driver.lname].filter(Boolean).join(' ').trim();
   };
 
   // Format date and time for better readability
@@ -172,19 +197,36 @@ export default function DeliveryTracking() {
     return null;
   };
 
+  const handleDriverOptionChange = (event) => {
+    const value = event.target.value;
+    setDriverOption(value);
+    if (value && value !== 'other') {
+      const driver = driverList.find(d => String(d.driver_id) === value);
+      setDriverName(driver ? formatDriverName(driver) : '');
+    } else {
+      setDriverName('');
+    }
+  };
+
   const handleStartDelivery = (delivery) => {
     setSelectedDelivery(delivery);
     setDriverName('');
     setDeliveryReceipt('');
+    setDriverOption('');
     setShowDriverModal(true);
   };
 
   const confirmStartDelivery = async () => {
-    if (!driverName.trim()) {
+    // Check if driver is selected from dropdown or manually entered
+    const finalDriverName = driverOption && driverOption !== 'other' 
+      ? formatDriverName(driverList.find(d => String(d.driver_id) === driverOption))
+      : driverName.trim();
+
+    if (!finalDriverName) {
       showAlertError({
         icon: "error",
         title: "Required Field",
-        text: 'Please enter driver name',
+        text: 'Please select a driver or enter driver name',
         button: 'Okay'
       });
       return;
@@ -210,7 +252,7 @@ export default function DeliveryTracking() {
           json: JSON.stringify({
             dtc_id: selectedDelivery.dtc_id,
             status: 'On Delivery To Customer',
-            driver_name: driverName.trim(),
+            driver_name: finalDriverName,
             delivery_receipt: deliveryReceipt.trim()
           })
         }
@@ -231,6 +273,7 @@ export default function DeliveryTracking() {
         setSelectedDelivery(null);
         setDriverName('');
         setDeliveryReceipt('');
+        setDriverOption('');
         fetchDeliveries();
       } else {
         showAlertError({
@@ -1169,7 +1212,13 @@ export default function DeliveryTracking() {
 
       {/* Driver Name Modal */}
       {showDriverModal && (
-        <div className="modal-overlay" onClick={() => !submitting && setShowDriverModal(false)} style={{
+        <div className="modal-overlay" onClick={() => {
+          if (!submitting) {
+            setShowDriverModal(false);
+            setDriverName('');
+            setDriverOption('');
+          }
+        }} style={{
           background: 'rgba(0, 0, 0, 0.6)',
           display: 'flex',
           alignItems: 'center',
@@ -1203,7 +1252,11 @@ export default function DeliveryTracking() {
                 fontWeight: '700'
               }}>🚚 Start Delivery</h2>
               <button
-                onClick={() => setShowDriverModal(false)}
+                onClick={() => {
+                  setShowDriverModal(false);
+                  setDriverName('');
+                  setDriverOption('');
+                }}
                 disabled={submitting}
                 style={{
                   background: 'rgba(255, 255, 255, 0.2)',
@@ -1256,21 +1309,18 @@ export default function DeliveryTracking() {
               </div>
 
               <div style={{ marginBottom: '20px' }}>
-                <label htmlFor="driver-name" style={{
+                <label htmlFor="driver-select" style={{
                   display: 'block',
                   marginBottom: '8px',
                   fontWeight: '600',
                   color: '#2c3e50',
                   fontSize: '14px'
-                }}>Driver Name *</label>
-                <input
-                  id="driver-name"
-                  type="text"
-                  value={driverName}
-                  onChange={(e) => setDriverName(e.target.value)}
-                  placeholder="Enter driver's name"
+                }}>Select Driver *</label>
+                <select
+                  id="driver-select"
+                  value={driverOption}
+                  onChange={handleDriverOptionChange}
                   disabled={submitting}
-                  autoFocus
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -1278,7 +1328,9 @@ export default function DeliveryTracking() {
                     borderRadius: '8px',
                     fontSize: '14px',
                     transition: 'all 0.3s ease',
-                    outline: 'none'
+                    outline: 'none',
+                    backgroundColor: 'white',
+                    cursor: submitting ? 'not-allowed' : 'pointer'
                   }}
                   onFocus={(e) => {
                     e.target.style.borderColor = '#42CAD6';
@@ -1288,8 +1340,54 @@ export default function DeliveryTracking() {
                     e.target.style.borderColor = '#e1e8ed';
                     e.target.style.boxShadow = 'none';
                   }}
-                />
+                >
+                  <option value="">-- Select Driver --</option>
+                  {driverList.map((driver) => (
+                    <option key={driver.driver_id} value={driver.driver_id}>
+                      {formatDriverName(driver)}{driver.contact_number ? ` - ${driver.contact_number}` : ''}
+                    </option>
+                  ))}
+                  <option value="other">Other (Enter manually)</option>
+                </select>
               </div>
+
+              {driverOption === 'other' && (
+                <div style={{ marginBottom: '20px' }}>
+                  <label htmlFor="driver-name" style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: '600',
+                    color: '#2c3e50',
+                    fontSize: '14px'
+                  }}>Driver Name *</label>
+                  <input
+                    id="driver-name"
+                    type="text"
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                    placeholder="Enter driver's name"
+                    disabled={submitting || (driverOption && driverOption !== 'other')}
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '2px solid #e1e8ed',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      transition: 'all 0.3s ease',
+                      outline: 'none'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#42CAD6';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(66, 202, 214, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#e1e8ed';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+              )}
 
               <div style={{ marginBottom: '20px' }}>
                 <label htmlFor="delivery-receipt" style={{
@@ -1346,7 +1444,11 @@ export default function DeliveryTracking() {
               justifyContent: 'flex-end'
             }}>
               <button
-                onClick={() => setShowDriverModal(false)}
+                onClick={() => {
+                  setShowDriverModal(false);
+                  setDriverName('');
+                  setDriverOption('');
+                }}
                 disabled={submitting}
                 style={{
                   padding: '12px 24px',
@@ -1370,27 +1472,27 @@ export default function DeliveryTracking() {
               </button>
               <button
                 onClick={confirmStartDelivery}
-                disabled={submitting || !driverName.trim() || !deliveryReceipt.trim()}
+                disabled={submitting || (!driverOption || (driverOption === 'other' && !driverName.trim())) || !deliveryReceipt.trim()}
                 style={{
                   padding: '12px 24px',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: '600',
-                  cursor: (submitting || !driverName.trim() || !deliveryReceipt.trim()) ? 'not-allowed' : 'pointer',
+                  cursor: (submitting || (!driverOption || (driverOption === 'other' && !driverName.trim())) || !deliveryReceipt.trim()) ? 'not-allowed' : 'pointer',
                   transition: 'all 0.3s ease',
                   background: 'linear-gradient(135deg, #42CAD6 0%, #3AB0BC 100%)',
                   color: 'white',
-                  opacity: (submitting || !driverName.trim() || !deliveryReceipt.trim()) ? '0.6' : '1'
+                  opacity: (submitting || (!driverOption || (driverOption === 'other' && !driverName.trim())) || !deliveryReceipt.trim()) ? '0.6' : '1'
                 }}
                 onMouseOver={(e) => {
-                  if (!submitting && driverName.trim() && deliveryReceipt.trim()) {
+                  if (!submitting && driverOption && (driverOption !== 'other' || driverName.trim()) && deliveryReceipt.trim()) {
                     e.target.style.background = 'linear-gradient(135deg, #3AB0BC 0%, #2E969F 100%)';
                     e.target.style.boxShadow = '0 4px 12px rgba(66, 202, 214, 0.4)';
                   }
                 }}
                 onMouseOut={(e) => {
-                  if (!submitting && driverName.trim() && deliveryReceipt.trim()) {
+                  if (!submitting && driverOption && (driverOption !== 'other' || driverName.trim()) && deliveryReceipt.trim()) {
                     e.target.style.background = 'linear-gradient(135deg, #42CAD6 0%, #3AB0BC 100%)';
                     e.target.style.boxShadow = 'none';
                   }

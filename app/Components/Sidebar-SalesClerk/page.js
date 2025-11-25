@@ -16,6 +16,9 @@ import CustomizeManagementSC from '@/app/Contents/saleClearkContents/customizeMa
 import Customer from '@/app/Contents/admin-contents/customerPage';
 import ProfileSetting from '../profileSetting/userProfilePage';
 import InventoryIM from '@/app/Contents/inventory-contents/inventoryIM';
+import TransferStock from '@/app/Contents/inventory-contents/transferStock';
+import TransferRequestManagement from '@/app/Contents/inventory-contents/transferRequestManagement';
+import ReceiveTransferDelivery from '@/app/Contents/inventory-contents/receiveTransferDelivery';
 
 const SidebarSaleClerk = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -73,6 +76,24 @@ const SidebarSaleClerk = () => {
       icon: '/assets/images/dash-icons/last-pos1.png',
       component: <CombinedSalePage />,
       children: []
+    },
+    {
+      key: 'transfer-stock',
+      label: 'Transfer Stock',
+      icon: '/assets/images/dash-icons/transfer.png',
+      component: <TransferStock />,
+      children: [
+        // {
+        //   key: 'transfer-request-list',
+        //   label: 'Transfer Request List',
+        //   component: <TransferRequestManagement />,
+        // },
+        {
+          key: 'receive-transfer-delivery',
+          label: 'Receive Transfer Delivery',
+          component: <ReceiveTransferDelivery />,
+        },
+      ],
     },
     
     {

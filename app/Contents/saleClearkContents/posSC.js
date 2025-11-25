@@ -50,6 +50,70 @@ export default function CombinedSalePage() {
     }
   };
 
+  // Change location function
+  const changeLocation = async (newLocation) => {
+    if (!newLocation || !newLocation.location_id) {
+      showAlertError({
+        icon: "error",
+        title: "Invalid Location!",
+        text: 'Please select a valid location.',
+        button: 'Okay'
+      });
+      return;
+    }
+
+    // Check if cart is empty before changing location
+    if (cart.length > 0) {
+      showAlertError({
+        icon: "warning",
+        title: "Cart Not Empty!",
+        text: 'Please clear the cart before changing location.',
+        button: 'Okay'
+      });
+      return;
+    }
+
+    try {
+      // Update sessionStorage
+      sessionStorage.setItem('location_id', newLocation.location_id);
+      sessionStorage.setItem('location_name', newLocation.location_name);
+
+      // Update state
+      setLocation_id(newLocation.location_id);
+      setLocation_Name(newLocation.location_name);
+
+      // Refresh data for new location
+      GetInventory();
+      GetCustomer();
+      GetProduct();
+      
+      // Close modal
+      setShowLocationChangeModal(false);
+
+      // Show success message
+      AlertSucces(
+        `Location changed to ${newLocation.location_name}`,
+        "success",
+        true,
+        'Okay'
+      );
+
+      // Log activity
+      const accountID = parseInt(sessionStorage.getItem('user_id'));
+      const activity = `Changed location to ${newLocation.location_name}`;
+      Logs(accountID, activity);
+
+    } catch (error) {
+      console.error("Error changing location:", error);
+      showAlertError({
+        icon: "error",
+        title: "Error!",
+        text: 'Failed to change location. Please try again.',
+        button: 'Okay'
+      });
+    }
+  };
+
   const [customerList, setCustomerList] = useState([]);
   const GetCustomer = async () => {
     const baseURL = sessionStorage.getItem('baseURL');
@@ -189,6 +253,21 @@ export default function CombinedSalePage() {
     quantity: 1,
     isCustom: false
   });
+
+  // Exchange Modal States
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
+  const [exchangeSelectedCustomer, setExchangeSelectedCustomer] = useState(null);
+  const [exchangeCustomerSearchTerm, setExchangeCustomerSearchTerm] = useState('');
+  const [customerTransactions, setCustomerTransactions] = useState([]);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [selectedOldItem, setSelectedOldItem] = useState(null);
+  const [selectedNewItem, setSelectedNewItem] = useState(null);
+  const [exchangeQuantity, setExchangeQuantity] = useState(1);
+  const [exchangeSearchTerm, setExchangeSearchTerm] = useState('');
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+  // Location Change Modal States
+  const [showLocationChangeModal, setShowLocationChangeModal] = useState(false);
 
   // Cart highlight effect
   const [highlightCart, setHighlightCart] = useState(false);
@@ -857,6 +936,384 @@ export default function CombinedSalePage() {
 
   const formatCurrency = (amount) => {
     return `₱${parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  // Fetch customer transactions for exchange
+  const GetCustomerTransactions = async (customerId) => {
+    if (!customerId) {
+      showAlertError({
+        icon: "error",
+        title: "Customer Required!",
+        text: 'Please select a customer first.',
+        button: 'Okay'
+      });
+      return;
+    }
+
+    setLoadingTransactions(true);
+    const baseURL = sessionStorage.getItem('baseURL');
+    const url = baseURL + 'sales.php';
+
+    try {
+      // Try GetCustomerTransactions first (should return customer_sales with items from customer_sales_details)
+      let response = await axios.get(url, {
+        params: {
+          json: JSON.stringify({ cust_id: customerId }),
+          operation: "GetCustomerTransactions"
+        }
+      });
+
+      console.log("GetCustomerTransactions response:", response.data);
+
+      // If that doesn't work, try GetCustomerSales
+      if (!response.data || (Array.isArray(response.data) && response.data.length === 0) || response.data === null || response.data === "") {
+        console.log("Trying GetCustomerSales...");
+        response = await axios.get(url, {
+          params: {
+            json: JSON.stringify({ cust_id: customerId }),
+            operation: "GetCustomerSales"
+          }
+        });
+        console.log("GetCustomerSales response:", response.data);
+      }
+
+      // Process the response data
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        // Check if items are already included in the response
+        const hasItems = response.data[0].items || response.data[0].details || response.data[0].customer_sales_details;
+        
+        if (hasItems) {
+          // Items are already included, format them
+          const transactions = response.data.map(transaction => {
+            // Handle different possible item field names
+            const items = transaction.items || transaction.details || transaction.customer_sales_details || [];
+            
+            return {
+              invoice_id: transaction.invoice_id,
+              customer_sales_id: transaction.customer_sales_id,
+              date: transaction.date || transaction.sale_date || transaction.created_at || new Date().toLocaleDateString(),
+              total: transaction.final_total_amount || transaction.total_amount || transaction.total,
+              discount: transaction.discount || 0,
+              payment_method: transaction.payment_method || 'cash',
+              payment_status: transaction.payment_status || 'Paid',
+              items: Array.isArray(items) ? items.map(item => ({
+                product_id: item.product_id,
+                product_name: item.product_name || item.description || '',
+                description: item.description || item.product_name || '',
+                price: parseFloat(item.price_per_qty || item.price || 0),
+                quantity: parseInt(item.qty || item.quantity || 1),
+                total_price: parseFloat(item.total_price || (item.price_per_qty * item.qty) || 0)
+              })) : []
+            };
+          });
+          
+          setCustomerTransactions(transactions);
+        } else {
+          // Items are not included, fetch them separately using customer_sales_id
+          const transactionsWithItems = await Promise.all(
+            response.data.map(async (transaction) => {
+              try {
+                // Try to get items by customer_sales_id
+                const itemsResponse = await axios.get(url, {
+                  params: {
+                    json: JSON.stringify({ 
+                      customer_sales_id: transaction.customer_sales_id || transaction.c_sale_id 
+                    }),
+                    operation: "GetCustomerSalesDetails"
+                  }
+                });
+                
+                console.log(`Items for customer_sales_id ${transaction.customer_sales_id}:`, itemsResponse.data);
+                
+                // If that doesn't work, try by invoice_id
+                let items = [];
+                if (itemsResponse.data && Array.isArray(itemsResponse.data) && itemsResponse.data.length > 0) {
+                  items = itemsResponse.data;
+                } else {
+                  const invoiceItemsResponse = await axios.get(url, {
+                    params: {
+                      json: JSON.stringify({ invoice_id: transaction.invoice_id }),
+                      operation: "GetSalesItems"
+                    }
+                  });
+                  
+                  if (invoiceItemsResponse.data && Array.isArray(invoiceItemsResponse.data)) {
+                    items = invoiceItemsResponse.data;
+                  }
+                }
+                
+                return {
+                  invoice_id: transaction.invoice_id,
+                  customer_sales_id: transaction.customer_sales_id,
+                  date: transaction.date || transaction.sale_date || transaction.created_at || new Date().toLocaleDateString(),
+                  total: transaction.final_total_amount || transaction.total_amount || transaction.total,
+                  discount: transaction.discount || 0,
+                  payment_method: transaction.payment_method || 'cash',
+                  payment_status: transaction.payment_status || 'Paid',
+                  items: items.map(item => ({
+                    product_id: item.product_id,
+                    product_name: item.product_name || item.description || '',
+                    description: item.description || item.product_name || '',
+                    price: parseFloat(item.price_per_qty || item.price || 0),
+                    quantity: parseInt(item.qty || item.quantity || 1),
+                    total_price: parseFloat(item.total_price || (item.price_per_qty * item.qty) || 0)
+                  }))
+                };
+              } catch (itemError) {
+                console.error(`Error fetching items for customer_sales_id ${transaction.customer_sales_id}:`, itemError);
+                return {
+                  invoice_id: transaction.invoice_id,
+                  customer_sales_id: transaction.customer_sales_id,
+                  date: transaction.date || transaction.sale_date || transaction.created_at || new Date().toLocaleDateString(),
+                  total: transaction.final_total_amount || transaction.total_amount || transaction.total,
+                  discount: transaction.discount || 0,
+                  payment_method: transaction.payment_method || 'cash',
+                  payment_status: transaction.payment_status || 'Paid',
+                  items: []
+                };
+              }
+            })
+          );
+          
+          setCustomerTransactions(transactionsWithItems);
+        }
+      } else {
+        console.log("No transactions found. Response data:", response.data);
+        setCustomerTransactions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching customer transactions:", error);
+      console.error("Error details:", error.response?.data || error.message);
+      showAlertError({
+        icon: "error",
+        title: "Error!",
+        text: `Failed to fetch customer transactions: ${error.response?.data?.message || error.message || 'Unknown error'}`,
+        button: 'Okay'
+      });
+      setCustomerTransactions([]);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+
+  // Open exchange modal
+  const openExchangeModal = () => {
+    setShowExchangeModal(true);
+    setExchangeSelectedCustomer(null);
+    setExchangeCustomerSearchTerm('');
+    setSelectedTransaction(null);
+    setSelectedOldItem(null);
+    setSelectedNewItem(null);
+    setExchangeQuantity(1);
+    setExchangeSearchTerm('');
+    setCustomerTransactions([]);
+  };
+
+  // Handle customer selection in exchange modal
+  const handleExchangeCustomerSelect = (customer) => {
+    setExchangeSelectedCustomer(customer);
+    setSelectedTransaction(null);
+    setSelectedOldItem(null);
+    setSelectedNewItem(null);
+    setExchangeQuantity(1);
+    setExchangeSearchTerm('');
+    GetCustomerTransactions(customer.cust_id);
+  };
+
+  // Calculate exchange difference
+  const calculateExchangeDifference = () => {
+    if (!selectedOldItem || !selectedNewItem) return 0;
+    const oldTotal = (selectedOldItem.price || 0) * exchangeQuantity;
+    const newTotal = (selectedNewItem.price || 0) * exchangeQuantity;
+    return newTotal - oldTotal;
+  };
+
+  // Process exchange
+  const processExchange = async () => {
+    if (!exchangeSelectedCustomer) {
+      showAlertError({
+        icon: "error",
+        title: "Customer Required!",
+        text: 'Please select a customer first.',
+        button: 'Okay'
+      });
+      return;
+    }
+
+    if (!selectedTransaction || !selectedOldItem || !selectedNewItem) {
+      showAlertError({
+        icon: "error",
+        title: "Selection Required!",
+        text: 'Please select a transaction, old item, and new item.',
+        button: 'Okay'
+      });
+      return;
+    }
+
+    if (exchangeQuantity <= 0 || exchangeQuantity > selectedOldItem.quantity) {
+      showAlertError({
+        icon: "error",
+        title: "Invalid Quantity!",
+        text: `Exchange quantity must be between 1 and ${selectedOldItem.quantity}.`,
+        button: 'Okay'
+      });
+      return;
+    }
+
+    const difference = calculateExchangeDifference();
+    
+    // If new item is more expensive, customer must pay
+    if (difference > 0) {
+      if (paymentMethod === 'cash' && (!mainPOSCashAmount || parseFloat(mainPOSCashAmount) < difference)) {
+        showAlertError({
+          icon: "error",
+          title: "Insufficient Payment!",
+          text: `Please pay the difference of ${formatCurrency(difference)}.`,
+          button: 'Okay'
+        });
+        return;
+      }
+    }
+
+    const accountID = parseInt(sessionStorage.getItem('user_id'));
+    const locId = parseInt(sessionStorage.getItem('location_id'));
+    const locName = sessionStorage.getItem('location_name');
+    const baseURL = sessionStorage.getItem('baseURL');
+    const url = baseURL + 'sales.php';
+
+    // Get current inventory for old and new items
+    const oldItemInventory = products.find(p => p.product_id === selectedOldItem.product_id);
+    const newItemInventory = products.find(p => p.product_id === selectedNewItem.product_id);
+    
+    // Prepare inventory updates
+    const inventoryUpdates = [];
+    const inventoryReports = [];
+    
+    // Add old item back to inventory
+    if (oldItemInventory) {
+      const oldCurrentStock = inventory[selectedOldItem.product_id] || oldItemInventory.stock || 0;
+      const oldNewStock = oldCurrentStock + exchangeQuantity;
+      
+      inventoryUpdates.push({
+        prodID: selectedOldItem.product_id,
+        newQty: oldNewStock
+      });
+      
+      inventoryReports.push({
+        prodID: selectedOldItem.product_id,
+        pastBalance: oldCurrentStock,
+        qty: exchangeQuantity,
+        currentBalance: oldNewStock
+      });
+    }
+    
+    // Deduct new item from inventory
+    if (newItemInventory) {
+      const newCurrentStock = inventory[selectedNewItem.product_id] || newItemInventory.stock || 0;
+      const newNewStock = Math.max(0, newCurrentStock - exchangeQuantity);
+      
+      // Check if enough stock
+      if (newCurrentStock < exchangeQuantity) {
+        showAlertError({
+          icon: "error",
+          title: "Insufficient Stock!",
+          text: `Not enough stock for ${selectedNewItem.product_name || selectedNewItem.description}. Available: ${newCurrentStock}, Required: ${exchangeQuantity}`,
+          button: 'Okay'
+        });
+        return;
+      }
+      
+      inventoryUpdates.push({
+        prodID: selectedNewItem.product_id,
+        newQty: newNewStock
+      });
+      
+      inventoryReports.push({
+        prodID: selectedNewItem.product_id,
+        pastBalance: newCurrentStock,
+        qty: -exchangeQuantity,
+        currentBalance: newNewStock
+      });
+    }
+
+    const exchangeDetails = {
+      invoice_id: selectedTransaction.invoice_id,
+      customer_sales_id: selectedTransaction.customer_sales_id,
+      old_item: {
+        product_id: selectedOldItem.product_id,
+        quantity: exchangeQuantity,
+        price: selectedOldItem.price,
+        total: selectedOldItem.price * exchangeQuantity,
+        c_sale_details: selectedOldItem.c_sale_details || null
+      },
+      new_item: {
+        product_id: selectedNewItem.product_id,
+        quantity: exchangeQuantity,
+        price: selectedNewItem.price,
+        total: selectedNewItem.price * exchangeQuantity
+      },
+      difference: difference,
+      customer_id: exchangeSelectedCustomer.cust_id,
+      account_id: accountID,
+      location_id: locId,
+      payment_method: difference > 0 ? paymentMethod : 'exchange',
+      cash_amount: difference > 0 ? parseFloat(mainPOSCashAmount) || 0 : 0,
+      updateInventory: inventoryUpdates,
+      reportInventory: inventoryReports
+    };
+
+    try {
+      const response = await axios.get(url, {
+        params: {
+          json: JSON.stringify(exchangeDetails),
+          updateIn: JSON.stringify(inventoryUpdates),
+          reportInventory: JSON.stringify(inventoryReports),
+          operation: "ProcessExchange"
+        }
+      });
+
+      if (response.data && response.data.success !== false) {
+        AlertSucces(
+          `Exchange processed successfully!\nInvoice #${selectedTransaction.invoice_id}`,
+          "success",
+          true,
+          'Okay'
+        );
+
+        // Update inventory if needed
+        if (saleMode === 'inventory') {
+          GetInventory();
+        }
+
+        // Reset exchange form
+        setShowExchangeModal(false);
+        setSelectedTransaction(null);
+        setSelectedOldItem(null);
+        setSelectedNewItem(null);
+        setExchangeQuantity(1);
+        setExchangeSearchTerm('');
+        setMainPOSCashAmount('');
+        
+        // Log activity
+        const activity = `Processed an exchange for Invoice #${selectedTransaction.invoice_id} at ${locName}`;
+        Logs(accountID, activity);
+      } else {
+        showAlertError({
+          icon: "error",
+          title: "Exchange Failed!",
+          text: response.data?.message || 'Failed to process the exchange.',
+          button: 'Try Again'
+        });
+      }
+    } catch (error) {
+      console.error("Error processing exchange:", error);
+      showAlertError({
+        icon: "error",
+        title: "Error!",
+        text: 'An error occurred while processing the exchange.',
+        button: 'Try Again'
+      });
+    }
   };
 
   // Get products based on mode
@@ -2585,6 +3042,33 @@ export default function CombinedSalePage() {
                             ₱{lastTransaction.total.toLocaleString()}
                           </span>
                         </div>
+                        {lastTransaction.payment_method === 'cash' && lastTransaction.cash_received && (
+                          <>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              marginTop: '8px'
+                            }}>
+                              <span>Cash Received:</span>
+                              <span>₱{lastTransaction.cash_received.toLocaleString()}</span>
+                            </div>
+                            {lastTransaction.change > 0 && (
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                color: '#10b981',
+                                marginTop: '8px',
+                                paddingTop: '8px',
+                                borderTop: '1px solid #e5e7eb'
+                              }}>
+                                <span>Change:</span>
+                                <span>₱{lastTransaction.change.toLocaleString()}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </>
                     )}
                   </div>
@@ -2720,6 +3204,33 @@ export default function CombinedSalePage() {
                           <span>Amount Paid Today:</span>
                           <span>₱{(lastTransaction.amount_paid || 0).toLocaleString()}</span>
                         </div>
+                        {lastTransaction.payment_method === 'cash' && lastTransaction.cash_received && (
+                          <>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              marginTop: '8px'
+                            }}>
+                              <span style={{ fontWeight: '500' }}>Cash Received:</span>
+                              <span>₱{lastTransaction.cash_received.toLocaleString()}</span>
+                            </div>
+                            {lastTransaction.change > 0 && (
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                color: '#10b981',
+                                marginTop: '8px',
+                                paddingTop: '8px',
+                                borderTop: '1px solid #e5e7eb'
+                              }}>
+                                <span>Change:</span>
+                                <span>₱{lastTransaction.change.toLocaleString()}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </>
                     )}
 
@@ -3034,7 +3545,19 @@ export default function CombinedSalePage() {
                         ? `<div class="total-row grand-total">
                                <span>ORIGINAL PRICE:</span>
                                <span>₱${lastTransaction.total.toLocaleString()}</span>
-                             </div>`
+                             </div>
+                             ${lastTransaction.payment_method === 'cash' && lastTransaction.cash_received ? `
+                             <div class="total-row">
+                               <span>Cash Received:</span>
+                               <span>₱${lastTransaction.cash_received.toLocaleString()}</span>
+                             </div>
+                             ${lastTransaction.change > 0 ? `
+                             <div class="total-row" style="font-size: 16px; font-weight: bold; color: #10b981; padding-top: 8px; border-top: 1px solid #ddd; margin-top: 8px;">
+                               <span>Change:</span>
+                               <span>₱${lastTransaction.change.toLocaleString()}</span>
+                             </div>
+                             ` : ''}
+                             ` : ''}`
                         : `
                             <div class="total-row">
                               <span>Subtotal:</span>
@@ -3048,6 +3571,18 @@ export default function CombinedSalePage() {
                               <span>TOTAL:</span>
                               <span>₱${lastTransaction.total.toLocaleString()}</span>
                             </div>
+                            ${lastTransaction.payment_method === 'cash' && lastTransaction.cash_received ? `
+                            <div class="total-row">
+                              <span>Cash Received:</span>
+                              <span>₱${lastTransaction.cash_received.toLocaleString()}</span>
+                            </div>
+                            ${lastTransaction.change > 0 ? `
+                            <div class="total-row" style="font-size: 16px; font-weight: bold; color: #10b981; padding-top: 8px; border-top: 1px solid #ddd; margin-top: 8px;">
+                              <span>Change:</span>
+                              <span>₱${lastTransaction.change.toLocaleString()}</span>
+                            </div>
+                            ` : ''}
+                            ` : ''}
                           `
                       }
                       </div>
@@ -3066,6 +3601,19 @@ export default function CombinedSalePage() {
                           <span>Amount Paid Today:</span>
                           <span>₱${(lastTransaction.amount_paid || 0).toLocaleString()}</span>
                         </div>
+
+                        ${lastTransaction.payment_method === 'cash' && lastTransaction.cash_received ? `
+                        <div class="info-row">
+                          <span><strong>Cash Received:</strong></span>
+                          <span>₱${lastTransaction.cash_received.toLocaleString()}</span>
+                        </div>
+                        ${lastTransaction.change > 0 ? `
+                        <div class="info-row" style="font-size: 16px; font-weight: bold; color: #10b981; padding-top: 8px; border-top: 1px dashed #ddd; margin-top: 8px;">
+                          <span>Change:</span>
+                          <span>₱${lastTransaction.change.toLocaleString()}</span>
+                        </div>
+                        ` : ''}
+                        ` : ''}
 
                         ${lastTransaction.remainingBalance > 0 ? `
                           <div class="info-row" style="color: #dc2626; font-weight: bold; padding-top: 8px; border-top: 1px dashed #ddd; margin-top: 8px;">
@@ -4030,16 +4578,45 @@ export default function CombinedSalePage() {
               padding: '24px',
               marginBottom: '16px'
             }}>
-              <h1 style={{
-                fontSize: '28px',
-                fontWeight: 'bold',
-                color: '#1f2937',
-                marginBottom: '8px'
-              }}>
-                A.G POS System
-              </h1>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
+                <h1 style={{
+                  fontSize: '28px',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  margin: 0
+                }}>
+                  A.G Home POS System
+                </h1>
+                {/* <button
+                  onClick={() => setShowLocationChangeModal(true)}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#0e74f0ff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#0c63d4';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#0e74f0ff';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  Change Location
+                </button> */}
+              </div>
               <p style={{ color: '#6b7280', margin: '8px 0' }}>
-                Location: {location_Name} | Date: {new Date().toLocaleDateString()} |
+                Location: <strong style={{ color: '#0e74f0ff' }}>{location_Name}</strong> | Date: {new Date().toLocaleDateString()} |
                 {saleMode === 'inventory' ? ` Stock Products: ${products.length}` : ` All Products: ${allProducts.length}`}
               </p>
 
@@ -4070,7 +4647,7 @@ export default function CombinedSalePage() {
                     transition: 'all 0.2s'
                   }}
                 >
-                  📦 Inventory Sales
+                  Inventory Sales
                 </button>
                 <button
                   onClick={() => {
@@ -4091,16 +4668,16 @@ export default function CombinedSalePage() {
                     transition: 'all 0.2s'
                   }}
                 >
-                  ✨ Custom Orders
+                  Custom Orders
                 </button>
               </div>
 
               {/* Customization Management Button */}
-              <div style={{ marginTop: '12px' }}>
+              <div style={{ marginTop: '12px', display: 'flex', gap: '12px' }}>
                 <button
                   onClick={() => setShowCustomizeManagementModal(true)}
                   style={{
-                    width: '100%',
+                    flex: 1,
                     padding: '12px',
                     borderRadius: '8px',
                     border: '2px solid #7c3aed',
@@ -4124,8 +4701,37 @@ export default function CombinedSalePage() {
                     e.currentTarget.style.color = '#7c3aed';
                   }}
                 >
-                  🛠️ Manage Customization Orders
+                  Manage Customization Orders
                 </button>
+                {/* <button
+                  onClick={openExchangeModal}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '2px solid #f59e0b',
+                    background: 'white',
+                    color: '#f59e0b',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#f59e0b';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.color = '#f59e0b';
+                  }}
+                >
+                  Process Exchange
+                </button> */}
               </div>
 
               {saleMode === 'custom' && (
@@ -4189,7 +4795,7 @@ export default function CombinedSalePage() {
                       onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
                       onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                     >
-                      📦 Create Full Custom Product
+                      Create Full Custom Product
                     </button>
                   </div>
                 )}
@@ -4469,7 +5075,7 @@ export default function CombinedSalePage() {
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
                   }}
                 >
-                  <span style={{ fontSize: '20px' }}>💰</span>
+                  
                   <span>Pay Installment</span>
                 </button>
 
@@ -4531,7 +5137,7 @@ export default function CombinedSalePage() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      👤 Existing Customer
+                      Existing Customer
                     </button>
                     <button
                       onClick={() => {
@@ -4558,7 +5164,7 @@ export default function CombinedSalePage() {
                         transition: 'all 0.2s'
                       }}
                     >
-                      ➕ New Customer
+                      New Customer
                     </button>
                   </div>
                 </div>
@@ -5573,7 +6179,7 @@ export default function CombinedSalePage() {
                           cursor: (paymentPlan === 'installment' || saleMode === 'custom') ? 'not-allowed' : 'pointer'
                         }}
                       >
-                        🚚 Customer wants delivery
+                        Customer wants delivery
                         {(paymentPlan === 'installment' || saleMode === 'custom') && (
                           <span style={{ fontSize: '12px', color: '#f59e0b', marginLeft: '8px' }}>
                             (Required)
@@ -5670,7 +6276,7 @@ export default function CombinedSalePage() {
                       marginBottom: '8px',
                       color: '#374151'
                     }}>
-                      🏭 Send Request To Warehouse *
+                      Send Request To Warehouse *
                     </label>
                     <select
                       ref={warehouseSelectRef}
@@ -5881,7 +6487,7 @@ export default function CombinedSalePage() {
                     marginBottom: '12px',
                     gap: '8px'
                   }}>
-                    <span style={{ fontSize: '18px' }}>📋</span>
+               
                     <h3 style={{
                       margin: 0,
                       fontSize: '16px',
@@ -6254,6 +6860,728 @@ export default function CombinedSalePage() {
       `}</style>
 
       {/* Customization Management Modal */}
+      {/* Exchange Modal */}
+      {showExchangeModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            maxWidth: '1200px',
+            width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>
+                🔄 Process Exchange
+              </h2>
+              <button
+                onClick={() => {
+                  setShowExchangeModal(false);
+                  setExchangeSelectedCustomer(null);
+                  setExchangeCustomerSearchTerm('');
+                  setSelectedTransaction(null);
+                  setSelectedOldItem(null);
+                  setSelectedNewItem(null);
+                  setExchangeQuantity(1);
+                  setExchangeSearchTerm('');
+                  setCustomerTransactions([]);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{
+              padding: '24px',
+              overflowY: 'auto',
+              flex: 1
+            }}>
+              {/* Step 0: Select Customer */}
+              {!exchangeSelectedCustomer && (
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px' }}>
+                    Step 1: Select Customer
+                  </h3>
+                  <div style={{ marginBottom: '12px' }}>
+                    <input
+                      type="text"
+                      placeholder="Search customers by name, phone, or email..."
+                      value={exchangeCustomerSearchTerm}
+                      onChange={(e) => setExchangeCustomerSearchTerm(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div style={{
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}>
+                    {customerList
+                      .filter(customer =>
+                        customer.cust_name.toLowerCase().includes(exchangeCustomerSearchTerm.toLowerCase()) ||
+                        (customer.phone && customer.phone.includes(exchangeCustomerSearchTerm)) ||
+                        (customer.email && customer.email.toLowerCase().includes(exchangeCustomerSearchTerm.toLowerCase()))
+                      )
+                      .map((customer) => (
+                        <div
+                          key={customer.cust_id}
+                          onClick={() => handleExchangeCustomerSelect(customer)}
+                          style={{
+                            padding: '16px',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid #e5e7eb',
+                            background: 'white',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#f9fafb';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'white';
+                          }}
+                        >
+                          <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                            {customer.cust_name}
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                            {customer.phone && `Phone: ${customer.phone}`}
+                            {customer.phone && customer.email && ' • '}
+                            {customer.email && `Email: ${customer.email}`}
+                          </div>
+                        </div>
+                      ))}
+                    {customerList.filter(customer =>
+                      customer.cust_name.toLowerCase().includes(exchangeCustomerSearchTerm.toLowerCase()) ||
+                      (customer.phone && customer.phone.includes(exchangeCustomerSearchTerm)) ||
+                      (customer.email && customer.email.toLowerCase().includes(exchangeCustomerSearchTerm.toLowerCase()))
+                    ).length === 0 && (
+                      <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>
+                        No customers found.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Customer Info */}
+              {exchangeSelectedCustomer && (
+                <div style={{
+                  padding: '16px',
+                  background: '#f9fafb',
+                  borderRadius: '8px',
+                  marginBottom: '24px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                      Customer: {exchangeSelectedCustomer.cust_name}
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                      Phone: {exchangeSelectedCustomer.phone} | Email: {exchangeSelectedCustomer.email}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setExchangeSelectedCustomer(null);
+                      setExchangeCustomerSearchTerm('');
+                      setSelectedTransaction(null);
+                      setSelectedOldItem(null);
+                      setSelectedNewItem(null);
+                      setExchangeQuantity(1);
+                      setExchangeSearchTerm('');
+                      setCustomerTransactions([]);
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Change Customer
+                  </button>
+                </div>
+              )}
+
+              {/* Step 1: Select Transaction */}
+              {exchangeSelectedCustomer && (
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px' }}>
+                    Step 2: Select Transaction
+                  </h3>
+                {loadingTransactions ? (
+                  <div style={{ textAlign: 'center', padding: '24px' }}>
+                    Loading transactions...
+                  </div>
+                ) : customerTransactions.length === 0 ? (
+                  <div style={{
+                    padding: '24px',
+                    background: '#fef3c7',
+                    borderRadius: '8px',
+                    textAlign: 'center',
+                    color: '#92400e'
+                  }}>
+                    No transactions found for this customer.
+                  </div>
+                ) : (
+                  <div style={{
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}>
+                    {customerTransactions.map((transaction) => (
+                      <div
+                        key={transaction.invoice_id}
+                        onClick={() => {
+                          setSelectedTransaction(transaction);
+                          setSelectedOldItem(null);
+                          setSelectedNewItem(null);
+                          setExchangeQuantity(1);
+                        }}
+                        style={{
+                          padding: '16px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #e5e7eb',
+                          background: selectedTransaction?.invoice_id === transaction.invoice_id ? '#eff6ff' : 'white',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (selectedTransaction?.invoice_id !== transaction.invoice_id) {
+                            e.currentTarget.style.background = '#f9fafb';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (selectedTransaction?.invoice_id !== transaction.invoice_id) {
+                            e.currentTarget.style.background = 'white';
+                          }
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: '600' }}>
+                              Invoice #{transaction.invoice_id}
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                              {transaction.date} • {formatCurrency(transaction.total || transaction.final_total_amount || 0)}
+                            </div>
+                          </div>
+                          {selectedTransaction?.invoice_id === transaction.invoice_id && (
+                            <span style={{ color: '#0e74f0ff', fontSize: '20px' }}>✓</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              )}
+
+              {/* Step 3: Select Old Item */}
+              {exchangeSelectedCustomer && selectedTransaction && (
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px' }}>
+                    Step 3: Select Item to Exchange
+                  </h3>
+                  <div style={{
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}>
+                    {selectedTransaction.items && selectedTransaction.items.length > 0 ? (
+                      selectedTransaction.items.map((item, index) => (
+                        <div
+                          key={index}
+                          onClick={() => {
+                            setSelectedOldItem(item);
+                            setSelectedNewItem(null);
+                            setExchangeQuantity(1);
+                          }}
+                          style={{
+                            padding: '16px',
+                            cursor: 'pointer',
+                            borderBottom: index < selectedTransaction.items.length - 1 ? '1px solid #e5e7eb' : 'none',
+                            background: selectedOldItem?.product_id === item.product_id ? '#eff6ff' : 'white',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (selectedOldItem?.product_id !== item.product_id) {
+                              e.currentTarget.style.background = '#f9fafb';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (selectedOldItem?.product_id !== item.product_id) {
+                              e.currentTarget.style.background = 'white';
+                            }
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontWeight: '600' }}>
+                                {item.product_name || item.description}
+                              </div>
+                              <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                                Qty: {item.quantity} × {formatCurrency(item.price)} = {formatCurrency(item.price * item.quantity)}
+                              </div>
+                            </div>
+                            {selectedOldItem?.product_id === item.product_id && (
+                              <span style={{ color: '#0e74f0ff', fontSize: '20px' }}>✓</span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ padding: '16px', textAlign: 'center', color: '#6b7280' }}>
+                        No items found in this transaction.
+                      </div>
+                    )}
+                  </div>
+                  {selectedOldItem && (
+                    <div style={{ marginTop: '12px', padding: '12px', background: '#f0f9ff', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                        <strong>Selected:</strong> {selectedOldItem.product_name || selectedOldItem.description}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <label style={{ fontSize: '14px' }}>Exchange Quantity:</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={selectedOldItem.quantity}
+                          value={exchangeQuantity}
+                          onChange={(e) => {
+                            const qty = parseInt(e.target.value) || 1;
+                            setExchangeQuantity(Math.max(1, Math.min(qty, selectedOldItem.quantity)));
+                          }}
+                          style={{
+                            width: '80px',
+                            padding: '8px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px',
+                            fontSize: '14px'
+                          }}
+                        />
+                        <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                          (Max: {selectedOldItem.quantity})
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 4: Select New Item */}
+              {exchangeSelectedCustomer && selectedOldItem && (
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px' }}>
+                    Step 4: Select New Item
+                  </h3>
+                  <div style={{ marginBottom: '12px' }}>
+                    <input
+                      type="text"
+                      placeholder="Search products..."
+                      value={exchangeSearchTerm}
+                      onChange={(e) => setExchangeSearchTerm(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div style={{
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                    gap: '12px',
+                    padding: '12px'
+                  }}>
+                    {getProductsList()
+                      .filter(product =>
+                        product.product_name.toLowerCase().includes(exchangeSearchTerm.toLowerCase()) ||
+                        product.description.toLowerCase().includes(exchangeSearchTerm.toLowerCase())
+                      )
+                      .map((product) => (
+                        <div
+                          key={product.product_id}
+                          onClick={() => setSelectedNewItem(product)}
+                          style={{
+                            padding: '12px',
+                            border: selectedNewItem?.product_id === product.product_id ? '2px solid #0e74f0ff' : '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            background: selectedNewItem?.product_id === product.product_id ? '#eff6ff' : 'white',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px' }}>
+                            {product.product_name || product.description}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                            {formatCurrency(product.price)}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Exchange Summary */}
+              {exchangeSelectedCustomer && selectedOldItem && selectedNewItem && (
+                <div style={{
+                  padding: '20px',
+                  background: '#f9fafb',
+                  borderRadius: '8px',
+                  marginBottom: '24px'
+                }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                    Exchange Summary
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Old Item Total:</span>
+                      <span style={{ fontWeight: '600' }}>
+                        {formatCurrency(selectedOldItem.price * exchangeQuantity)}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>New Item Total:</span>
+                      <span style={{ fontWeight: '600' }}>
+                        {formatCurrency(selectedNewItem.price * exchangeQuantity)}
+                      </span>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      paddingTop: '12px',
+                      borderTop: '2px solid #e5e7eb',
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      color: calculateExchangeDifference() > 0 ? '#dc2626' : '#10b981'
+                    }}>
+                      <span>Difference:</span>
+                      <span>
+                        {calculateExchangeDifference() > 0
+                          ? `+${formatCurrency(calculateExchangeDifference())} (Customer Pays)`
+                          : calculateExchangeDifference() < 0
+                            ? `${formatCurrency(Math.abs(calculateExchangeDifference()))} (No Refund)`
+                            : '₱0.00 (Even Exchange)'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Payment Input (if difference > 0) */}
+                  {calculateExchangeDifference() > 0 && (
+                    <div style={{ marginTop: '16px' }}>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                        Payment Method
+                      </label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          marginBottom: '12px'
+                        }}
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="gcash">GCash</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                      </select>
+                      {paymentMethod === 'cash' && (
+                        <div>
+                          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                            Cash Amount
+                          </label>
+                          <input
+                            type="number"
+                            value={mainPOSCashAmount}
+                            onChange={(e) => setMainPOSCashAmount(e.target.value)}
+                            placeholder={`Enter amount (min: ${formatCurrency(calculateExchangeDifference())})`}
+                            style={{
+                              width: '100%',
+                              padding: '12px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              fontSize: '14px'
+                            }}
+                          />
+                          {mainPOSCashAmount && parseFloat(mainPOSCashAmount) >= calculateExchangeDifference() && (
+                            <div style={{ marginTop: '8px', fontSize: '14px', color: '#10b981' }}>
+                              Change: {formatCurrency(parseFloat(mainPOSCashAmount) - calculateExchangeDifference())}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '24px',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px'
+            }}>
+              <button
+                onClick={() => {
+                  setShowExchangeModal(false);
+                  setExchangeSelectedCustomer(null);
+                  setExchangeCustomerSearchTerm('');
+                  setSelectedTransaction(null);
+                  setSelectedOldItem(null);
+                  setSelectedNewItem(null);
+                  setExchangeQuantity(1);
+                  setExchangeSearchTerm('');
+                  setCustomerTransactions([]);
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={processExchange}
+                disabled={!exchangeSelectedCustomer || !selectedTransaction || !selectedOldItem || !selectedNewItem || (calculateExchangeDifference() > 0 && paymentMethod === 'cash' && (!mainPOSCashAmount || parseFloat(mainPOSCashAmount) < calculateExchangeDifference()))}
+                style={{
+                  padding: '12px 24px',
+                  background: (!exchangeSelectedCustomer || !selectedTransaction || !selectedOldItem || !selectedNewItem || (calculateExchangeDifference() > 0 && paymentMethod === 'cash' && (!mainPOSCashAmount || parseFloat(mainPOSCashAmount) < calculateExchangeDifference()))) ? '#d1d5db' : '#0e74f0ff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: (!exchangeSelectedCustomer || !selectedTransaction || !selectedOldItem || !selectedNewItem || (calculateExchangeDifference() > 0 && paymentMethod === 'cash' && (!mainPOSCashAmount || parseFloat(mainPOSCashAmount) < calculateExchangeDifference()))) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Process Exchange
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Location Change Modal */}
+      {showLocationChangeModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            maxWidth: '500px',
+            width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>
+                Change Location
+              </h2>
+              <button
+                onClick={() => setShowLocationChangeModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{
+              padding: '24px',
+              overflowY: 'auto',
+              flex: 1
+            }}>
+              <p style={{ marginBottom: '16px', color: '#6b7280' }}>
+                Select a new location. The cart will be cleared when changing locations.
+              </p>
+              
+              {cart.length > 0 && (
+                <div style={{
+                  padding: '12px',
+                  background: '#fef3c7',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  border: '1px solid #fbbf24'
+                }}>
+                  <div style={{ fontSize: '14px', color: '#92400e', fontWeight: '500' }}>
+                    ⚠️ Warning: You have {cart.length} item(s) in your cart. The cart will be cleared when you change location.
+                  </div>
+                </div>
+              )}
+
+              <div style={{
+                maxHeight: '400px',
+                overflowY: 'auto',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px'
+              }}>
+                {locationList.length === 0 ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>
+                    No locations available.
+                  </div>
+                ) : (
+                  locationList
+                  .filter(location => location.name != 'Warehouse')
+                  .map((location) => (
+                    <div
+                      key={location.location_id}
+                      onClick={() => {
+                        if (cart.length > 0) {
+                          // Clear cart first
+                          setCart([]);
+                        }
+                        changeLocation(location);
+                      }}
+                      style={{
+                        padding: '16px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #e5e7eb',
+                        background: location_id == location.location_id ? '#eff6ff' : 'white',
+                        transition: 'background 0.2s',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (location_id != location.location_id) {
+                          e.currentTarget.style.background = '#f9fafb';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (location_id != location.location_id) {
+                          e.currentTarget.style.background = 'white';
+                        }
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                          {location.location_name}
+                        </div>
+                        {location.location_id == location_id && (
+                          <div style={{ fontSize: '12px', color: '#0e74f0ff' }}>
+                            Current Location
+                          </div>
+                        )}
+                      </div>
+                      {location_id == location.location_id && (
+                        <span style={{ color: '#0e74f0ff', fontSize: '20px' }}>✓</span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '24px',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowLocationChangeModal(false)}
+                style={{
+                  padding: '12px 24px',
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCustomizeManagementModal && (
         <CustomizeManagementModal
           show={showCustomizeManagementModal}

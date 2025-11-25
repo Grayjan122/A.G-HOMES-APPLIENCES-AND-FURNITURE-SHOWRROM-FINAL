@@ -125,12 +125,32 @@ const RequestStockIM = () => {
         return currentStock < thresholds.min;
     };
 
+    // Helper function to check if product is low stock (between min and max)
+    const isLowStock = (productId) => {
+        const currentStock = getCurrentStock(productId);
+        const thresholds = getProductThresholds(productId);
+        return currentStock >= thresholds.min && currentStock < thresholds.max;
+    };
+
+    // Helper function to get stock priority (1 = highest priority)
+    const getStockPriority = (productId) => {
+        const currentStock = getCurrentStock(productId);
+        const thresholds = getProductThresholds(productId);
+        
+        if (currentStock === 0) return 1; // Out of stock - highest priority
+        if (currentStock < thresholds.min) return 2; // Below minimum
+        if (currentStock >= thresholds.min && currentStock < thresholds.max) return 3; // Low stock
+        return 4; // Well stocked
+    };
+
     // Helper functions for empty state messages
     const getEmptyStateTitle = () => {
         if (filterType === 'noStock') {
             return leftSearchTerm.trim() ? 'No Out-of-Stock Products Found' : 'No Out-of-Stock Products';
         } else if (filterType === 'inStock') {
             return leftSearchTerm.trim() ? 'No In-Stock Products Found' : 'No Products In Stock';
+        } else if (filterType === 'lowStock') {
+            return leftSearchTerm.trim() ? 'No Low Stock Products Found' : 'No Low Stock Products';
         } else {
             return leftSearchTerm.trim() ? 'No Products Found' : 'No Products Available';
         }
@@ -148,6 +168,12 @@ const RequestStockIM = () => {
                 return `No in-stock products match your search "${leftSearchTerm}". Try adjusting your search terms.`;
             } else {
                 return 'No products currently have stock available. Consider restocking or check with your supplier.';
+            }
+        } else if (filterType === 'lowStock') {
+            if (leftSearchTerm.trim()) {
+                return `No low stock products match your search "${leftSearchTerm}". Try adjusting your search terms.`;
+            } else {
+                return 'No products are currently in low stock (between min and max thresholds). All products are either out of stock, below minimum, or well stocked.';
             }
         } else {
             if (leftSearchTerm.trim()) {
@@ -177,6 +203,10 @@ const RequestStockIM = () => {
                 const currentStock = getCurrentStock(p.product_id);
                 return currentStock > 0;
             });
+        } else if (filterType === 'lowStock') {
+            filteredList = productList.filter(p => {
+                return isLowStock(p.product_id);
+            });
         } else {
             filteredList = productList;
         }
@@ -189,19 +219,20 @@ const RequestStockIM = () => {
             );
         }
 
-        // Sort: Stock out items (currentStock <= 0) appear first, then in-stock items
+        // Sort by priority: Out of Stock > Below Min > Low Stock > Others
         filteredList.sort((a, b) => {
+            const aPriority = getStockPriority(a.product_id);
+            const bPriority = getStockPriority(b.product_id);
+            
+            // Sort by priority (lower number = higher priority)
+            if (aPriority !== bPriority) {
+                return aPriority - bPriority;
+            }
+            
+            // If same priority, sort by current stock (lower stock first)
             const stockA = getCurrentStock(a.product_id);
             const stockB = getCurrentStock(b.product_id);
-            const isOutOfStockA = stockA <= 0;
-            const isOutOfStockB = stockB <= 0;
-            
-            // If one is out of stock and the other isn't, out of stock comes first
-            if (isOutOfStockA && !isOutOfStockB) return -1;
-            if (!isOutOfStockA && isOutOfStockB) return 1;
-            
-            // If both have same stock status, maintain original order (or sort by name if needed)
-            return 0;
+            return stockA - stockB;
         });
 
         return filteredList;
@@ -1091,17 +1122,20 @@ const RequestStockIM = () => {
         }
     };
 
-    // Sort stockInList by priority: items below min threshold first, then others
+    // Sort stockInList by priority: Out of Stock > Below Min > Low Stock > Others
     const sortedStockInList = [...stockInList].sort((a, b) => {
-        const aBelowMin = isBelowMinThreshold(a.product_id);
-        const bBelowMin = isBelowMinThreshold(b.product_id);
+        const aPriority = getStockPriority(a.product_id);
+        const bPriority = getStockPriority(b.product_id);
         
-        // Items below min threshold come first
-        if (aBelowMin && !bBelowMin) return -1;
-        if (!aBelowMin && bBelowMin) return 1;
+        // Sort by priority (lower number = higher priority)
+        if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+        }
         
-        // If both have same priority status, maintain original order
-        return 0;
+        // If same priority, sort by current stock (lower stock first)
+        const aStock = getCurrentStock(a.product_id);
+        const bStock = getCurrentStock(b.product_id);
+        return aStock - bStock;
     });
 
     // Pagination calculations
@@ -1423,6 +1457,7 @@ const RequestStockIM = () => {
                                                     <option value=''>All Products</option>
                                                     <option value='inStock'>In Stock</option>
                                                     <option value='noStock'>No Stock</option>
+                                                    <option value='lowStock'>Low Stock</option>
                                                 </select>
                                             </div>
 
@@ -1538,7 +1573,7 @@ const RequestStockIM = () => {
                                                     marginBottom: '20px',
                                                     color: '#adb5bd'
                                                 }}>
-                                                    {filterType === 'noStock' ? '📭' : filterType === 'inStock' ? '📦' : '🔍'}
+                                                    {filterType === 'noStock' ? '📭' : filterType === 'inStock' ? '📦' : filterType === 'lowStock' ? '⚡' : '🔍'}
                                                 </div>
                                                 <h4 style={{
                                                     color: '#495057',
@@ -1602,32 +1637,82 @@ const RequestStockIM = () => {
                                                         }}>
                                                             Stock
                                                         </th>
+                                                        <th className='th1' style={{
+                                                            border: '1px solid #ddd',
+                                                            padding: '12px',
+                                                            backgroundColor: '#f8f9fa',
+                                                            textAlign: 'center',
+                                                            fontSize: '14px',
+                                                            fontWeight: '600',
+                                                            width: '100px'
+                                                        }}>
+                                                            Min
+                                                        </th>
+                                                        <th className='th1' style={{
+                                                            border: '1px solid #ddd',
+                                                            padding: '12px',
+                                                            backgroundColor: '#f8f9fa',
+                                                            textAlign: 'center',
+                                                            fontSize: '14px',
+                                                            fontWeight: '600',
+                                                            width: '100px'
+                                                        }}>
+                                                            Max
+                                                        </th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {currentLeftItems.map((p, index) => (
+                                                    {currentLeftItems.map((p, index) => {
+                                                        const priority = getStockPriority(p.product_id);
+                                                        const currentStock = getCurrentStock(p.product_id);
+                                                        const thresholds = getProductThresholds(p.product_id);
+                                                        
+                                                        // Determine row styling based on priority
+                                                        let rowBgColor = selectedProductsForRequest.some(sp => sp.product_id === p.product_id)
+                                                            ? '#e3f2fd'
+                                                            : index % 2 === 0 ? 'white' : '#f8f9fa';
+                                                        let borderLeft = 'none';
+                                                        
+                                                        if (priority === 1) {
+                                                            rowBgColor = selectedProductsForRequest.some(sp => sp.product_id === p.product_id)
+                                                                ? '#f8d7da' : '#f8d7da';
+                                                            borderLeft = '4px solid #dc3545';
+                                                        } else if (priority === 2) {
+                                                            rowBgColor = selectedProductsForRequest.some(sp => sp.product_id === p.product_id)
+                                                                ? '#fff3cd' : '#fff3cd';
+                                                            borderLeft = '4px solid #ffc107';
+                                                        } else if (priority === 3) {
+                                                            rowBgColor = selectedProductsForRequest.some(sp => sp.product_id === p.product_id)
+                                                                ? '#fffbf0' : '#fffbf0';
+                                                            borderLeft = '4px solid #ffc107';
+                                                        }
+                                                        
+                                                        return (
                                                         <tr
                                                             className='table-row'
                                                             key={p.product_id}
                                                             onClick={() => handleProductClick(p)}
                                                             style={{
                                                                 cursor: 'pointer',
-                                                                backgroundColor: selectedProductsForRequest.some(sp => sp.product_id === p.product_id)
-                                                                    ? '#e3f2fd'
-                                                                    : index % 2 === 0 ? 'white' : '#f8f9fa',
+                                                                backgroundColor: rowBgColor,
+                                                                borderLeft: borderLeft,
                                                                 transition: 'background-color 0.2s ease'
                                                             }}
                                                             onMouseEnter={(e) => {
-                                                                if (!selectedProductsForRequest.some(sp => sp.product_id === p.product_id)) {
+                                                                if (priority >= 4 && !selectedProductsForRequest.some(sp => sp.product_id === p.product_id)) {
                                                                     e.currentTarget.style.backgroundColor = '#f0f8ff';
                                                                 }
                                                             }}
                                                             onMouseLeave={(e) => {
                                                                 const isSelected = selectedProductsForRequest.some(sp => sp.product_id === p.product_id);
-                                                                if (isSelected) {
-                                                                    e.currentTarget.style.backgroundColor = '#e3f2fd';
+                                                                if (priority >= 4) {
+                                                                    if (isSelected) {
+                                                                        e.currentTarget.style.backgroundColor = '#e3f2fd';
+                                                                    } else {
+                                                                        e.currentTarget.style.backgroundColor = index % 2 === 0 ? 'white' : '#f8f9fa';
+                                                                    }
                                                                 } else {
-                                                                    e.currentTarget.style.backgroundColor = index % 2 === 0 ? 'white' : '#f8f9fa';
+                                                                    e.currentTarget.style.backgroundColor = rowBgColor;
                                                                 }
                                                             }}
                                                         >
@@ -1637,6 +1722,15 @@ const RequestStockIM = () => {
                                                                 textAlign: 'start',
                                                                 fontSize: '14px'
                                                             }}>
+                                                                {priority === 1 && (
+                                                                    <span style={{ marginRight: '6px', fontSize: '14px' }} title="Out of stock - Highest priority">🚫</span>
+                                                                )}
+                                                                {priority === 2 && (
+                                                                    <span style={{ marginRight: '6px', fontSize: '14px' }} title="Below minimum threshold - High priority">⚠️</span>
+                                                                )}
+                                                                {priority === 3 && (
+                                                                    <span style={{ marginRight: '6px', fontSize: '14px' }} title="Low stock - Medium priority">⚡</span>
+                                                                )}
                                                                 {p.product_name}
                                                             </td>
                                                             <td style={{
@@ -1653,12 +1747,33 @@ const RequestStockIM = () => {
                                                                 textAlign: 'center',
                                                                 fontSize: '14px',
                                                                 fontWeight: 'bold',
-                                                                color: getCurrentStock(p.product_id) <= 0 ? '#dc3545' : '#28a745'
+                                                                color: currentStock <= 0 ? '#dc3545' : (priority <= 3 ? '#ffc107' : '#28a745')
                                                             }}>
-                                                                {getCurrentStock(p.product_id)}
+                                                                {currentStock}
+                                                            </td>
+                                                            <td style={{
+                                                                border: '1px solid #ddd',
+                                                                padding: '12px',
+                                                                textAlign: 'center',
+                                                                fontSize: '13px',
+                                                                color: '#6c757d',
+                                                                fontWeight: '500'
+                                                            }}>
+                                                                {thresholds.min}
+                                                            </td>
+                                                            <td style={{
+                                                                border: '1px solid #ddd',
+                                                                padding: '12px',
+                                                                textAlign: 'center',
+                                                                fontSize: '13px',
+                                                                color: '#6c757d',
+                                                                fontWeight: '500'
+                                                            }}>
+                                                                {thresholds.max}
                                                             </td>
                                                         </tr>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         )}
@@ -2175,7 +2290,10 @@ const RequestStockIM = () => {
                                             alignItems: 'center',
                                             flexWrap: 'wrap'
                                         }}>
-                                            {sortedStockInList.filter(item => isBelowMinThreshold(item.product_id)).length > 0 && (
+                                            {sortedStockInList.filter(item => {
+                                                const priority = getStockPriority(item.product_id);
+                                                return priority <= 3; // Out of stock, below min, or low stock
+                                            }).length > 0 && (
                                                 <span style={{
                                                     padding: '6px 12px',
                                                     backgroundColor: '#fff3cd',
@@ -2185,7 +2303,13 @@ const RequestStockIM = () => {
                                                     fontWeight: '600',
                                                     border: '1px solid #ffc107'
                                                 }}>
-                                                    ⚠️ {sortedStockInList.filter(item => isBelowMinThreshold(item.product_id)).length} Priority
+                                                    ⚠️ {sortedStockInList.filter(item => {
+                                                        const priority = getStockPriority(item.product_id);
+                                                        return priority <= 3;
+                                                    }).length} Priority Item{sortedStockInList.filter(item => {
+                                                        const priority = getStockPriority(item.product_id);
+                                                        return priority <= 3;
+                                                    }).length !== 1 ? 's' : ''}
                                                 </span>
                                             )}
                                             <span style={{
@@ -2271,34 +2395,74 @@ const RequestStockIM = () => {
                                                             textTransform: 'uppercase',
                                                             letterSpacing: '0.5px',
                                                             width: windowWidth <= 576 ? '60px' : '80px'
+                                                        }}>Min</th>
+                                                        <th style={{
+                                                            padding: windowWidth <= 768 ? '10px 8px' : '14px 12px',
+                                                            textAlign: 'center',
+                                                            borderBottom: '2px solid #dee2e6',
+                                                            fontWeight: '600',
+                                                            fontSize: windowWidth <= 768 ? '11px' : '13px',
+                                                            color: '#495057',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px',
+                                                            width: windowWidth <= 576 ? '60px' : '80px'
+                                                        }}>Max</th>
+                                                        <th style={{
+                                                            padding: windowWidth <= 768 ? '10px 8px' : '14px 12px',
+                                                            textAlign: 'center',
+                                                            borderBottom: '2px solid #dee2e6',
+                                                            fontWeight: '600',
+                                                            fontSize: windowWidth <= 768 ? '11px' : '13px',
+                                                            color: '#495057',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px',
+                                                            width: windowWidth <= 576 ? '60px' : '80px'
                                                         }}>Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {currentRequestItems.map((p, i) => {
                                                         const isBelowMin = isBelowMinThreshold(p.product_id);
+                                                        const isLow = isLowStock(p.product_id);
                                                         const currentStock = getCurrentStock(p.product_id);
                                                         const thresholds = getProductThresholds(p.product_id);
                                                         const totalAfterRequest = currentStock + p.qty;
                                                         const exceedsMax = totalAfterRequest > thresholds.max;
+                                                        const priority = getStockPriority(p.product_id);
+                                                        
+                                                        // Determine row styling based on priority
+                                                        let rowBgColor = i % 2 === 0 ? 'white' : '#f8f9fa';
+                                                        let borderLeft = 'none';
+                                                        if (currentStock === 0) {
+                                                            rowBgColor = '#f8d7da'; // Out of stock - red
+                                                            borderLeft = '4px solid #dc3545';
+                                                        } else if (isBelowMin) {
+                                                            rowBgColor = '#fff3cd'; // Below min - yellow
+                                                            borderLeft = '4px solid #ffc107';
+                                                        } else if (isLow) {
+                                                            rowBgColor = '#fffbf0'; // Low stock - light yellow
+                                                            borderLeft = '4px solid #ffc107';
+                                                        }
                                                         
                                                         return (
                                                             <tr 
                                                                 key={i} 
                                                                 style={{ 
                                                                     cursor: 'default',
-                                                                    backgroundColor: isBelowMin ? '#fff3cd' : (i % 2 === 0 ? 'white' : '#f8f9fa'),
-                                                                    borderLeft: isBelowMin ? '4px solid #ffc107' : 'none',
+                                                                    backgroundColor: rowBgColor,
+                                                                    borderLeft: borderLeft,
                                                                     transition: 'background-color 0.2s ease'
                                                                 }}
                                                                 onMouseEnter={(e) => {
-                                                                    if (!isBelowMin) {
+                                                                    if (priority >= 4) {
                                                                         e.currentTarget.style.backgroundColor = '#f0f8ff';
                                                                     }
                                                                 }}
                                                                 onMouseLeave={(e) => {
-                                                                    if (!isBelowMin) {
+                                                                    if (priority >= 4) {
                                                                         e.currentTarget.style.backgroundColor = i % 2 === 0 ? 'white' : '#f8f9fa';
+                                                                    } else {
+                                                                        e.currentTarget.style.backgroundColor = rowBgColor;
                                                                     }
                                                                 }}
                                                             >
@@ -2308,13 +2472,31 @@ const RequestStockIM = () => {
                                                                     fontWeight: '500',
                                                                     color: '#212529'
                                                                 }}>
-                                                                    {isBelowMin && (
+                                                                    {priority === 1 && (
                                                                         <span style={{
                                                                             display: 'inline-block',
                                                                             marginRight: '8px',
                                                                             fontSize: windowWidth <= 768 ? '14px' : '16px'
-                                                                        }} title="Below minimum threshold - Priority item">
+                                                                        }} title="Out of stock - Highest priority">
+                                                                            🚫
+                                                                        </span>
+                                                                    )}
+                                                                    {priority === 2 && (
+                                                                        <span style={{
+                                                                            display: 'inline-block',
+                                                                            marginRight: '8px',
+                                                                            fontSize: windowWidth <= 768 ? '14px' : '16px'
+                                                                        }} title="Below minimum threshold - High priority">
                                                                             ⚠️
+                                                                        </span>
+                                                                    )}
+                                                                    {priority === 3 && (
+                                                                        <span style={{
+                                                                            display: 'inline-block',
+                                                                            marginRight: '8px',
+                                                                            fontSize: windowWidth <= 768 ? '14px' : '16px'
+                                                                        }} title="Low stock - Medium priority">
+                                                                            ⚡
                                                                         </span>
                                                                     )}
                                                                     {p.product_name}
@@ -2475,6 +2657,24 @@ const RequestStockIM = () => {
                                                                             </div>
                                                                         )}
                                                                     </div>
+                                                                </td>
+                                                                <td style={{ 
+                                                                    padding: windowWidth <= 768 ? '10px 8px' : '14px 12px', 
+                                                                    textAlign: 'center',
+                                                                    fontSize: windowWidth <= 768 ? '12px' : '14px',
+                                                                    fontWeight: '500',
+                                                                    color: '#495057'
+                                                                }}>
+                                                                    {thresholds.min}
+                                                                </td>
+                                                                <td style={{ 
+                                                                    padding: windowWidth <= 768 ? '10px 8px' : '14px 12px', 
+                                                                    textAlign: 'center',
+                                                                    fontSize: windowWidth <= 768 ? '12px' : '14px',
+                                                                    fontWeight: '500',
+                                                                    color: '#495057'
+                                                                }}>
+                                                                    {thresholds.max}
                                                                 </td>
                                                                 <td style={{ padding: '14px 12px', textAlign: 'center' }}>
                                                                     <button

@@ -22,6 +22,7 @@ const UnifiedRequestManagement = () => {
     const [location_id, setLocation_id] = useState('');
     const [locationList, setLocationList] = useState([]);
     const [userList, setUserList] = useState([]);
+    const [driverList, setDriverList] = useState([]);
 
     // Alert states
     const [alert1, setAlert1] = useState(false);
@@ -41,13 +42,16 @@ const UnifiedRequestManagement = () => {
     const [normalDeliveriesDataVisible, setNormalDeliveriesDataVisible] = useState(true);
     const [normalAppointDriverVisible, setNormalAppointDriverVisible] = useState(true);
     const [normalRequestID, setNormalRequestID] = useState('');
+    const [normalIdMaker, setNormalIdMaker] = useState('');
     const [normalRequestFrom, setNormalRequestFrom] = useState('');
     const [normalRequestBy, setNormalRequestBy] = useState('');
     const [normalRequestStatus, setNormalRequestStatus] = useState('');
     const [normalRequestDate, setNormalRequestDate] = useState('');
     const [normalReqDateTime, setNormalReqDateTime] = useState('');
     const [normalTransferDriver, setNormalTransferDriver] = useState('');
+    const [selectedNormalDriverOption, setSelectedNormalDriverOption] = useState('');
     const [normalRID, setNormalRID] = useState('');
+    const [normalRIDMaker, setNormalRIDMaker] = useState(''); // Store id_maker for display in notifications/logs
     const [normalRequestFromID, setNormalRequestFromID] = useState('');
     const [normalSelectedProductsForDelivery, setNormalSelectedProductsForDelivery] = useState([]);
     const [normalDeliveredProducts, setNormalDeliveredProducts] = useState([]);
@@ -67,6 +71,7 @@ const UnifiedRequestManagement = () => {
     const [customizeDeliveriesDataVisible, setCustomizeDeliveriesDataVisible] = useState(true);
     const [customizeAppointDriverVisible, setCustomizeAppointDriverVisible] = useState(true);
     const [customizeRequestID, setCustomizeRequestID] = useState('');
+    const [customizeRIDMaker, setCustomizeRIDMaker] = useState('');
     const [customizeRequestFrom, setCustomizeRequestFrom] = useState('');
     const [customizeRequestBy, setCustomizeRequestBy] = useState('');
     const [customizeRequestStatus, setCustomizeRequestStatus] = useState('');
@@ -74,6 +79,7 @@ const UnifiedRequestManagement = () => {
     const [customizeRequestTo, setCustomizeRequestTo] = useState('');
     const [customizeDateAndTime, setCustomizeDateAndTime] = useState('');
     const [customizeTransferDriverName, setCustomizeTransferDriverName] = useState('');
+    const [selectedCustomizeDriverOption, setSelectedCustomizeDriverOption] = useState('');
     const [customizeDeliverToID, setCustomizeDeliverToID] = useState('');
     const [customizeRID, setCustomizeRID] = useState('');
 
@@ -90,6 +96,7 @@ const UnifiedRequestManagement = () => {
         GetLocation();
         GetSemiDetails();
         GetFullDetails();
+        GetDrivers();
     }, []);
 
     // Format functions
@@ -102,12 +109,39 @@ const UnifiedRequestManagement = () => {
         return `${monthName} ${dayNum} ${year}`;
     };
 
+    const handleNormalDriverSelect = (event) => {
+        const value = event.target.value;
+        setSelectedNormalDriverOption(value);
+        if (value && value !== 'other') {
+            const driver = driverList.find(d => String(d.driver_id) === value);
+            setNormalTransferDriver(driver ? formatDriverName(driver) : '');
+        } else {
+            setNormalTransferDriver('');
+        }
+    };
+
+    const handleCustomizeDriverSelect = (event) => {
+        const value = event.target.value;
+        setSelectedCustomizeDriverOption(value);
+        if (value && value !== 'other') {
+            const driver = driverList.find(d => String(d.driver_id) === value);
+            setCustomizeTransferDriverName(driver ? formatDriverName(driver) : '');
+        } else {
+            setCustomizeTransferDriverName('');
+        }
+    };
+
     const formatTime = (timeStr) => {
         const [hours, minutes] = timeStr.split(':');
         const hour = parseInt(hours);
         const period = hour >= 12 ? 'PM' : 'AM';
         const hour12 = hour % 12 || 12;
         return `${hour12}:${minutes}${period}`;
+    };
+
+    const formatDriverName = (driver) => {
+        if (!driver) return '';
+        return [driver.fname, driver.nname, driver.lname].filter(Boolean).join(' ').trim();
     };
 
     const getStatusColor = (status) => {
@@ -145,6 +179,21 @@ const UnifiedRequestManagement = () => {
             setLocationList(response.data);
         } catch (error) {
             console.error("Error fetching location list:", error);
+        }
+    };
+
+    const GetDrivers = async () => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        if (!baseURL) return;
+        const url = baseURL + 'delivery.php';
+        try {
+            const response = await axios.get(url, {
+                params: { json: JSON.stringify([]), operation: "GetDrivers" }
+            });
+            setDriverList(Array.isArray(response.data) ? response.data : []);
+        } catch (error) {
+            console.error("Error fetching driver list:", error);
+            setDriverList([]);
         }
     };
 
@@ -188,7 +237,9 @@ const UnifiedRequestManagement = () => {
             console.log(response.data);
 
             const data = response.data[0];
-            setNormalRequestID(response.data[0].request_stock_id);
+            setNormalRequestID(response.data[0].request_stock_id); // Keep for internal operations
+            setNormalIdMaker(response.data[0].id_maker); // For display
+            setNormalRIDMaker(response.data[0].id_maker || response.data[0].request_stock_id); // Store for notifications/logs
             setNormalRequestFrom(response.data[0].reqFrom);
             setNormalRequestFromID(response.data[0].request_from); // Store requesting location ID
             setNormalRequestBy(response.data[0].fname + " " + response.data[0].mname + " " + response.data[0].lname);
@@ -606,24 +657,25 @@ const UnifiedRequestManagement = () => {
                     'Ok'
                 );
                 setNormalAppointDriverVisible(true);
+                setSelectedNormalDriverOption('');
                 setNormalDeliveriesDataVisible(true);
                 setNormalSelectedProductsForDelivery([]);
                 GetNormalRequest();
                 // Refresh delivered products list FIRST, then refresh details
                 await GetNormalDeliveredProducts(normalRID);
                 GetNormalDeliveriesDetails(normalRID); // Refresh to show updated delivery status
-                Logs(accountID, `Delivered ${selectedProductIds.length} product(s) from request #${normalRID}`);
+                Logs(accountID, `Delivered ${selectedProductIds.length} product(s) from request #${normalRIDMaker || normalRID}`);
                 
                 // Send notification to requesting location (Inventory Manager)
                 await createNotification({
                     type: 'delivery',
                     title: 'Stock Partially Delivered',
-                    message: `${selectedProductIds.length} product(s) from request #${normalRID} are now on delivery. Driver: ${normalTransferDriver}`,
+                    message: `${selectedProductIds.length} product(s) from request #${normalRIDMaker || normalRID} are now on delivery. Driver: ${normalTransferDriver}`,
                     locationId: normalRequestFromID, // Send to requesting location
                     targetRole: 'Inventory Manager',
                     productId: null,
                     customerId: null,
-                    referenceId: normalRID
+                    referenceId: normalRIDMaker || normalRID
                 });
             } else {
                 // Show the actual error message from backend
@@ -775,6 +827,7 @@ const UnifiedRequestManagement = () => {
     const GetCustomizeDeliveriesData = async (request) => {
         const salesId = request.customize_sales_id;
         setCustomizeRequestID(request.customize_req_id);
+        setCustomizeRIDMaker(request.id_maker || request.customize_req_id);
         setCustomizeRequestFrom(request.reqFrom);
         setCustomizeRequestBy(`${request.fname} ${request.mname} ${request.lname}`);
         setCustomizeRequestStatus(request.status);
@@ -825,20 +878,21 @@ const UnifiedRequestManagement = () => {
                     'Got It'
                 );
                 setCustomizeAppointDriverVisible(true);
+                setSelectedCustomizeDriverOption('');
                 setCustomizeDeliveriesDataVisible(true);
                 GetCustomizeRequest();
-                Logs(accountID, 'Deliver the customize request #' + customizeRID);
+                Logs(accountID, 'Deliver the customize request #' + (customizeRIDMaker || customizeRID));
                 
                 // Send notification to requesting location (Sales Clerk)
                 await createNotification({
                     type: 'delivery',
                     title: 'Customize Order On Delivery',
-                    message: `Your customize request #${customizeRID} is now on delivery. Driver: ${customizeTransferDriverName}`,
+                    message: `Your customize request #${customizeRIDMaker || customizeRID} is now on delivery. Driver: ${customizeTransferDriverName}`,
                     locationId: customizeDeliverToID, // Send to requesting location
                     targetRole: 'Sales Clerk',
                     productId: null,
                     customerId: null,
-                    referenceId: customizeRID
+                    referenceId: customizeRIDMaker || customizeRID
                 });
             } else {
                 showAlertError({
@@ -868,6 +922,7 @@ const UnifiedRequestManagement = () => {
         if (normalSearchFilter.trim()) {
             const searchTerm = normalSearchFilter.toLowerCase();
             filtered = filtered.filter(item =>
+                item.id_maker?.toString().includes(searchTerm) ||
                 item.request_stock_id?.toString().includes(searchTerm) ||
                 item.reqFrom?.toLowerCase().includes(searchTerm) ||
                 `${item.fname || ''} ${item.mname || ''} ${item.lname || ''}`.toLowerCase().includes(searchTerm)
@@ -891,7 +946,7 @@ const UnifiedRequestManagement = () => {
         if (customizeSearchFilter.trim()) {
             const searchTerm = customizeSearchFilter.toLowerCase();
             filtered = filtered.filter(item =>
-                item.customize_req_id?.toString().includes(searchTerm) ||
+                item.id_maker?.toString().includes(searchTerm) ||
                 item.reqFrom?.toLowerCase().includes(searchTerm) ||
                 `${item.fname || ''} ${item.mname || ''} ${item.lname || ''}`.toLowerCase().includes(searchTerm)
             );
@@ -914,6 +969,9 @@ const UnifiedRequestManagement = () => {
     const normalTotalPagesDetails = Math.ceil(normalFilteredDeliverDetails.length / ITEMS_PER_DETAILS_PAGE);
     const normalStartIndexDetails = (normalCurrentPageDetails - 1) * ITEMS_PER_DETAILS_PAGE;
     const normalCurrentItemsDetails = normalFilteredDeliverDetails.slice(normalStartIndexDetails, normalStartIndexDetails + ITEMS_PER_DETAILS_PAGE);
+
+    const selectedNormalDriver = driverList.find(driver => String(driver.driver_id) === selectedNormalDriverOption);
+    const selectedCustomizeDriver = driverList.find(driver => String(driver.driver_id) === selectedCustomizeDriverOption);
 
     // Reset pagination on filter change
     useEffect(() => {
@@ -981,11 +1039,11 @@ const UnifiedRequestManagement = () => {
                                 {normalRequestStatus} | {normalReqDateTime}
                             </span>
                         </div>
-                    </div> */}
+                    </div> */}  
 
                     <div className="r-details-head">
                         <div className='r-d-div'>
-                            <div><strong>REQUEST ID:</strong> {normalRequestID}</div>
+                            <div><strong>REQUEST ID:</strong> {normalIdMaker}</div>
                             <div><strong>REQUEST DATE:</strong> {normalRequestDate}</div>
                         </div>
 
@@ -1109,7 +1167,7 @@ const UnifiedRequestManagement = () => {
                                         <th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '15%' }}>Status</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody  >
                                     {normalCurrentItemsDetails.length > 0 ? (
                                         normalCurrentItemsDetails.map((p, i) => {
                                             const productId = parseInt(p.product_id);
@@ -1129,7 +1187,13 @@ const UnifiedRequestManagement = () => {
                                                     key={i} 
                                                     style={{ 
                                                         borderBottom: '1px solid #eee',
-                                                        backgroundColor: isDelivered ? '#d4edda' : (isSelected ? '#e7f3ff' : 'white')
+                                                        backgroundColor: isDelivered ? '#d4edda' : (isSelected ? '#e7f3ff' : 'white'),
+                                                        cursor: !isDelivered ? 'pointer' : 'default'
+                                                    }}
+                                                    onClick={() => {
+                                                        if (!isDelivered) {
+                                                            handleProductSelectionForDelivery(productId);
+                                                        }
                                                     }}
                                                 >
                                                     <td style={{ padding: '12px', textAlign: 'center' }}>
@@ -1137,7 +1201,10 @@ const UnifiedRequestManagement = () => {
                                                             <input
                                                                 type="checkbox"
                                                                 checked={isSelected}
-                                                                onChange={() => handleProductSelectionForDelivery(productId)}
+                                                                onChange={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleProductSelectionForDelivery(productId);
+                                                                }}
                                                                 style={{ cursor: 'pointer', width: '18px', height: '18px' }}
                                                             />
                                                         ) : (
@@ -1200,6 +1267,8 @@ const UnifiedRequestManagement = () => {
                     <Button variant="secondary" onClick={() => {
                         setNormalDeliveriesDataVisible(true);
                         setNormalSelectedProductsForDelivery([]);
+                        setSelectedNormalDriverOption('');
+                        setNormalTransferDriver('');
                     }}>
                         Close
                     </Button>
@@ -1217,6 +1286,7 @@ const UnifiedRequestManagement = () => {
                             }
                             setNormalAppointDriverVisible(false); 
                             setNormalTransferDriver(''); 
+                            setSelectedNormalDriverOption('');
                         }}
                         disabled={(() => {
                             const pendingProducts = normalFilteredDeliverDetails.filter(item => {
@@ -1236,7 +1306,16 @@ const UnifiedRequestManagement = () => {
             </Modal>
 
             {/* Normal Stock Request - Appoint Driver Modal */}
-            <Modal show={!normalAppointDriverVisible} onHide={() => setNormalAppointDriverVisible(true)} size='md' centered>
+            <Modal
+                show={!normalAppointDriverVisible}
+                onHide={() => {
+                    setNormalAppointDriverVisible(true);
+                    setNormalTransferDriver('');
+                    setSelectedNormalDriverOption('');
+                }}
+                size='md'
+                centered
+            >
                 <Modal.Header closeButton style={{ borderBottom: '2px solid #dee2e6' }}>
                     <Modal.Title style={{ fontSize: '1.25rem', fontWeight: '600', color: '#2c3e50' }}>
                         Enter The Driver Name
@@ -1246,27 +1325,66 @@ const UnifiedRequestManagement = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <div>
                             <label style={{ fontSize: '1rem', fontWeight: '500', color: '#34495e', marginBottom: '8px', display: 'block' }}>
-                                Enter Driver name: <span style={{ color: '#dc3545' }}>*</span>
+                                Choose Driver <span style={{ color: '#dc3545' }}>*</span>
+                            </label>
+                            <select
+                                value={selectedNormalDriverOption}
+                                onChange={handleNormalDriverSelect}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    border: '1px solid #ced4da',
+                                    borderRadius: '8px',
+                                    fontSize: '0.95rem',
+                                    color: '#34495e'
+                                }}
+                            >
+                                <option value="">Select driver</option>
+                                {driverList.map((driver) => (
+                                    <option key={driver.driver_id} value={driver.driver_id}>
+                                        {formatDriverName(driver)}{driver.contact_number ? ` - ${driver.contact_number}` : ''}
+                                    </option>
+                                ))}
+                                <option value="other">Other (Enter manually)</option>
+                            </select>
+                        </div>
+                        {selectedNormalDriver && selectedNormalDriver.contact_number && (
+                            <div style={{ fontSize: '0.9rem', color: '#6c757d' }}>
+                                Contact: {selectedNormalDriver.contact_number}
+                            </div>
+                        )}
+                        <div>
+                            <label style={{ fontSize: '1rem', fontWeight: '500', color: '#34495e', marginBottom: '8px', display: 'block' }}>
+                                Driver Name <span style={{ color: '#dc3545' }}>*</span>
                             </label>
                             <input
                                 type="text"
                                 value={normalTransferDriver}
                                 onChange={(e) => setNormalTransferDriver(e.target.value)}
-                                placeholder="Enter driver name"
+                                placeholder={selectedNormalDriverOption === 'other' ? 'Enter driver name' : 'Select a driver from the list'}
+                                disabled={selectedNormalDriverOption !== 'other'}
                                 style={{
                                     padding: '10px',
                                     border: '1px solid #ced4da',
                                     borderRadius: '8px',
                                     fontSize: '0.95rem',
                                     color: '#34495e',
-                                    width: '100%'
+                                    width: '100%',
+                                    backgroundColor: selectedNormalDriverOption !== 'other' ? '#f8f9fa' : 'white'
                                 }}
                             />
                         </div>
                     </div>
                 </Modal.Body>
                 <Modal.Footer style={{ borderTop: '1px solid #dee2e6', padding: '15px' }}>
-                    <Button variant="outline-secondary" onClick={() => setNormalAppointDriverVisible(true)}>
+                    <Button
+                        variant="outline-secondary"
+                        onClick={() => {
+                            setNormalAppointDriverVisible(true);
+                            setNormalTransferDriver('');
+                            setSelectedNormalDriverOption('');
+                        }}
+                    >
                         Cancel
                     </Button>
                     <Button
@@ -1293,7 +1411,7 @@ const UnifiedRequestManagement = () => {
 
                     <div className="r-details-head">
                         <div className='r-d-div'>
-                            <div><strong>CUSTOMIZE REQUEST ID:</strong> {customizeRequestID}</div>
+                            <div><strong>CUSTOMIZE REQUEST ID:</strong> {customizeRIDMaker}</div>
                             <div><strong>REQUEST DATE:</strong> {customizeRequestDate}</div>
                         </div>
                         <div><strong>REQUEST FROM:</strong> {customizeRequestFrom}</div>
@@ -1432,14 +1550,23 @@ const UnifiedRequestManagement = () => {
                     <Button variant="secondary" onClick={() => setCustomizeDeliveriesDataVisible(true)}>
                         Close
                     </Button>
-                    <Button variant="primary" onClick={() => { setCustomizeAppointDriverVisible(false); setCustomizeTransferDriverName('') }}>
+                    <Button variant="primary" onClick={() => { setCustomizeAppointDriverVisible(false); setCustomizeTransferDriverName(''); setSelectedCustomizeDriverOption(''); }}>
                         Deliver The Stock
                     </Button>
                 </Modal.Footer>
             </Modal>
 
             {/* Customize Request - Appoint Driver Modal */}
-            <Modal show={!customizeAppointDriverVisible} onHide={() => setCustomizeAppointDriverVisible(true)} size='md' centered>
+            <Modal
+                show={!customizeAppointDriverVisible}
+                onHide={() => {
+                    setCustomizeAppointDriverVisible(true);
+                    setCustomizeTransferDriverName('');
+                    setSelectedCustomizeDriverOption('');
+                }}
+                size='md'
+                centered
+            >
                 <Modal.Header closeButton style={{ borderBottom: '2px solid #dee2e6' }}>
                     <Modal.Title style={{ fontSize: '1.25rem', fontWeight: '600', color: '#2c3e50' }}>
                         Enter The Driver Name
@@ -1447,26 +1574,68 @@ const UnifiedRequestManagement = () => {
                 </Modal.Header>
                 <Modal.Body style={{ padding: '20px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <label style={{ fontSize: '1rem', fontWeight: '500', color: '#34495e' }}>
-                            Enter Driver name:
-                        </label>
-                        <input
-                            type="text"
-                            value={customizeTransferDriverName}
-                            onChange={(e) => setCustomizeTransferDriverName(e.target.value)}
-                            placeholder="Enter driver name"
-                            style={{
-                                padding: '10px',
-                                border: '1px solid #ced4da',
-                                borderRadius: '8px',
-                                fontSize: '0.95rem',
-                                color: '#34495e'
-                            }}
-                        />
+                        <div>
+                            <label style={{ fontSize: '1rem', fontWeight: '500', color: '#34495e' }}>
+                                Choose Driver
+                            </label>
+                            <select
+                                value={selectedCustomizeDriverOption}
+                                onChange={handleCustomizeDriverSelect}
+                                style={{
+                                    padding: '10px',
+                                    border: '1px solid #ced4da',
+                                    borderRadius: '8px',
+                                    fontSize: '0.95rem',
+                                    color: '#34495e',
+                                    width: '100%'
+                                }}
+                            >
+                                <option value="">Select driver</option>
+                                {driverList.map(driver => (
+                                    <option key={driver.driver_id} value={driver.driver_id}>
+                                        {formatDriverName(driver)}{driver.contact_number ? ` - ${driver.contact_number}` : ''}
+                                    </option>
+                                ))}
+                                <option value="other">Other (Enter manually)</option>
+                            </select>
+                        </div>
+                        {selectedCustomizeDriver && selectedCustomizeDriver.contact_number && (
+                            <div style={{ fontSize: '0.9rem', color: '#6c757d' }}>
+                                Contact: {selectedCustomizeDriver.contact_number}
+                            </div>
+                        )}
+                        <div>
+                            <label style={{ fontSize: '1rem', fontWeight: '500', color: '#34495e' }}>
+                                Driver Name
+                            </label>
+                            <input
+                                type="text"
+                                value={customizeTransferDriverName}
+                                onChange={(e) => setCustomizeTransferDriverName(e.target.value)}
+                                placeholder={selectedCustomizeDriverOption === 'other' ? 'Enter driver name' : 'Select a driver from the list'}
+                                disabled={selectedCustomizeDriverOption !== 'other'}
+                                style={{
+                                    padding: '10px',
+                                    border: '1px solid #ced4da',
+                                    borderRadius: '8px',
+                                    fontSize: '0.95rem',
+                                    color: '#34495e',
+                                    width: '100%',
+                                    backgroundColor: selectedCustomizeDriverOption !== 'other' ? '#f8f9fa' : 'white'
+                                }}
+                            />
+                        </div>
                     </div>
                 </Modal.Body>
                 <Modal.Footer style={{ borderTop: '1px solid #dee2e6', padding: '15px' }}>
-                    <Button variant="outline-secondary" onClick={() => setCustomizeAppointDriverVisible(true)}>
+                    <Button
+                        variant="outline-secondary"
+                        onClick={() => {
+                            setCustomizeAppointDriverVisible(true);
+                            setCustomizeTransferDriverName('');
+                            setSelectedCustomizeDriverOption('');
+                        }}
+                    >
                         Cancel
                     </Button>
                     <Button
@@ -1722,7 +1891,8 @@ const UnifiedRequestManagement = () => {
                                                 setNormalSelectedProductsForDelivery([]); // Reset selection when opening modal
                                                 GetNormalDeliveriesData(request.request_stock_id);
                                                 GetNormalDeliveriesDetails(request.request_stock_id);
-                                                setNormalRID(request.request_stock_id);
+                                                setNormalRID(request.request_stock_id); // Keep for API calls
+                                                setNormalRIDMaker(request.id_maker || request.request_stock_id); // Store for display
                                             }}
                                             style={{
                                                 backgroundColor: '#ffffff',
@@ -1796,7 +1966,7 @@ const UnifiedRequestManagement = () => {
                                                             fontWeight: '700',
                                                             color: '#2c3e50'
                                                         }}>
-                                                            #{request.request_stock_id}
+                                                            #{request.id_maker || request.request_stock_id}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2264,7 +2434,7 @@ const UnifiedRequestManagement = () => {
                                                             textOverflow: 'ellipsis',
                                                             whiteSpace: 'nowrap'
                                                         }}>
-                                                            #{request.customize_req_id}
+                                                            #{request.id_maker}
                                                         </div>
                                                     </div>
                                                 </div>

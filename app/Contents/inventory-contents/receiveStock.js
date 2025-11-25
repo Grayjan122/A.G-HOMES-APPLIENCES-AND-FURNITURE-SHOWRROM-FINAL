@@ -139,7 +139,34 @@ const ReceiveStockIM = () => {
             } else {
                 const deliveryData = Array.isArray(response.data) ? response.data : [];
                 console.log('[GetRequest] Fetched', deliveryData.length, 'deliveries for receiving');
-                setReceivStockList(deliveryData);
+                const normalizedData = await Promise.all(deliveryData.map(async (item) => {
+                    if (item.id_maker) {
+                        return { ...item, id_maker: item.id_maker };
+                    }
+
+                    // Attempt to fetch id_maker using delivery info
+                    if (item.r_delivery_id) {
+                        try {
+                            const infoResponse = await axios.get(url, {
+                                params: {
+                                    json: JSON.stringify({ r_delivery_id: item.r_delivery_id }),
+                                    operation: "GetNormalDeliveryInfo"
+                                }
+                            });
+
+                            const infoData = Array.isArray(infoResponse.data) ? infoResponse.data[0] : infoResponse.data;
+                            if (infoData && infoData.id_maker) {
+                                return { ...item, id_maker: infoData.id_maker };
+                            }
+                        } catch (infoError) {
+                            console.error("Error fetching id_maker for delivery:", infoError);
+                        }
+                    }
+
+                    return { ...item, id_maker: item.request_stock_id };
+                }));
+
+                setReceivStockList(normalizedData);
             }
 
         } catch (error) {
@@ -170,6 +197,7 @@ const ReceiveStockIM = () => {
     }
 
     const [s_reqID, setS_ReqID] = useState('');
+    const [s_idMaker, setS_idMaker] = useState('');
     const [s_reqDate, setS_ReqDate] = useState('');
     const [s_reqBy, setS_ReqBy] = useState('');
     const [s_reqFrom, setS_ReqFrom] = useState('');
@@ -288,6 +316,7 @@ const ReceiveStockIM = () => {
 
             setS_ReqBy(`${data.fname || ''} ${data.mname || ''} ${data.lname || ''}`.trim());
             setS_ReqID(data.request_stock_id);
+            setS_idMaker(data.id_maker || data.request_stock_id);
             setS_ReqDate(data.date);  // delivery_date from request_delivery
             setS_ReqFrom(data.reqFrom);
             setS_ReqStatus(data.delivery_status || data.request_status);  // Use delivery_status from request_delivery
@@ -506,18 +535,18 @@ const ReceiveStockIM = () => {
                 setViewRequestDetailVisible(true);
                 setContinueR(true);
                 GetRequest();
-                Logs(accountID, 'Receive the delivery from request #' + s_reqID);
+                Logs(accountID, 'Receive the delivery from request #' + (s_idMaker || s_reqID));
 
                 // Send notification to warehouse location (Warehouse Representative)
                 await createNotification({
                     type: 'delivery',
                     title: 'Delivery Received',
-                    message: `Delivery #${r_delivery_id} has been successfully received by ${s_reqFrom}.`,
+                    message: `Request #${s_idMaker || s_reqID} has been successfully received by ${s_reqFrom}.`,
                     locationId: reqToId, // Warehouse location (delivery from)
                     targetRole: 'Warehouse Representative',
                     productId: null,
                     customerId: null,
-                    referenceId: r_delivery_id
+                    referenceId: s_idMaker || s_reqID
                 });
                 
                 return;
@@ -612,13 +641,13 @@ const ReceiveStockIM = () => {
                 setViewRequestDetailVisible(true); GetRequest();
             }} size='lg' className='request-modal'>
                 <Modal.Header closeButton className='searched-product-header'>
-                    <Modal.Title >Request Detials</Modal.Title>
+                    <Modal.Title >Request Details</Modal.Title>
                 </Modal.Header>
                 <Modal.Body className='request-modal-body' >
 
                     <div className="r-details-head">
                         <div className='r-d-div'>
-                            <div className='r-1'><strong>REQUEST ID:</strong> {s_reqID}</div>
+                            <div className='r-1'><strong>REQUEST ID:</strong> {s_idMaker || s_reqID}</div>
                             <div><strong>DELIVERY DATE:</strong> {formatDate(s_reqDate)}</div>
 
                         </div>
@@ -779,7 +808,7 @@ const ReceiveStockIM = () => {
                                         </div>
                                         <div className="cardRow">
                                             <span className="cardLabel">REQUEST ID:</span>
-                                            <span className="cardValue">{p.request_stock_id}</span>
+                                            <span className="cardValue">{p.id_maker || p.request_stock_id}</span>
                                         </div>
                                         <div className="cardRow">
                                             <span className="cardLabel">DELIVERY FROM:</span>

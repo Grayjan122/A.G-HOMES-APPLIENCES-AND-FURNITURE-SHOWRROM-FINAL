@@ -22,9 +22,20 @@ export default function Header() {
   const [user_role, setUser_Role] = useState('');
   const [userFullname, setUserFullname] = useState('');
   const [isMounted, setIsMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+    
+    // Check if mobile on mount and resize
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   useEffect(() => {
@@ -151,16 +162,34 @@ export default function Header() {
   };
 
   const logout = () => {
-    // Prevent SessionValidator from showing alert during self-initiated logout
-    if (typeof window !== 'undefined' && window.preventSessionAlert) {
-      window.preventSessionAlert();
-    }
+    // Import Swal dynamically for confirmation
+    import('sweetalert2').then((Swal) => {
+      Swal.default.fire({
+        title: 'Logout?',
+        text: 'Are you sure you want to logout?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, Logout',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        focusCancel: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Prevent SessionValidator from showing alert during self-initiated logout
+          if (typeof window !== 'undefined' && window.preventSessionAlert) {
+            window.preventSessionAlert();
+          }
 
-    Logs(user_id, 'Log Out');
-    OfflineState(user_id);
+          Logs(user_id, 'Log Out');
+          OfflineState(user_id);
 
-    sessionStorage.clear();
-    r.push('/');
+          sessionStorage.clear();
+          r.push('/');
+        }
+      });
+    });
   };
 
   useEffect(() => {
@@ -191,85 +220,234 @@ export default function Header() {
           <div className='bell-andprof' style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '20px'
+            gap: isMobile ? '12px' : '20px'
           }}>
             <NotificationBell />
 
             <div className="profile-container" ref={dropdownRef} style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
+              gap: isMobile ? '8px' : '12px',
               cursor: 'pointer',
-              position: 'relative'
-            }} onClick={toggleDropdown}>
-              {/* <Image
-                src={'/assets/images/noprof.jpg'}
-                width={50}
-                height={50}
-                className='profile-logo'
-                alt='profile'
-                style={{ borderRadius: '50%' }}
-              /> */}
-              <InitialsAvatar name={userFullname} size={50} />
+              position: 'relative',
+              padding: isMobile ? '6px 8px' : '8px 12px',
+              borderRadius: '12px',
+              transition: 'all 0.2s ease',
+              backgroundColor: dropdownOpen ? 'rgba(255, 255, 255, 0.2)' : 'transparent'
+            }} 
+            onClick={toggleDropdown}
+            onMouseEnter={(e) => {
+              if (!dropdownOpen && !isMobile) {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!dropdownOpen && !isMobile) {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }
+            }}
+            >
+              <InitialsAvatar 
+                name={userFullname} 
+                size={isMobile ? 40 : 50} 
+              />
 
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
-                <span style={{
-                  color: '#333',
-                  fontWeight: '600',
-                  fontSize: '0.9rem'
-                }}>Hello, {user_fname}</span>
-                <span style={{
-                  color: '#666',
-                  fontSize: '0.8rem'
-                }}>{user_role}</span>
-              </div>
+              {!isMobile && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  flex: 1,
+                  minWidth: 0
+                }}>
+                  <span style={{
+                    color: 'white',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>Hello, {user_fname}</span>
+                  <span style={{
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    fontSize: '0.75rem',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>{user_role}</span>
+                </div>
+              )}
 
               <span style={{
-                fontSize: '20px',
-                color: '#666',
-                marginLeft: '5px'
+                fontSize: isMobile ? '12px' : '14px',
+                color: 'rgba(255, 255, 255, 0.9)',
+                marginLeft: isMobile ? '0' : '5px',
+                transition: 'transform 0.2s ease',
+                transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)'
               }}>▼</span>
 
               {dropdownOpen && (
                 <div className='dropdown-new-menu' style={{
                   position: 'absolute',
-                  top: '100%',
-                  right: 0,
+                  top: 'calc(100% + 8px)',
+                  right: isMobile ? '-10px' : 0,
                   backgroundColor: 'white',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                  borderRadius: '4px',
-                  marginTop: '10px'
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  borderRadius: isMobile ? '8px' : '12px',
+                  minWidth: isMobile ? '150px' : '220px',
+                  maxWidth: isMobile ? 'calc(100vw - 40px)' : 'none',
+                  overflow: 'hidden',
+                  zIndex: 1000,
+                  border: '1px solid #e5e7eb',
+                  animation: 'fadeInDown 0.2s ease-out'
                 }}>
+                  {/* User Info Section */}
+                  <div style={{
+                    padding: isMobile ? '10px 14px' : '16px 20px',
+                    borderBottom: '1px solid #e5e7eb',
+                    backgroundColor: '#f8fafc'
+                  }}>
+                    <div style={{
+                      fontWeight: '600',
+                      color: '#1f2937',
+                      fontSize: isMobile ? '12px' : '14px',
+                      marginBottom: isMobile ? '2px' : '4px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {userFullname || user_fname}
+                    </div>
+                    <div style={{
+                      color: '#6b7280',
+                      fontSize: isMobile ? '10px' : '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <span style={{
+                        display: 'inline-block',
+                        width: isMobile ? '6px' : '8px',
+                        height: isMobile ? '6px' : '8px',
+                        borderRadius: '50%',
+                        backgroundColor: '#10b981',
+                        flexShrink: 0
+                      }}></span>
+                      <span style={{
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>{user_role}</span>
+                    </div>
+                  </div>
+
+                  {/* Menu Items */}
                   <ul style={{
                     listStyle: 'none',
-                    padding: '8px 0',
+                    padding: isMobile ? '4px 0' : '8px 0',
                     margin: 0
                   }}>
                     <li
                       style={{
-                        padding: '8px 20px',
+                        padding: isMobile ? '8px 12px' : '12px 20px',
                         cursor: 'pointer',
-                        ':hover': {
-                          backgroundColor: '#f5f5f5'
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? '0px' : '12px',
+                        transition: 'all 0.2s ease',
+                        color: '#374151'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isMobile) {
+                          e.currentTarget.style.backgroundColor = '#f3f4f6';
+                          e.currentTarget.style.color = '#1f2937';
                         }
                       }}
+                      onMouseLeave={(e) => {
+                        if (!isMobile) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = '#374151';
+                        }
+                      }}
+                      onTouchStart={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f3f4f6';
+                      }}
+                      onTouchEnd={(e) => {
+                        setTimeout(() => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }, 200);
+                      }}
                       onClick={() => {
-                        sessionStorage.setItem('activePage', 'profileSetting'); // store the target page
-                        window.location.reload(); // reload the page to trigger Sidebar useEffect
+                        setDropdownOpen(false);
+                        sessionStorage.setItem('activePage', 'profileSetting');
+                        window.location.reload();
                       }}
                     >
-                      Profile
+                      <svg width={isMobile ? "70" : "18"} height={isMobile ? "14" : "18"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isMobile ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                      <span style={{ 
+                        fontSize: isMobile ? '12px' : '14px', 
+                        fontWeight: '500',
+                        flex: 1,
+                        minWidth: 0
+                      }}>Profile Settings</span>
                     </li>
+                    
+                    {/* Divider */}
                     <li style={{
-                      padding: '8px 20px',
-                      cursor: 'pointer',
-                      ':hover': {
-                        backgroundColor: '#f5f5f5'
-                      }
-                    }} onClick={logout}>Logout</li>
+                      height: '1px',
+                      backgroundColor: '#e5e7eb',
+                      margin: isMobile ? '2px 0' : '4px 0'
+                    }}></li>
+                    
+                    <li 
+                      style={{
+                        padding: isMobile ? '8px 12px' : '12px 20px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? '0px' : '12px',
+                        transition: 'all 0.2s ease',
+                        color: '#dc2626'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isMobile) {
+                          e.currentTarget.style.backgroundColor = '#fef2f2';
+                          e.currentTarget.style.color = '#b91c1c';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isMobile) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = '#dc2626';
+                        }
+                      }}
+                      onTouchStart={(e) => {
+                        e.currentTarget.style.backgroundColor = '#fef2f2';
+                      }}
+                      onTouchEnd={(e) => {
+                        setTimeout(() => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }, 200);
+                      }}
+                      onClick={() => {
+                        setDropdownOpen(false);
+                        logout();
+                      }}
+                    >
+                      <svg width={isMobile ? "70" : "18"} height={isMobile ? "14" : "18"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isMobile ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                      </svg>
+                      <span style={{ 
+                        fontSize: isMobile ? '12px' : '14px', 
+                        fontWeight: '500',
+                        flex: 1,
+                        minWidth: 0
+                      }}>Logout</span>
+                    </li>
                   </ul>
                 </div>
               )}

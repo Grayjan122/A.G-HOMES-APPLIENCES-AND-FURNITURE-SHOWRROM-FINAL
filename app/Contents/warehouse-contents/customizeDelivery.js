@@ -127,7 +127,7 @@ const DeliveryCustomizeWR = () => {
                     operation: "GetNormalDeliveries"
                 }
             });
-            
+
             // Handle response - check if it's an error object or data array
             if (response.data && typeof response.data === 'object' && response.data.error) {
                 console.error("Error from backend:", response.data.error);
@@ -256,11 +256,11 @@ const DeliveryCustomizeWR = () => {
             const response = await axios.get(url, {
                 params: { json: JSON.stringify(ID), operation: "GetDeclinedProducts" }
             });
-            
+
             // Handle various response formats - Axios should auto-parse JSON
             let declinedProductIds = [];
             let data = response.data;
-            
+
             // If response is a string, parse it
             if (typeof data === 'string') {
                 try {
@@ -270,7 +270,7 @@ const DeliveryCustomizeWR = () => {
                     data = [];
                 }
             }
-            
+
             // Extract product IDs from response
             if (Array.isArray(data)) {
                 declinedProductIds = data
@@ -282,9 +282,9 @@ const DeliveryCustomizeWR = () => {
                     .map(id => parseInt(id))
                     .filter(id => !isNaN(id));
             }
-            
+
             console.log(`[GetDeclinedProducts] Request ${req_id}: Found ${declinedProductIds.length} declined products from database:`, declinedProductIds);
-            
+
             setDeclinedProducts(declinedProductIds);
             return declinedProductIds; // Return for immediate use
         } catch (error) {
@@ -304,7 +304,7 @@ const DeliveryCustomizeWR = () => {
 
         try {
             console.log(`[GetNormalDeliveryDetails] Fetching delivery details for r_delivery_id: ${r_delivery_id}`);
-            
+
             // Fetch delivery details from request_delivery_details table (batch system)
             const response = await axios.get(url, {
                 params: {
@@ -312,50 +312,50 @@ const DeliveryCustomizeWR = () => {
                     operation: "GetNormalDeliveryDetailsFromBatch"
                 }
             });
-            
+
             // Handle error response
             if (response.data && typeof response.data === 'object' && response.data.error) {
                 console.error("Error from backend:", response.data.error);
                 setDeliveryDetails([]);
                 return;
             }
-            
+
             console.log(`[GetNormalDeliveryDetails] Fetched ${response.data?.length || 0} products from request_delivery_details`);
-            
+
             // Ensure response.data is an array
             const deliveryDetails = Array.isArray(response.data) ? response.data : [];
-            
+
             // No need to filter declined products here since delivery details are already
             // from the delivery batch (only delivered items are in request_delivery_details)
             // But we can still filter if needed for consistency
             const request_stock_id = deliveryDetails.length > 0 ? deliveryDetails[0].request_stock_id : null;
-            
+
             if (request_stock_id) {
                 // Fetch declined products to filter them out
                 const declinedProductIds = await GetDeclinedProducts(request_stock_id);
                 console.log(`[GetNormalDeliveryDetails] Found ${declinedProductIds.length} declined products for request ${request_stock_id}`);
-                
+
                 if (declinedProductIds.length > 0) {
                     // Filter out declined products
                     const declinedIdsAsNumbers = declinedProductIds.map(id => parseInt(id)).filter(id => !isNaN(id));
                     const declinedIdsAsStrings = declinedProductIds.map(id => String(id));
-                    
+
                     const filteredData = deliveryDetails.filter(item => {
                         if (!item || item.product_id === undefined || item.product_id === null) {
                             return true;
                         }
-                        
+
                         const productIdNum = parseInt(item.product_id);
                         const productIdStr = String(item.product_id);
-                        
-                        const isDeclined = declinedIdsAsNumbers.includes(productIdNum) || 
-                                           declinedIdsAsStrings.includes(productIdStr) ||
-                                           declinedIdsAsNumbers.includes(item.product_id) ||
-                                           declinedIdsAsStrings.includes(item.product_id);
-                        
+
+                        const isDeclined = declinedIdsAsNumbers.includes(productIdNum) ||
+                            declinedIdsAsStrings.includes(productIdStr) ||
+                            declinedIdsAsNumbers.includes(item.product_id) ||
+                            declinedIdsAsStrings.includes(item.product_id);
+
                         return !isDeclined;
                     });
-                    
+
                     console.log(`[GetNormalDeliveryDetails] After filtering declined: ${filteredData.length} products remain`);
                     setDeliveryDetails(filteredData);
                 } else {
@@ -372,6 +372,14 @@ const DeliveryCustomizeWR = () => {
 
     const getRequestInfo = (customizeRequestId) => {
         return requestList.find(req => req.customize_req_id === customizeRequestId) || {};
+    };
+
+    const getDisplayRequestId = (delivery, requestInfo = null) => {
+        if (delivery.deliveryType === 'customize') {
+            const info = requestInfo || getRequestInfo(delivery.customize_request_id);
+            return delivery.id_maker || info.id_maker || delivery.customize_request_id;
+        }
+        return delivery.id_maker || delivery.request_stock_id;
     };
 
     const getDeliveryDetailsBySalesId = (customizeSalesId) => {
@@ -419,7 +427,7 @@ const DeliveryCustomizeWR = () => {
         filtered.sort((a, b) => {
             // For normal deliveries, combine date and time for accurate sorting
             let dateA, dateB;
-            
+
             if (a.deliveryType === 'normal' && a.date && a.delivery_time) {
                 // Combine date and time for normal deliveries
                 dateA = new Date(`${a.date} ${a.delivery_time}`);
@@ -427,7 +435,7 @@ const DeliveryCustomizeWR = () => {
                 // For customize deliveries or if time is missing, use date only
                 dateA = new Date(a.date);
             }
-            
+
             if (b.deliveryType === 'normal' && b.date && b.delivery_time) {
                 // Combine date and time for normal deliveries
                 dateB = new Date(`${b.date} ${b.delivery_time}`);
@@ -435,7 +443,7 @@ const DeliveryCustomizeWR = () => {
                 // For customize deliveries or if time is missing, use date only
                 dateB = new Date(b.date);
             }
-            
+
             // Sort oldest first (ascending)
             return dateA - dateB;
         });
@@ -459,8 +467,8 @@ const DeliveryCustomizeWR = () => {
                     const selectedDriver = userList.find(user => user.account_id?.toString() === driverFilter.toString());
                     if (selectedDriver) {
                         const driverFullName = `${selectedDriver.fname} ${selectedDriver.mname} ${selectedDriver.lname}`.trim();
-                        return item.driverName?.toLowerCase().includes(driverFullName.toLowerCase()) || 
-                               driverFullName.toLowerCase().includes(item.driverName?.toLowerCase() || '');
+                        return item.driverName?.toLowerCase().includes(driverFullName.toLowerCase()) ||
+                            driverFullName.toLowerCase().includes(item.driverName?.toLowerCase() || '');
                     }
                     return false;
                 }
@@ -485,6 +493,8 @@ const DeliveryCustomizeWR = () => {
                     return (
                         item.deliver_customize_id?.toString().includes(searchTerm) ||
                         item.customize_request_id?.toString().includes(searchTerm) ||
+                        (item.id_maker?.toString() || '').toLowerCase().includes(searchTerm) ||
+                        (requestInfo.id_maker?.toString() || '').toLowerCase().includes(searchTerm) ||
                         item.DeliverTo?.toLowerCase().includes(searchTerm) ||
                         item.driver?.toLowerCase().includes(searchTerm) ||
                         requestInfo.invoice_id?.toString().includes(searchTerm)
@@ -492,6 +502,7 @@ const DeliveryCustomizeWR = () => {
                 } else {
                     return (
                         item.request_stock_id?.toString().includes(searchTerm) ||
+                        (item.id_maker?.toString() || '').toLowerCase().includes(searchTerm) ||
                         item.location_name?.toLowerCase().includes(searchTerm) ||
                         item.reqFrom?.toLowerCase().includes(searchTerm) ||
                         item.driverName?.toLowerCase().includes(searchTerm)
@@ -533,13 +544,14 @@ const DeliveryCustomizeWR = () => {
             const customizeSalesId = delivery.customize_sales_id || requestInfo.customize_sales_id;
             const details = getDeliveryDetailsBySalesId(customizeSalesId);
             await GetStatsAndDate(delivery.status, delivery.customize_request_id);
-            
+
             console.log('Customize Sales ID:', customizeSalesId);
             console.log('Details:', details);
-            
+
             setSelectedDelivery({
                 ...delivery,
-                requestInfo
+                requestInfo,
+                displayRequestId: getDisplayRequestId(delivery, requestInfo)
             });
             setDeliveryDetails(details);
             setModalType('customize');
@@ -562,7 +574,10 @@ const DeliveryCustomizeWR = () => {
             } else {
                 setReqDateTime('N/A');
             }
-            setSelectedDelivery(delivery);
+            setSelectedDelivery({
+                ...delivery,
+                displayRequestId: getDisplayRequestId(delivery)
+            });
             setModalType('normal');
         }
         setCurrentPageModal(1);
@@ -574,7 +589,7 @@ const DeliveryCustomizeWR = () => {
         if (!baseURL) return;
 
         const url = baseURL + 'notifications.php';
-        
+
         try {
             // Format data for PHP backend (using FormData for POST)
             const formData = new FormData();
@@ -622,12 +637,12 @@ const DeliveryCustomizeWR = () => {
                     await createNotification({
                         type: 'delivery',
                         title: 'Delivery Completed',
-                        message: `Customize request #${selectedDelivery.customize_request_id} has been marked as completed by ${name}.`,
+                        message: `Customize request #${selectedDelivery.displayRequestId || selectedDelivery.customize_request_id} has been marked as completed by ${name}.`,
                         locationId: selectedDelivery.deliver_to, // Requesting location (store)
                         targetRole: 'Sales Clerk',
                         productId: null,
                         customerId: null,
-                        referenceId: selectedDelivery.customize_request_id
+                        referenceId: selectedDelivery.displayRequestId || selectedDelivery.customize_request_id
                     });
                 } else {
                     showAlertError({
@@ -746,7 +761,7 @@ const DeliveryCustomizeWR = () => {
     };
 
     const getDeliveryId = (item) => {
-        return item.deliveryType === 'customize' ? item.customize_request_id : item.request_stock_id;
+        return getDisplayRequestId(item);
     };
 
     const getDeliveryRequestId = (item) => {
@@ -779,7 +794,7 @@ const DeliveryCustomizeWR = () => {
                         <>
                             <div className="r-details-head">
                                 <div className='r-d-div'>
-                                    <div className='r-1'><strong>REQUEST ID:</strong> {selectedDelivery.customize_request_id}</div>
+                                    <div className='r-1'><strong>REQUEST ID:</strong> {selectedDelivery.displayRequestId || selectedDelivery.customize_request_id}</div>
                                     <div><strong>REQUEST DATE:</strong> {formatDate(selectedDelivery.date)}</div>
                                 </div>
                                 <div><strong>DELIVERY ID:</strong> {selectedDelivery.deliver_customize_id}</div>
@@ -920,7 +935,7 @@ const DeliveryCustomizeWR = () => {
                             <div className="r-details-head">
                                 <div className='r-d-div'>
                                     {/* <div className='r-1'><strong>REQUEST ID:</strong> {selectedDelivery.request_stock_id}</div> */}
-                                    <div className='r-1'><strong>REQUEST ID:</strong> {selectedDelivery.request_stock_id}</div>
+                                    <div className='r-1'><strong>REQUEST ID:</strong> {selectedDelivery.displayRequestId || selectedDelivery.request_stock_id}</div>
                                     <div><strong>DELIVERY DATE:</strong> {selectedDelivery.date ? formatDate(selectedDelivery.date) : 'N/A'}</div>
 
 
@@ -1303,14 +1318,14 @@ const DeliveryCustomizeWR = () => {
                                                             textTransform: 'uppercase',
                                                             letterSpacing: '0.5px'
                                                         }}>
-                                                            Delivery Request ID
+                                                            Request ID
                                                         </div>
                                                         <div style={{
                                                             fontSize: '20px',
                                                             fontWeight: '700',
                                                             color: '#2c3e50'
                                                         }}>
-                                                            #{deliveryRequestId || 'N/A'}
+                                                            #{delivery.id_maker || deliveryRequestId || 'N/A'}
                                                         </div>
                                                         <div style={{
                                                             fontSize: '10px',

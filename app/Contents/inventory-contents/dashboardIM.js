@@ -39,6 +39,7 @@ const DashboardIM = () => {
     const [inventoryList, setInventoryList] = useState([]);
     const [requests, setRequests] = useState([]);
     const [deliveries, setDeliveries] = useState([]);
+    const [transferRequests, setTransferRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Statistics states
@@ -51,7 +52,11 @@ const DashboardIM = () => {
         totalValue: 0,
         needsRestock: 0,
         belowMinimum: 0,
-        lowStock: 0
+        lowStock: 0,
+        pendingTransfers: 0,
+        approvedTransfers: 0,
+        inTransitTransfers: 0,
+        completedTransfers: 0
     });
 
     // Modal states
@@ -214,7 +219,8 @@ const DashboardIM = () => {
             await Promise.all([
                 fetchInventory(),
                 fetchRequests(),
-                fetchDeliveries()
+                fetchDeliveries(),
+                fetchTransferRequests()
             ]);
         } catch (error) {
             console.error("Error fetching dashboard data:", error);
@@ -357,24 +363,31 @@ const DashboardIM = () => {
             let status = '';
             let priority = 0;
 
+            // Out of Stock: quantity is 0
             if (qty === 0) {
                 status = 'Out of Stock';
                 priority = 1;
                 needsRestock++;
                 itemsNeedingRestock.push({ ...item, restockStatus: status, priority });
-            } else if (qty < minThreshold) {
+            } 
+            // Below Minimum: quantity is greater than 0 but less than minimum threshold
+            else if (qty > 0 && qty < minThreshold) {
                 status = 'Below Minimum';
                 priority = 2;
                 belowMinimum++;
                 needsRestock++;
                 itemsNeedingRestock.push({ ...item, restockStatus: status, priority });
-            } else if (qty <= maxThreshold) {
+            } 
+            // Low Stock: quantity is between minimum and maximum threshold (exclusive of max)
+            // Items at max threshold or above are considered well-stocked and don't need restocking
+            else if (qty >= minThreshold && qty < maxThreshold) {
                 status = 'Low Stock';
                 priority = 3;
                 lowStock++;
                 needsRestock++;
                 itemsNeedingRestock.push({ ...item, restockStatus: status, priority });
             }
+            // Items at maxThreshold or above are considered well-stocked and don't need restocking
         });
 
         // Sort restock items by priority (1 = most urgent)
@@ -416,6 +429,83 @@ const DashboardIM = () => {
             ...prev,
             pendingRequests,
             incomingDeliveries
+        }));
+    };
+
+    const fetchTransferRequests = async () => {
+        if (!selectedLocation) return;
+
+        try {
+            const baseURL = sessionStorage.getItem('baseURL');
+            const url = baseURL + 'transferStock.php';
+
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify({
+                        location_id: parseInt(selectedLocation),
+                        status: null // Get all statuses
+                    }),
+                    operation: 'GetTransferRequests'
+                }
+            });
+
+            let transfers = [];
+            if (response.data && response.data.success && response.data.transfers) {
+                transfers = response.data.transfers;
+            } else if (response.data && Array.isArray(response.data)) {
+                transfers = response.data;
+            } else if (response.data && response.data.transfers) {
+                transfers = response.data.transfers;
+            } else if (response.data && response.data.requests) {
+                transfers = response.data.requests;
+            }
+
+            // Filter transfers where request_to_location_id matches selected location
+            // Only show transfers coming TO this location
+            const filteredTransfers = transfers.filter(transfer => {
+                const toLoc = transfer.to_location_id || transfer.request_to_location_id;
+                return toLoc && parseInt(toLoc) === parseInt(selectedLocation);
+            });
+
+            setTransferRequests(filteredTransfers);
+            calculateTransferStats(filteredTransfers);
+        } catch (error) {
+            console.error("Error fetching transfer requests:", error);
+            // Don't show error if endpoint doesn't exist yet
+            if (error.response?.status !== 404) {
+                console.warn("Transfer requests API may not be available");
+            }
+            setTransferRequests([]);
+        }
+    };
+
+    const calculateTransferStats = (data) => {
+        const pendingTransfers = data.filter(transfer => {
+            const status = (transfer.status || '').toLowerCase();
+            return status === 'pending' || status === 'requested';
+        }).length;
+
+        const approvedTransfers = data.filter(transfer => {
+            const status = (transfer.status || '').toLowerCase();
+            return status === 'approved';
+        }).length;
+
+        const inTransitTransfers = data.filter(transfer => {
+            const status = (transfer.status || '').toLowerCase();
+            return status === 'in_transit' || status === 'in transit' || status === 'shipped';
+        }).length;
+
+        const completedTransfers = data.filter(transfer => {
+            const status = (transfer.status || '').toLowerCase();
+            return status === 'completed' || status === 'delivered' || status === 'received';
+        }).length;
+
+        setStats(prev => ({
+            ...prev,
+            pendingTransfers,
+            approvedTransfers,
+            inTransitTransfers,
+            completedTransfers
         }));
     };
 
@@ -470,6 +560,47 @@ const DashboardIM = () => {
         };
     };
 
+    // Get transfer status distribution
+    const getTransferStatusData = () => {
+        const pending = transferRequests.filter(t => {
+            const status = (t.status || '').toLowerCase();
+            return status === 'pending' || status === 'requested';
+        }).length;
+        const approved = transferRequests.filter(t => {
+            const status = (t.status || '').toLowerCase();
+            return status === 'approved';
+        }).length;
+        const inTransit = transferRequests.filter(t => {
+            const status = (t.status || '').toLowerCase();
+            return status === 'in_transit' || status === 'in transit' || status === 'shipped';
+        }).length;
+        const completed = transferRequests.filter(t => {
+            const status = (t.status || '').toLowerCase();
+            return status === 'completed' || status === 'delivered' || status === 'received';
+        }).length;
+
+        return {
+            labels: ['Pending', 'Approved', 'In Transit', 'Completed'],
+            datasets: [{
+                label: 'Transfers',
+                data: [pending, approved, inTransit, completed],
+                backgroundColor: [
+                    'rgba(255, 159, 64, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                ],
+                borderColor: [
+                    'rgba(255, 159, 64, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(75, 192, 192, 1)',
+                ],
+                borderWidth: 2,
+            }],
+        };
+    };
+
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -491,6 +622,34 @@ const DashboardIM = () => {
             'Declined': 'red'
         };
         return statusColors[status] || 'black';
+    };
+
+    // Get transfer status badge color
+    const getTransferStatusBadgeColor = (status) => {
+        const statusLower = (status || '').toLowerCase();
+        const statusColors = {
+            'pending': '#ffc107',
+            'requested': '#ffc107',
+            'approved': '#17a2b8',
+            'in_transit': '#007bff',
+            'in transit': '#007bff',
+            'shipped': '#007bff',
+            'completed': '#28a745',
+            'delivered': '#28a745',
+            'received': '#28a745',
+            'rejected': '#dc3545',
+            'cancelled': '#dc3545',
+            'declined': '#dc3545'
+        };
+        return statusColors[statusLower] || '#6c757d';
+    };
+
+    // Get location name by ID
+    const getLocationName = (locationId) => {
+        const location = availableLocations.find(loc =>
+            loc.location_id === parseInt(locationId) || loc.id === parseInt(locationId)
+        );
+        return location ? (location.location_name || location.name) : 'Unknown Location';
     };
 
     if (loading && availableLocations.length === 0) {
@@ -868,18 +1027,39 @@ const DashboardIM = () => {
                         )}
                     </div>
 
-                    <div className="stat-card warning">
+                    {/* <div className="stat-card warning">
                         <div className="stat-icon">💰</div>
                         <div className="stat-value">
                             ₱{stats.totalValue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         <div className="stat-label">Inventory Value</div>
-                    </div>
+                    </div> */}
 
-                    <div className="stat-card info">
+                    <div 
+                        className="stat-card info"
+                        style={{ cursor: stats.pendingRequests > 0 ? 'pointer' : 'default' }}
+                        onClick={() => {
+                            if (stats.pendingRequests > 0) {
+                                sessionStorage.setItem('activePage', 'track-request');
+                                window.location.reload();
+                            }
+                        }}
+                        title={stats.pendingRequests > 0 ? 'Click to view pending requests' : ''}
+                    >
                         <div className="stat-icon">📝</div>
                         <div className="stat-value">{stats.pendingRequests}</div>
                         <div className="stat-label">Pending Requests</div>
+                        {stats.pendingRequests > 0 && (
+                            <div style={{ 
+                                fontSize: '11px', 
+                                marginTop: '8px', 
+                                color: '#17a2b8', 
+                                fontWeight: '600',
+                                textTransform: 'uppercase'
+                            }}>
+                                Click to View →
+                            </div>
+                        )}
                     </div>
 
                     <div className="stat-card primary">
@@ -888,6 +1068,62 @@ const DashboardIM = () => {
                             {requests.filter(req => req.request_status === 'On Delivery').length}
                         </div>
                         <div className="stat-label">Incoming Deliveries</div>
+                    </div>
+
+                    <div 
+                        className="stat-card warning"
+                        style={{ cursor: stats.pendingTransfers > 0 ? 'pointer' : 'default' }}
+                        onClick={() => {
+                            if (stats.pendingTransfers > 0) {
+                                sessionStorage.setItem('activePage', 'transfer-stock');
+                                window.location.reload();
+                            }
+                        }}
+                        title={stats.pendingTransfers > 0 ? 'Click to view transfer requests' : ''}
+                    >
+                        <div className="stat-icon">📤</div>
+                        <div className="stat-value">{stats.pendingTransfers}</div>
+                        <div className="stat-label">Pending Transfers</div>
+                        {stats.pendingTransfers > 0 && (
+                            <div style={{ 
+                                fontSize: '11px', 
+                                marginTop: '8px', 
+                                color: '#ffc107', 
+                                fontWeight: '600',
+                                textTransform: 'uppercase'
+                            }}>
+                                Click to View →
+                            </div>
+                        )}
+                    </div>
+
+                 
+
+                    <div 
+                        className="stat-card primary"
+                        style={{ cursor: stats.inTransitTransfers > 0 ? 'pointer' : 'default' }}
+                        onClick={() => {
+                            if (stats.inTransitTransfers > 0) {
+                                sessionStorage.setItem('activePage', 'transfer-stock');
+                                window.location.reload();
+                            }
+                        }}
+                        title={stats.inTransitTransfers > 0 ? 'Click to view transfer requests' : ''}
+                    >
+                        <div className="stat-icon">🚛</div>
+                        <div className="stat-value">{stats.inTransitTransfers}</div>
+                        <div className="stat-label">In Transit</div>
+                        {stats.inTransitTransfers > 0 && (
+                            <div style={{ 
+                                fontSize: '11px', 
+                                marginTop: '8px', 
+                                color: '#667eea', 
+                                fontWeight: '600',
+                                textTransform: 'uppercase'
+                            }}>
+                                Click to View →
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -910,6 +1146,16 @@ const DashboardIM = () => {
                         </h3>
                         <div className="chart-container">
                             <Doughnut data={getRequestStatusData()} options={chartOptions} />
+                        </div>
+                    </div>
+
+                    <div className="chart-card">
+                        <h3>
+                            <span>📤</span>
+                            Transfer Status Overview
+                        </h3>
+                        <div className="chart-container">
+                            <Doughnut data={getTransferStatusData()} options={chartOptions} />
                         </div>
                     </div>
                 </div>
@@ -937,10 +1183,10 @@ const DashboardIM = () => {
                             .sort((a, b) => new Date(b.date) - new Date(a.date))
                             .slice(0, 5)
                             .map((delivery, index) => (
-                                <div key={`delivery-${delivery.request_stock_id || index}`} className="delivery-item">
+                                <div key={`delivery-${delivery.id_maker || delivery.request_stock_id || index}`} className="delivery-item">
                                     <div className="item-header">
                                         <div className="item-title">
-                                            Request #{delivery.request_stock_id}
+                                            Request #{delivery.id_maker || delivery.request_stock_id}
                                         </div>
                                         <span style={{
                                             padding: '4px 12px',
@@ -987,10 +1233,10 @@ const DashboardIM = () => {
                             .sort((a, b) => new Date(b.date) - new Date(a.date))
                             .slice(0, 5)
                             .map((request, index) => (
-                                <div key={`request-${request.request_stock_id || index}`} className="request-item">
+                                <div key={`request-${request.id_maker || request.request_stock_id || index}`} className="request-item">
                                     <div className="item-header">
                                         <div className="item-title">
-                                            Request #{request.request_stock_id}
+                                            Request #{request.id_maker || request.request_stock_id}
                                         </div>
                                         <span style={{
                                             padding: '4px 12px',
@@ -1015,6 +1261,73 @@ const DashboardIM = () => {
                                     </div>
                                 </div>
                             ))
+                    )}
+                </div>
+
+                {/* Recent Transfers */}
+                <div className="section-card">
+                    <div className="section-header">
+                        <h3>
+                            <span>📤</span>
+                            Recent Transfers
+                        </h3>
+                        <button className="refresh-btn" onClick={fetchDashboardData}>
+                            <span>🔄</span>
+                            Refresh
+                        </button>
+                    </div>
+
+                    {transferRequests.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📦</div>
+                            <p>No recent transfers</p>
+                        </div>
+                    ) : (
+                        transferRequests
+                            .sort((a, b) => {
+                                const dateA = new Date(a.created_at || a.request_date || a.date || 0);
+                                const dateB = new Date(b.created_at || b.request_date || b.date || 0);
+                                return dateB - dateA;
+                            })
+                            .slice(0, 5)
+                            .map((transfer, index) => {
+                                const transferId = transfer.transfer_id || transfer.id || transfer.request_number || `#${index + 1}`;
+                                const fromLoc = transfer.from_location_name || getLocationName(transfer.from_location_id || transfer.request_from_location_id);
+                                const toLoc = transfer.to_location_name || getLocationName(transfer.to_location_id || transfer.request_to_location_id);
+                                const itemsCount = transfer.items ? transfer.items.length : (transfer.item_count || 0);
+                                const status = transfer.status || 'Unknown';
+                                
+                                return (
+                                    <div key={`transfer-${transferId}-${index}`} className="delivery-item">
+                                        <div className="item-header">
+                                            <div className="item-title">
+                                                Transfer #{transferId}
+                                            </div>
+                                            <span style={{
+                                                padding: '4px 12px',
+                                                borderRadius: '12px',
+                                                fontSize: '12px',
+                                                fontWeight: '600',
+                                                color: 'white',
+                                                backgroundColor: getTransferStatusBadgeColor(status)
+                                            }}>
+                                                {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+                                            </span>
+                                        </div>
+                                        <div className="item-details">
+                                            <div><strong>From:</strong> {fromLoc}</div>
+                                            <div><strong>To:</strong> {toLoc}</div>
+                                            <div><strong>Items:</strong> {itemsCount} item(s)</div>
+                                            <div>
+                                                <strong>Date:</strong> {formatDate(transfer.created_at || transfer.request_date || transfer.date)} 
+                                                <span style={{ color: '#718096', fontSize: '12px', marginLeft: '8px' }}>
+                                                    ({getRelativeTime(transfer.created_at || transfer.request_date || transfer.date)})
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
                     )}
                 </div>
 
@@ -1232,7 +1545,7 @@ const DashboardIM = () => {
                                                                     fontSize: '16px',
                                                                     color: needQty > 0 ? '#dc3545' : '#28a745'
                                                                 }}>
-                                                                    {needQty > 0 ? `+${needQty}` : '✓'}
+                                                                    {needQty > 0 ? `${needQty}` : '✓'}
                                                                 </td>
                                                             </tr>
                                                         );

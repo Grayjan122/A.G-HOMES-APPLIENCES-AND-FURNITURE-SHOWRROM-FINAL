@@ -48,6 +48,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
     const [recentActivities, setRecentActivities] = useState([]);
     const [topProducts, setTopProducts] = useState([]);
     const [pendingRequestDetails, setPendingRequestDetails] = useState([]);
+    const [pendingRequestItems, setPendingRequestItems] = useState({}); // Store items for each request
     const [ongoingDeliveryDetails, setOngoingDeliveryDetails] = useState([]);
     const [showInfoModal, setShowInfoModal] = useState(false);
     const [showPendingModal, setShowPendingModal] = useState(false);
@@ -79,6 +80,11 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
         return () => clearInterval(interval);
     }, []);
 
+    // Update pending request details whenever requestList1 or customizeRequestList changes
+    useEffect(() => {
+        GetPendingRequestDetails();
+    }, [requestList1, customizeRequestList]);
+
     const GetRequest = async () => {
         const LocationID = parseInt(sessionStorage.getItem('location_id'));
         const baseURL = sessionStorage.getItem('baseURL');
@@ -97,8 +103,6 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                 }
             });
             setRequestList1(response.data);
-            // Update pending request details after data is loaded
-            GetPendingRequestDetails();
         } catch (error) {
             console.error("Error fetching request list:", error);
         }
@@ -125,8 +129,6 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                 ? response.data.filter(req => req.status === 'Pending')
                 : [];
             setCustomizeRequestList(pendingCustomizeRequests);
-            // Update pending request details after data is loaded
-            GetPendingRequestDetails();
         } catch (error) {
             console.error("Error fetching customize request list:", error);
             setCustomizeRequestList([]);
@@ -323,9 +325,100 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
             const allRequests = [
                 ...normalRequests.map(req => ({ ...req, type: 'Normal' })),
                 ...customizeRequests.map(req => ({ ...req, type: 'Customize' }))
-            ].sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at));
+            ].sort((a, b) => {
+                const dateA = new Date(a.date || a.created_at || a.request_date || 0);
+                const dateB = new Date(b.date || b.created_at || b.request_date || 0);
+                return dateB - dateA;
+            });
             
             setPendingRequestDetails(allRequests.slice(0, 5));
+            
+            // Fetch items for each request
+            const itemsMap = {};
+            for (const request of allRequests.slice(0, 5)) {
+                // Use customize_req_id for customize requests, request_stock_id for normal requests
+                const requestId = request.type === 'Customize' 
+                    ? (request.customize_req_id || request.customize_id)
+                    : request.request_stock_id;
+                
+                if (requestId) {
+                    try {
+                        if (request.type === 'Normal') {
+                            // Fetch normal request items
+                            const response = await axios.get(baseURL + 'requestStock.php', {
+                                params: {
+                                    json: JSON.stringify({ reqID: requestId }),
+                                    operation: "GetRequestDetails"
+                                }
+                            });
+                            itemsMap[requestId] = Array.isArray(response.data) ? response.data : [];
+                        } else {
+                            // Fetch customize request items (both semi and full)
+                            // Customize items are linked by customize_sales_id, not customize_req_id
+                            const customizeSalesId = request.customize_sales_id;
+                            if (!customizeSalesId) {
+                                itemsMap[requestId] = [];
+                                continue;
+                            }
+                            
+                            const [semiResponse, fullResponse] = await Promise.all([
+                                axios.get(baseURL + 'customizeProducts.php', {
+                                    params: {
+                                        json: JSON.stringify([]),
+                                        operation: "GetCustomizeRequestDetailSemi"
+                                    }
+                                }),
+                                axios.get(baseURL + 'customizeProducts.php', {
+                                    params: {
+                                        json: JSON.stringify([]),
+                                        operation: "GetCustomizeRequestDetailFull"
+                                    }
+                                })
+                            ]);
+                            
+                            // Filter items by customize_sales_id (convert to numbers for comparison)
+                            const salesIdNum = parseInt(customizeSalesId);
+                            const semiItems = Array.isArray(semiResponse.data) 
+                                ? semiResponse.data.filter(item => {
+                                    const itemSalesId = parseInt(item.customize_sales_id || 0);
+                                    return itemSalesId === salesIdNum;
+                                })
+                                : [];
+                            const fullItems = Array.isArray(fullResponse.data)
+                                ? fullResponse.data.filter(item => {
+                                    const itemSalesId = parseInt(item.customize_sales_id || 0);
+                                    return itemSalesId === salesIdNum;
+                                })
+                                : [];
+                            
+                            // Combine and format items with proper structure
+                            const allItems = [
+                                ...semiItems.map(item => ({ 
+                                    ...item,
+                                    itemType: 'Semi-Customized',
+                                    product_name: item.product_name || item.baseProduct_id || 'N/A',
+                                    description: item.description || 'No description',
+                                    additionalDescription: item.modifications || 'No modifications specified',
+                                    qty: item.qty || 0
+                                })),
+                                ...fullItems.map(item => ({ 
+                                    ...item,
+                                    itemType: 'Full-Customized',
+                                    product_name: 'Full Custom',
+                                    description: item.description || 'N/A',
+                                    additionalDescription: item.additional_description || 'N/A',
+                                    qty: item.qty || 0
+                                }))
+                            ];
+                            itemsMap[requestId] = allItems;
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching items for request ${requestId}:`, error);
+                        itemsMap[requestId] = [];
+                    }
+                }
+            }
+            setPendingRequestItems(itemsMap);
         } catch (error) {
             console.error("Error processing pending request details:", error);
         }
@@ -354,15 +447,118 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
 
     const formatTimeAgo = (dateString) => {
         if (!dateString) return '';
-        const date = new Date(dateString);
+        
+        // Handle different date formats
+        let date;
+        if (typeof dateString === 'string') {
+            // Try parsing as ISO string or common formats
+            date = new Date(dateString);
+            // If invalid date, try parsing with time
+            if (isNaN(date.getTime())) {
+                // Try format like "2024-01-01 12:00:00"
+                const dateTimeStr = dateString.replace(' ', 'T');
+                date = new Date(dateTimeStr);
+            }
+        } else {
+            date = new Date(dateString);
+        }
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+            return 'Invalid date';
+        }
+        
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        
+        // Compare dates (ignore time)
+        if (dateOnly.getTime() === today.getTime()) {
+            return 'Today';
+        } else if (dateOnly.getTime() === yesterday.getTime()) {
+            return 'Yesterday';
+        } else {
+            // Return formatted date (e.g., "Jan 15, 2024")
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+    };
+
+    const formatActivityTime = (dateString) => {
+        if (!dateString) return '';
+        
+        // Handle different date formats
+        let date;
+        if (typeof dateString === 'string') {
+            // Try parsing as ISO string or common formats
+            date = new Date(dateString);
+            // If invalid date, try parsing with time
+            if (isNaN(date.getTime())) {
+                // Try format like "2024-01-01 12:00:00"
+                const dateTimeStr = dateString.replace(' ', 'T');
+                date = new Date(dateTimeStr);
+            }
+        } else {
+            date = new Date(dateString);
+        }
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+            return 'Invalid date';
+        }
+        
         const now = new Date();
         const seconds = Math.floor((now - date) / 1000);
-
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(seconds / 3600);
+        const days = Math.floor(seconds / 86400);
+        
+        // Handle negative seconds (future dates) - show as "Just now"
+        if (seconds < 0) return 'Just now';
+        
+        // Just now (less than 1 minute)
         if (seconds < 60) return 'Just now';
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-        if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-        return date.toLocaleDateString();
+        
+        // Minutes ago (less than 1 hour)
+        if (minutes < 60) {
+            return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+        }
+        
+        // Hours ago (less than 24 hours)
+        if (hours < 24) {
+            return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+        }
+        
+        // Yesterday (24-48 hours ago)
+        if (days === 1) {
+            return 'Yesterday';
+        }
+        
+        // Days ago (less than 7 days)
+        if (days < 7) {
+            return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+        }
+        
+        // Weeks ago (less than 4 weeks)
+        const weeks = Math.floor(days / 7);
+        if (weeks < 4) {
+            return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+        }
+        
+        // Months ago (less than 12 months)
+        const months = Math.floor(days / 30);
+        if (months < 12) {
+            return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+        }
+        
+        // Years ago
+        const years = Math.floor(days / 365);
+        return `${years} ${years === 1 ? 'year' : 'years'} ago`;
     };
 
     // Calculate the counts from the respective arrays
@@ -392,6 +588,13 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
             if (pageKey === 'inventory-transfer-request') {
                 setExpandedParent && setExpandedParent('requestmanagement');
             }
+            
+            // Expand parent for request-all page (it's a child of combineRequestManagement)
+            if (pageKey === 'request-all') {
+                setExpandedParent && setExpandedParent('combineRequestManagement');
+            }
+            
+            // For combineRequestManagement, no parent expansion needed (it's a top-level page)
 
             setActivePage(pageKey);
             sessionStorage.setItem('once', "false");
@@ -458,7 +661,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                 padding: '0 20px'
             }}>
                 <h1 className='h-dashboard' style={{ margin: 0 }}>WAREHOUSE OVERVIEW</h1>
-                <button
+                {/* <button
                     onClick={() => setShowInfoModal(true)}
                     style={{
                         padding: '10px 20px',
@@ -488,7 +691,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                 >
                     <span style={{ fontSize: '18px' }}>ℹ️</span>
                     <span>Dashboard Info</span>
-                </button>
+                </button> */}
             </div>
             
             {/* Status Cards */}
@@ -554,11 +757,11 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                     <div style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>Request Breakdown</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '13px', color: '#666' }}>📦 Normal Requests:</span>
+                            <span style={{ fontSize: '13px', color: '#666' }}> Normal Requests:</span>
                             <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{normalRequestCount}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '13px', color: '#666' }}>🎨 Customize Requests:</span>
+                            <span style={{ fontSize: '13px', color: '#666' }}> Customize Requests:</span>
                             <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#17a2b8' }}>{customizeRequestCount}</span>
                         </div>
                     </div>
@@ -575,11 +778,11 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                     <div style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>Delivery Status</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '13px', color: '#666' }}>🚚 On Delivery:</span>
+                            <span style={{ fontSize: '13px', color: '#666' }}> On Delivery:</span>
                             <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#007bff' }}>{OnDeliverCount}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '13px', color: '#666' }}>✅ Delivered:</span>
+                            <span style={{ fontSize: '13px', color: '#666' }}>Delivered:</span>
                             <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#28a745' }}>{deliveredCount}</span>
                         </div>
                     </div>
@@ -600,7 +803,11 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                     borderRadius: '10px',
                     padding: '20px',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    border: '1px solid #e0e0e0'
+                    border: '1px solid #e0e0e0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                    maxHeight: '600px'
                 }}>
                     <h3 style={{ 
                         margin: '0 0 15px 0', 
@@ -611,24 +818,21 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                         paddingBottom: '10px',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        flexShrink: 0
                     }}>
-                        <span>⏳ Pending Requests</span>
-                        {pendingRequestDetails.length > 0 && (
-                            <span style={{
-                                fontSize: '12px',
-                                fontWeight: 'normal',
-                                color: '#666',
-                                cursor: 'pointer'
-                            }}
-                            onClick={() => handleCardClick('request-all')}
-                            >
-                                View All →
-                            </span>
-                        )}
+                        <span> Pending Requests</span>
+                       
                     </h3>
                     {pendingRequestDetails.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '10px',
+                            overflowY: 'auto',
+                            flex: 1,
+                            paddingRight: '5px'
+                        }}>
                             {pendingRequestDetails.map((request, index) => (
                                 <div key={index} style={{
                                     padding: '12px',
@@ -655,7 +859,9 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                         marginBottom: '6px'
                                     }}>
                                         <div style={{ fontSize: '13px', fontWeight: '500', color: '#333' }}>
-                                            Request #{request.request_stock_id || request.customize_id}
+                                            Request #{request.id_maker || (request.type === 'Customize' 
+                                                ? (request.customize_req_id || request.customize_id) 
+                                                : request.request_stock_id)}
                                         </div>
                                         <span style={{
                                             padding: '2px 8px',
@@ -669,9 +875,82 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                         </span>
                                     </div>
                                     <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
-                                        <div>📍 From: {request.reqFrom || request.req_from_name}</div>
-                                        <div>📅 {formatTimeAgo(request.date || request.created_at)}</div>
+                                        <div> From: {request.reqFrom || request.req_from_name}</div>
+                                        <div> {formatTimeAgo(request.date || request.created_at || request.request_date)}</div>
                                     </div>
+                                    {/* Display items */}
+                                    {(() => {
+                                        const requestId = request.type === 'Customize' 
+                                            ? (request.customize_req_id || request.customize_id)
+                                            : request.request_stock_id;
+                                        return pendingRequestItems[requestId] && pendingRequestItems[requestId].length > 0;
+                                    })() && (() => {
+                                        const requestId = request.type === 'Customize' 
+                                            ? (request.customize_req_id || request.customize_id)
+                                            : request.request_stock_id;
+                                        return (
+                                        <div style={{ 
+                                            marginTop: '10px', 
+                                            padding: '10px', 
+                                            background: 'white', 
+                                            borderRadius: '5px',
+                                            border: '1px solid #dee2e6'
+                                        }}>
+                                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
+                                                Items ({pendingRequestItems[requestId].length}):
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                {pendingRequestItems[requestId].slice(0, 3).map((item, idx) => {
+                                                    const isSemiCustom = item.itemType === 'Semi-Customized';
+                                                    const productCode = item.product_name || 'N/A';
+                                                    const descriptionText = item.description || 'No description';
+                                                    const modificationText = item.additionalDescription || item.modifications;
+
+                                                    return (
+                                                    <div key={idx} style={{ 
+                                                        fontSize: '10px', 
+                                                        color: '#6c757d',
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center',
+                                                        padding: '4px 0',
+                                                        borderBottom: idx < 2 ? '1px solid #f1f3f5' : 'none'
+                                                    }}>
+                                                        <div style={{ flex: 1 }}>
+                                                            {isSemiCustom ? (
+                                                                <>
+                                                                    <div style={{ fontWeight: 600 }}>{`Code: ${productCode}`}</div>
+                                                                    <div>{descriptionText}</div>
+                                                                    {modificationText && (
+                                                                        <div style={{ fontSize: '9px', color: '#6c757d', marginTop: '2px', fontStyle: 'italic' }}>
+                                                                            Mods: {modificationText}
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            ) : (
+                                                                <div>{item.product_name || item.description || productCode}</div>
+                                                            )}
+                                                            {item.itemType && (
+                                                                <div style={{ fontSize: '9px', color: '#adb5bd', marginTop: '2px' }}>
+                                                                    {item.itemType}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <span style={{ fontWeight: '600', color: '#495057', marginLeft: '8px' }}>
+                                                            Qty: {item.qty || item.quantity || 0}
+                                                        </span>
+                                                    </div>
+                                                    );
+                                                })}
+                                                {pendingRequestItems[requestId].length > 3 && (
+                                                    <div style={{ fontSize: '10px', color: '#6c757d', fontStyle: 'italic', marginTop: '4px' }}>
+                                                        +{pendingRequestItems[requestId].length - 3} more item(s)
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        );
+                                    })()}
                                 </div>
                             ))}
                         </div>
@@ -689,7 +968,11 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                     borderRadius: '10px',
                     padding: '20px',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    border: '1px solid #e0e0e0'
+                    border: '1px solid #e0e0e0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                    maxHeight: '600px'
                 }}>
                     <h3 style={{ 
                         margin: '0 0 15px 0', 
@@ -700,24 +983,21 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                         paddingBottom: '10px',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        flexShrink: 0
                     }}>
-                        <span>🚚 Ongoing Deliveries</span>
-                        {ongoingDeliveryDetails.length > 0 && (
-                            <span style={{
-                                fontSize: '12px',
-                                fontWeight: 'normal',
-                                color: '#666',
-                                cursor: 'pointer'
-                            }}
-                            onClick={() => handleCardClick('delivery', { statusFilter: 'On Delivery' })}
-                            >
-                                View All →
-                            </span>
-                        )}
+                        <span>Ongoing Deliveries</span>
+                      
                     </h3>
                     {ongoingDeliveryDetails.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '10px',
+                            overflowY: 'auto',
+                            flex: 1,
+                            paddingRight: '5px'
+                        }}>
                             {ongoingDeliveryDetails.map((delivery, index) => (
                                 <div key={index} style={{
                                     padding: '12px',
@@ -758,10 +1038,10 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                         </span>
                                     </div>
                                     <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
-                                        <div>📦 Request: #{delivery.request_stock_id}</div>
-                                        <div>📍 To: {delivery.reqTo || delivery.req_to_name}</div>
-                                        <div>👤 Driver: {delivery.driverName || 'N/A'}</div>
-                                        <div>📅 {formatTimeAgo(delivery.date || delivery.delivery_date)}</div>
+                                        <div> Request: #{delivery.request_stock_id}</div>
+                                        <div> To: {delivery.reqTo || delivery.req_to_name}</div>
+                                        <div>Driver: {delivery.driverName || 'N/A'}</div>
+                                        <div> {formatTimeAgo(delivery.date || delivery.delivery_date)}</div>
                                     </div>
                                 </div>
                             ))}
@@ -826,7 +1106,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                         alignItems: 'center'
                                     }}>
                                         <span>{activity.fname} {activity.lname}</span>
-                                        <span>{formatTimeAgo(activity.timestamp)}</span>
+                                        <span>{formatActivityTime(activity.timestamp)}</span>
                                     </div>
                                 </div>
                             ))}
@@ -977,7 +1257,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                         borderRadius: '8px',
                                         borderLeft: '4px solid #007bff'
                                     }}>
-                                        <div style={{ fontWeight: '600', color: '#084298', marginBottom: '4px' }}>🚚 Ongoing Delivery</div>
+                                        <div style={{ fontWeight: '600', color: '#084298', marginBottom: '4px' }}> Ongoing Delivery</div>
                                         <div style={{ fontSize: '13px', color: '#084298' }}>
                                             Items currently in transit to their destination stores.
                                         </div>
@@ -988,7 +1268,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                         borderRadius: '8px',
                                         borderLeft: '4px solid #28a745'
                                     }}>
-                                        <div style={{ fontWeight: '600', color: '#155724', marginBottom: '4px' }}>✅ Delivered Stock</div>
+                                        <div style={{ fontWeight: '600', color: '#155724', marginBottom: '4px' }}> Delivered Stock</div>
                                         <div style={{ fontSize: '13px', color: '#155724' }}>
                                             Successfully delivered items that have reached their destination.
                                         </div>
@@ -1047,7 +1327,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                     alignItems: 'center',
                                     gap: '8px'
                                 }}>
-                                    <span>📦</span> Delivery Batch System
+                                    <span></span> Delivery Batch System
                                 </h4>
                                 <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#4a5568', lineHeight: '1.6' }}>
                                     The warehouse uses a delivery batch system that supports partial deliveries:
@@ -1165,7 +1445,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                         }}>
                             <div>
                                 <h3 style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <span>⏳</span> Pending Requests
+                                    <span></span> Pending Requests
                                 </h3>
                                 <p style={{ margin: 0, opacity: 0.9, fontSize: '14px' }}>
                                     {pendingRequestCount} request{parseInt(pendingRequestCount) !== 1 ? 's' : ''} awaiting approval
@@ -1230,7 +1510,11 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                     {[...requestList1.map(req => ({ ...req, type: 'Normal' })), 
                                       ...customizeRequestList.map(req => ({ ...req, type: 'Customize' }))]
-                                      .sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at))
+                                      .sort((a, b) => {
+                                          const dateA = new Date(a.date || a.created_at || a.request_date || 0);
+                                          const dateB = new Date(b.date || b.created_at || b.request_date || 0);
+                                          return dateB - dateA;
+                                      })
                                       .map((request, index) => (
                                         <div key={index} style={{
                                             padding: '20px',
@@ -1247,7 +1531,9 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                             }}>
                                                 <div>
                                                     <h4 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#2d3748' }}>
-                                                        Request #{request.request_stock_id || request.customize_id}
+                                                        Request #{request.id_maker || (request.type === 'Customize' 
+                                                            ? (request.customize_req_id || request.customize_id) 
+                                                            : request.request_stock_id)}
                                                     </h4>
                                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                                         <span style={{
@@ -1281,18 +1567,101 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                                 color: '#4a5568'
                                             }}>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📍 From:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> From:</strong><br />
                                                     {request.reqFrom || request.req_from_name || 'N/A'}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>👤 Requested by:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> Requested by:</strong><br />
                                                     {request.fname} {request.mname} {request.lname}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📅 Date:</strong><br />
-                                                    {formatTimeAgo(request.date || request.created_at)}
+                                                    <strong style={{ color: '#2d3748' }}> Date:</strong><br />
+                                                    {formatTimeAgo(request.date || request.created_at || request.request_date)}
                                                 </div>
                                             </div>
+                                            {/* Display items in modal */}
+                                            {(() => {
+                                                const requestId = request.type === 'Customize' 
+                                                    ? (request.customize_req_id || request.customize_id)
+                                                    : request.request_stock_id;
+                                                return pendingRequestItems[requestId] && pendingRequestItems[requestId].length > 0;
+                                            })() && (() => {
+                                                const requestId = request.type === 'Customize' 
+                                                    ? (request.customize_req_id || request.customize_id)
+                                                    : request.request_stock_id;
+                                                return (
+                                                <div style={{ 
+                                                    marginTop: '15px', 
+                                                    padding: '15px', 
+                                                    background: '#f8f9fa', 
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #dee2e6'
+                                                }}>
+                                                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#2d3748', marginBottom: '10px' }}>
+                                                         Requested Items ({pendingRequestItems[requestId].length})
+                                                    </div>
+                                                    <div style={{ 
+                                                        maxHeight: '200px', 
+                                                        overflowY: 'auto',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '8px'
+                                                    }}>
+                                                        {pendingRequestItems[requestId].map((item, idx) => (
+                                                            <div key={idx} style={{ 
+                                                                padding: '10px',
+                                                                background: 'white',
+                                                                borderRadius: '5px',
+                                                                border: '1px solid #dee2e6',
+                                                                display: 'flex',
+                                                                justifyContent: 'space-between',
+                                                                alignItems: 'center'
+                                                            }}>
+                                                                <div style={{ flex: 1 }}>
+                                                                    <div style={{ fontSize: '13px', fontWeight: '500', color: '#2d3748' }}>
+                                                                    {item.product_name || item.description || 'N/A'}
+                                                                    </div>
+                                                                    {item.description && item.itemType === 'Full-Customized' && (
+                                                                        <div style={{ fontSize: '11px', color: '#6c757d', marginTop: '2px' }}>
+                                                                            {item.description}
+                                                                        </div>
+                                                                    )}
+                                                                    {item.additionalDescription && (
+                                                                        <div style={{ fontSize: '11px', color: '#6c757d', marginTop: '2px', fontStyle: 'italic' }}>
+                                                                            {item.itemType === 'Semi-Customized' ? `Modifications: ${item.additionalDescription}` : `Details: ${item.additionalDescription}`}
+                                                                        </div>
+                                                                    )}
+                                                                    {item.itemType && (
+                                                                        <div style={{ 
+                                                                            fontSize: '10px', 
+                                                                            color: item.itemType === 'Semi-Customized' ? '#856404' : '#0c5460',
+                                                                            marginTop: '4px',
+                                                                            padding: '2px 8px',
+                                                                            background: item.itemType === 'Semi-Customized' ? '#fff3cd' : '#d1ecf1',
+                                                                            borderRadius: '10px',
+                                                                            display: 'inline-block'
+                                                                        }}>
+                                                                            {item.itemType}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div style={{ 
+                                                                    fontSize: '14px', 
+                                                                    fontWeight: '600', 
+                                                                    color: '#007bff',
+                                                                    padding: '4px 12px',
+                                                                    background: '#e7f3ff',
+                                                                    borderRadius: '12px',
+                                                                    marginLeft: '10px'
+                                                                }}>
+                                                                    {item.qty || item.quantity || 0}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                );
+                                            })()}
                                         </div>
                                     ))}
                                 </div>
@@ -1450,19 +1819,19 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                                 color: '#4a5568'
                                             }}>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📍 From:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> From:</strong><br />
                                                     {request.reqFrom || 'N/A'}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📦 To:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> To:</strong><br />
                                                     {request.reqTo || 'N/A'}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>👤 Requested by:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> Requested by:</strong><br />
                                                     {request.fname} {request.lname}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📅 Date:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}>Date:</strong><br />
                                                     {formatTimeAgo(request.date)}
                                                 </div>
                                             </div>
@@ -1553,7 +1922,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                         }}>
                             <div>
                                 <h3 style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <span>🚚</span> Ongoing Deliveries
+                                    <span></span> Ongoing Deliveries
                                 </h3>
                                 <p style={{ margin: 0, opacity: 0.9, fontSize: '14px' }}>
                                     {OnDeliverCount} deliver{parseInt(OnDeliverCount) !== 1 ? 'ies' : 'y'} in transit
@@ -1622,19 +1991,19 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                                 color: '#4a5568'
                                             }}>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📦 Request ID:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}>Request ID:</strong><br />
                                                     #{delivery.request_stock_id}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📍 To:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> To:</strong><br />
                                                     {delivery.reqTo || delivery.req_to_name || 'N/A'}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>🚗 Driver:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> Driver:</strong><br />
                                                     {delivery.driverName || 'Not assigned'}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📅 Date:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> Date:</strong><br />
                                                     {formatTimeAgo(delivery.date || delivery.delivery_date)}
                                                 </div>
                                             </div>
@@ -1794,19 +2163,19 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                                 color: '#4a5568'
                                             }}>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📦 Request ID:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> Request ID:</strong><br />
                                                     #{delivery.request_stock_id}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📍 To:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> To:</strong><br />
                                                     {delivery.reqTo || delivery.req_to_name || 'N/A'}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>🚗 Driver:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> Driver:</strong><br />
                                                     {delivery.driverName || 'N/A'}
                                                 </div>
                                                 <div>
-                                                    <strong style={{ color: '#2d3748' }}>📅 Date:</strong><br />
+                                                    <strong style={{ color: '#2d3748' }}> Date:</strong><br />
                                                     {formatTimeAgo(delivery.date || delivery.delivery_date)}
                                                 </div>
                                             </div>
@@ -1815,7 +2184,7 @@ const DashboardWR = ({ setActivePage, setExpandedParent }) => {
                                 </div>
                             ) : (
                                 <div style={{ textAlign: 'center', padding: '40px', color: '#a0aec0' }}>
-                                    <div style={{ fontSize: '60px', marginBottom: '15px' }}>📦</div>
+                                    <div style={{ fontSize: '60px', marginBottom: '15px' }}></div>
                                     <h4>No Delivered Stock</h4>
                                     <p>No deliveries have been completed yet.</p>
                                 </div>

@@ -1035,7 +1035,7 @@ const TrackRequestIM = () => {
                 <Modal.Header closeButton>
                     <Modal.Title>Completed Requests</Modal.Title>
                 </Modal.Header>
-                <Modal.Body>
+                <Modal.Body style={{ height: '70vh', overflowY: 'auto' }}>
                     {/* Archive Filters */}
                     <div style={{ padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', marginBottom: '15px' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '10px' }}>
@@ -1325,7 +1325,7 @@ const TrackRequestIM = () => {
                 <Modal.Header closeButton>
                     <Modal.Title>Tracking History - Request #{s_reqID}</Modal.Title>
                 </Modal.Header>
-                <Modal.Body>
+                <Modal.Body style={{ height: '70vh', overflowY: 'auto' }}>
                     <div style={{ padding: '15px' }}>
                         <h4 style={{ marginBottom: '25px', textAlign: 'center', fontWeight: 'bold', fontSize: '18px' }}>Request Progress Tracker</h4>
                         

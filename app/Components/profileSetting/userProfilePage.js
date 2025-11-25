@@ -21,6 +21,9 @@ const ProfileSetting = () => {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
+    const [showOldPassword, setShowOldPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPasswordChange, setShowConfirmPasswordChange] = useState(false);
 
     // Forgot Password states
     const [resetStep, setResetStep] = useState(1); // 1 = verify email, 2 = enter code, 3 = new password
@@ -32,6 +35,7 @@ const ProfileSetting = () => {
     const [isSendingCode, setIsSendingCode] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [resendCooldown, setResendCooldown] = useState(0);
 
     // Edit Email states
     const [showEditEmailModal, setShowEditEmailModal] = useState(false);
@@ -201,6 +205,9 @@ const ProfileSetting = () => {
                 setOldPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
+                setShowOldPassword(false);
+                setShowNewPassword(false);
+                setShowConfirmPasswordChange(false);
             } else {
                 showAlertError({
                     icon: "error",
@@ -225,11 +232,12 @@ const ProfileSetting = () => {
         setShowModal(false);
         setShowForgotPasswordModal(true);
         setResetStep(1);
-        setUserEmail(userDetails.email || '');
+        setUserEmail(userDetails.email || ''); // Default to account email
         setEnteredCode('');
         setResetNewPassword('');
         setResetConfirmPassword('');
         setPasswordError('');
+        setResendCooldown(0);
     };
 
     const closeForgotPasswordModal = () => {
@@ -240,6 +248,7 @@ const ProfileSetting = () => {
         setResetNewPassword('');
         setResetConfirmPassword('');
         setPasswordError('');
+        setResendCooldown(0);
     };
 
     const sendVerificationCode = async () => {
@@ -253,6 +262,17 @@ const ProfileSetting = () => {
             return;
         }
 
+        // Check cooldown
+        if (resendCooldown > 0) {
+            showAlertError({
+                icon: "warning",
+                title: "Please Wait!",
+                text: `Please wait ${resendCooldown} seconds before resending.`,
+                button: 'Okay'
+            });
+            return;
+        }
+
         console.log('🔍 Starting sendVerificationCode...');
         console.log('📧 User Email:', userEmail);
         console.log('🆔 User ID:', user_id);
@@ -261,67 +281,55 @@ const ProfileSetting = () => {
         setIsSendingCode(true);
 
         try {
-            // Verify email belongs to this user
-            console.log('1️⃣ Verifying email...');
-            const response = await axios.get(url, {
+            // Generate 6-digit code
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+            setVerificationCode(code);
+            console.log('🔢 Generated code:', code);
+
+            // Send email with code (no email verification - user can enter any email)
+            console.log('📧 Sending email with code...');
+            const emailResponse = await axios.get(url, {
                 params: {
                     json: JSON.stringify({
                         email: userEmail.trim(),
-                        user_id: user_id
+                        code: code,
+                        name: userDetails.fname || 'User'
                     }),
-                    operation: "verifyUserEmail"
+                    operation: "sendCode"
                 },
-                timeout: 10000
+                timeout: 15000
             });
 
-            console.log('✅ Verify email response:', response.data);
+            console.log('📬 Send code response:', emailResponse.data);
 
-            if (response.data && response.data.exists) {
-                // Generate 6-digit code
-                const code = Math.floor(100000 + Math.random() * 900000).toString();
-                setVerificationCode(code);
-                console.log('🔢 Generated code:', code);
-
-                // Send email with code
-                console.log('2️⃣ Sending email with code...');
-                const emailResponse = await axios.get(url, {
-                    params: {
-                        json: JSON.stringify({
-                            email: userEmail.trim(),
-                            code: code,
-                            name: userDetails.fname || 'User'
-                        }),
-                        operation: "sendCode"
-                    },
-                    timeout: 15000
-                });
-
-                console.log('📬 Send code response:', emailResponse.data);
-
-                if (emailResponse.data && emailResponse.data.success) {
-                    console.log('✅ Email sent successfully!');
-                    setResetStep(2);
-                    AlertSucces(
-                        `Verification code sent to ${userEmail}`,
-                        'success',
-                        true,
-                        'Okay'
-                    );
-                } else {
-                    console.error('❌ Email sending failed:', emailResponse.data);
-                    showAlertError({
-                        icon: "error",
-                        title: "Email Send Failed!",
-                        text: emailResponse.data?.error || 'Failed to send email. Please try again.',
-                        button: 'Try Again'
+            if (emailResponse.data && emailResponse.data.success) {
+                console.log('✅ Email sent successfully!');
+                setResetStep(2);
+                
+                // Start 30-second cooldown
+                setResendCooldown(30);
+                const cooldownInterval = setInterval(() => {
+                    setResendCooldown((prev) => {
+                        if (prev <= 1) {
+                            clearInterval(cooldownInterval);
+                            return 0;
+                        }
+                        return prev - 1;
                     });
-                }
+                }, 1000);
+                
+                AlertSucces(
+                    `Verification code sent to ${userEmail}`,
+                    'success',
+                    true,
+                    'Okay'
+                );
             } else {
-                console.error('❌ Email verification failed:', response.data);
+                console.error('❌ Email sending failed:', emailResponse.data);
                 showAlertError({
                     icon: "error",
-                    title: "Email Mismatch!",
-                    text: 'Email address does not match your account!',
+                    title: "Email Send Failed!",
+                    text: emailResponse.data?.error || 'Failed to send email. Please try again.',
                     button: 'Try Again'
                 });
             }
@@ -1053,7 +1061,12 @@ const ProfileSetting = () => {
             </div>
 
             {/* Modal for password change */}
-            <Modal show={showModal} onHide={() => setShowModal(false)} centered size="md">
+            <Modal show={showModal} onHide={() => {
+                setShowModal(false);
+                setShowOldPassword(false);
+                setShowNewPassword(false);
+                setShowConfirmPasswordChange(false);
+            }} centered size="md">
                 <Modal.Header closeButton style={{ borderBottom: '2px solid #667eea', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
                     <Modal.Title style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span>🔐</span> Change Password
@@ -1070,40 +1083,104 @@ const ProfileSetting = () => {
                         <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
                             🔒 Old Password
                         </Form.Label>
-                        <Form.Control
-                            type="password"
-                            placeholder="Enter your current password"
-                            value={oldPassword}
-                            onChange={(e) => setOldPassword(e.target.value)}
-                            style={{
-                                borderRadius: '10px',
-                                padding: '12px 15px',
-                                border: '2px solid #e9ecef',
-                                transition: 'all 0.3s ease'
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                            onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
-                        />
+                        <div style={{ position: 'relative' }}>
+                            <Form.Control
+                                type={showOldPassword ? 'text' : 'password'}
+                                placeholder="Enter your current password"
+                                value={oldPassword}
+                                onChange={(e) => setOldPassword(e.target.value)}
+                                style={{
+                                    borderRadius: '10px',
+                                    padding: '12px 45px 12px 15px',
+                                    border: '2px solid #e9ecef',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                                onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                            />
+                            <span
+                                onClick={() => setShowOldPassword(!showOldPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '15px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    cursor: 'pointer',
+                                    userSelect: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '24px',
+                                    height: '24px',
+                                    color: '#6c757d'
+                                }}
+                                title={showOldPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showOldPassword ? (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                ) : (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                )}
+                            </span>
+                        </div>
                     </Form.Group>
 
                     <Form.Group className="mb-4">
                         <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
                             🔑 New Password
                         </Form.Label>
-                        <Form.Control
-                            type="password"
-                            placeholder="Enter your new password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            style={{
-                                borderRadius: '10px',
-                                padding: '12px 15px',
-                                border: '2px solid #e9ecef',
-                                transition: 'all 0.3s ease'
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                            onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
-                        />
+                        <div style={{ position: 'relative' }}>
+                            <Form.Control
+                                type={showNewPassword ? 'text' : 'password'}
+                                placeholder="Enter your new password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                style={{
+                                    borderRadius: '10px',
+                                    padding: '12px 45px 12px 15px',
+                                    border: '2px solid #e9ecef',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                                onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                            />
+                            <span
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '15px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    cursor: 'pointer',
+                                    userSelect: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '24px',
+                                    height: '24px',
+                                    color: '#6c757d'
+                                }}
+                                title={showNewPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showNewPassword ? (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                ) : (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                )}
+                            </span>
+                        </div>
                     </Form.Group>
 
                     {/* Password Requirements Checklist */}
@@ -1179,20 +1256,52 @@ const ProfileSetting = () => {
                         <Form.Label style={{ fontWeight: '600', color: '#495057', marginBottom: '8px' }}>
                             ✅ Confirm New Password
                         </Form.Label>
-                        <Form.Control
-                            type="password"
-                            placeholder="Re-enter your new password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            style={{
-                                borderRadius: '10px',
-                                padding: '12px 15px',
-                                border: '2px solid #e9ecef',
-                                transition: 'all 0.3s ease'
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                            onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
-                        />
+                        <div style={{ position: 'relative' }}>
+                            <Form.Control
+                                type={showConfirmPasswordChange ? 'text' : 'password'}
+                                placeholder="Re-enter your new password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                style={{
+                                    borderRadius: '10px',
+                                    padding: '12px 45px 12px 15px',
+                                    border: '2px solid #e9ecef',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                                onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                            />
+                            <span
+                                onClick={() => setShowConfirmPasswordChange(!showConfirmPasswordChange)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '15px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    cursor: 'pointer',
+                                    userSelect: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '24px',
+                                    height: '24px',
+                                    color: '#6c757d'
+                                }}
+                                title={showConfirmPasswordChange ? 'Hide password' : 'Show password'}
+                            >
+                                {showConfirmPasswordChange ? (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                ) : (
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                )}
+                            </span>
+                        </div>
                     </Form.Group>
 
                     <div className="text-center mt-3 pt-3" style={{ borderTop: '1px solid #e9ecef' }}>
@@ -1323,18 +1432,19 @@ const ProfileSetting = () => {
                                 </Form.Label>
                                 <Form.Control
                                     type="email"
-                                    placeholder="Enter your registered email"
+                                    placeholder="Enter your email address"
                                     value={userEmail}
                                     onChange={(e) => setUserEmail(e.target.value)}
-                                    disabled={isSendingCode}
+                                    disabled={true}
+                                    readOnly={true}
                                     style={{
                                         borderRadius: '10px',
                                         padding: '12px 15px',
                                         border: '2px solid #e9ecef',
-                                        transition: 'all 0.3s ease'
+                                        transition: 'all 0.3s ease',
+                                        backgroundColor: '#f8f9fa',
+                                        cursor: 'not-allowed'
                                     }}
-                                    onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                                    onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
                                 />
                             </Form.Group>
                         </>
@@ -1387,19 +1497,27 @@ const ProfileSetting = () => {
                                     Didn't receive the code?
                                     <span
                                         style={{
-                                            color: '#667eea',
-                                            cursor: 'pointer',
+                                            color: resendCooldown > 0 ? '#adb5bd' : '#667eea',
+                                            cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
                                             marginLeft: '5px',
-                                            fontWeight: '600'
+                                            fontWeight: '600',
+                                            opacity: resendCooldown > 0 ? 0.6 : 1
                                         }}
                                         onClick={() => {
-                                            setResetStep(1);
-                                            setEnteredCode('');
+                                            if (resendCooldown === 0) {
+                                                sendVerificationCode();
+                                            }
                                         }}
-                                        onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                                        onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                                        onMouseEnter={(e) => {
+                                            if (resendCooldown === 0) {
+                                                e.target.style.textDecoration = 'underline';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.target.style.textDecoration = 'none';
+                                        }}
                                     >
-                                        🔄 Resend Code
+                                        {resendCooldown > 0 ? `🔄 Resend Code (${resendCooldown}s)` : '🔄 Resend Code'}
                                     </span>
                                 </small>
                             </div>
@@ -1450,11 +1568,27 @@ const ProfileSetting = () => {
                                             top: '50%',
                                             transform: 'translateY(-50%)',
                                             cursor: 'pointer',
-                                            fontSize: '1.3rem',
-                                            userSelect: 'none'
+                                            userSelect: 'none',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '24px',
+                                            height: '24px',
+                                            color: '#6c757d'
                                         }}
+                                        title={showPassword ? 'Hide password' : 'Show password'}
                                     >
-                                        {showPassword ? '👁️' : '🙈'}
+                                        {showPassword ? (
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                                            </svg>
+                                        ) : (
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                            </svg>
+                                        )}
                                     </span>
                                 </div>
                             </Form.Group>
@@ -1555,11 +1689,27 @@ const ProfileSetting = () => {
                                             top: '50%',
                                             transform: 'translateY(-50%)',
                                             cursor: 'pointer',
-                                            fontSize: '1.3rem',
-                                            userSelect: 'none'
+                                            userSelect: 'none',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '24px',
+                                            height: '24px',
+                                            color: '#6c757d'
                                         }}
+                                        title={showConfirmPassword ? 'Hide password' : 'Show password'}
                                     >
-                                        {showConfirmPassword ? '👁️' : '🙈'}
+                                        {showConfirmPassword ? (
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                                            </svg>
+                                        ) : (
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                            </svg>
+                                        )}
                                     </span>
                                 </div>
                             </Form.Group>

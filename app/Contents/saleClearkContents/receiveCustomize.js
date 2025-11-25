@@ -109,7 +109,12 @@ const ReceiveCustomizeSC = () => {
         try {
             const response = await fetch(`${baseURL}customizeProducts.php?json=${encodeURIComponent(JSON.stringify({ locID: locationID, deliverType: 'deliverTo' }))}&operation=GetCustomizeDeliver`);
             const data = await response.json();
-            const filtered = data.filter(item => item.status === "On Delivery");
+            const filtered = data
+                .filter(item => item.status === "On Delivery")
+                .map(item => ({
+                    ...item,
+                    id_maker: item.id_maker || item.customize_request_id
+                }));
             setCustomizeDeliveryList(filtered);
             console.log('=== DELIVERY LIST ===');
             console.log('All Deliveries:', data);
@@ -127,7 +132,11 @@ const ReceiveCustomizeSC = () => {
             // Use 'From' because we're fetching requests that originated FROM this store
             const response = await fetch(`${baseURL}customizeProducts.php?json=${encodeURIComponent(JSON.stringify({ locID: locationID, requestType: 'From' }))}&operation=GetCustomizeRequest`);
             const data = await response.json();
-            setRequestList(data);
+            const normalized = data.map(item => ({
+                ...item,
+                id_maker: item.id_maker || item.customize_req_id
+            }));
+            setRequestList(normalized);
             console.log('=== REQUEST LIST ===');
             console.log('Request List:', data);
             console.log('Request List Length:', data.length);
@@ -202,7 +211,10 @@ const ReceiveCustomizeSC = () => {
         console.log('Semi items count:', details.semi?.length || 0);
         console.log('Full items count:', details.full?.length || 0);
         
-        setSelectedDelivery(delivery);
+        setSelectedDelivery({
+            ...delivery,
+            displayRequestId: delivery.id_maker || delivery.customize_request_id
+        });
         setDeliveryDetails(details);
         setCurrentPage(1); // Reset to first page when opening modal
         setViewRequestDetailVisible(false);
@@ -318,12 +330,12 @@ const ReceiveCustomizeSC = () => {
                 await createNotification({
                     type: 'delivery',
                     title: 'Customize Delivery Received',
-                    message: `Customize request #${selectedDelivery.customize_request_id} has been successfully received by ${currentLocationName}.`,
+                    message: `Customize request #${selectedDelivery.displayRequestId || selectedDelivery.customize_request_id} has been successfully received by ${currentLocationName}.`,
                     locationId: selectedDelivery.deliver_from, // Warehouse location (delivery from)
                     targetRole: 'Warehouse Representative',
                     productId: null,
                     customerId: null,
-                    referenceId: selectedDelivery.customize_request_id
+                    referenceId: selectedDelivery.displayRequestId || selectedDelivery.customize_request_id
                 });
 
             } else {
@@ -384,7 +396,7 @@ const ReceiveCustomizeSC = () => {
                         <>
                             <div className="r-details-head">
                                 <div className='r-d-div'>
-                                    <div className='r-1'><strong>REQUEST ID:</strong> {selectedDelivery.customize_request_id}</div>
+                                    <div className='r-1'><strong>REQUEST ID:</strong> {selectedDelivery.displayRequestId || selectedDelivery.customize_request_id}</div>
                                     <div><strong>REQUEST DATE:</strong> {formatDate(selectedDelivery.date)}</div>
                                 </div>
                                 <div><strong>DELIVERY ID:</strong> {selectedDelivery.deliver_customize_id}</div>
@@ -556,7 +568,9 @@ const ReceiveCustomizeSC = () => {
                                         <div>
                                             <div className="cardRow">
                                                 <span className="cardLabel" style={{ fontSize: '30px' }}>REQUEST ID:</span>
-                                                <span className="cardValue" style={{ fontSize: '30px', fontWeight: 'bold' }}>{delivery.customize_request_id}</span>
+                                                <span className="cardValue" style={{ fontSize: '30px', fontWeight: 'bold' }}>
+                                                    {delivery.id_maker || delivery.customize_request_id}
+                                                </span>
                                             </div>
                                          
                                             <div className="cardRow">

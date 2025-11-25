@@ -34,7 +34,7 @@ export default function NotFound() {
             fontWeight: 'bold',
           }}
         >
-          404
+          401
         </h1>
         <p
           style={{
@@ -43,7 +43,7 @@ export default function NotFound() {
             color: '#555',
           }}
         >
-          Oops! The page you are looking for doesn’t exist.
+          Oops! Unauthorized access! Please login to continue.
         </p>
 
         <button

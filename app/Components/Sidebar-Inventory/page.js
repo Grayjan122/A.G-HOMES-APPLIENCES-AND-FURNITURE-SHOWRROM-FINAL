@@ -23,6 +23,9 @@ import ReceiveStockIM from '@/app/Contents/inventory-contents/receiveStock';
 import InventoryLedgerIM from '@/app/Contents/inventory-contents/inventoryAudit';
 import CustomizeInventorySC from '@/app/Contents/saleClearkContents/customizInventory';
 import ProfileSetting from '@/app/Components/profileSetting/userProfilePage';
+import TransferStock from '@/app/Contents/inventory-contents/transferStock';
+import TransferRequestManagement from '@/app/Contents/inventory-contents/transferRequestManagement';
+import ReceiveTransferDelivery from '@/app/Contents/inventory-contents/receiveTransferDelivery';
 
 const SidebarInventory = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -100,6 +103,7 @@ const SidebarInventory = () => {
           label: 'Receive Stock',
           component: <ReceiveStockIM />,
         },
+      
         // {
         //   key: 'request-stock',
         //   label: 'Request Stock',
@@ -111,11 +115,11 @@ const SidebarInventory = () => {
         //   // label: 'Transfer Request',
         //   // component: <TransferRequestWR />,
         // },
-        // {
-        //   key: 'inventory-ledger',
-        //   label: 'Inventory Ledger',
-        //   component: <InventoryLedgerIM />,
-        // },
+        {
+          key: 'inventory-ledger',
+          label: 'Inventory Ledger',
+          component: <InventoryLedgerIM />,
+        },
         {
           key: 'customize-inventory',
           label: 'Customize Inventory',
@@ -134,6 +138,15 @@ const SidebarInventory = () => {
           label: 'Track Request',
           component: <TrackRequestIM />,
         },
+      ],
+    },
+    {
+      key: 'transfer-request-list',
+        label: 'Transfer Request List',
+      icon: '/assets/images/dash-icons/transfer.png',
+      component: <TransferRequestManagement />,
+      children: [
+       
       ],
     },
     {
