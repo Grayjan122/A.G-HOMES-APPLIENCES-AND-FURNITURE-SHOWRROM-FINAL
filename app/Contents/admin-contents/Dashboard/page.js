@@ -5,16 +5,7 @@ import axios from 'axios';
 import { useEffect, useState } from 'react';
 import Router from "next/router";
 
-// import Dashboard from '@/app/Contents/Dashboard/page';
-import Products from '@/app/Contents/admin-contents/Products/page';
-import Sale from '@/app/Contents/admin-contents/Sale/page';
-import Analytics from '@/app/Contents/admin-contents/Analytics/page';
-import Inventory from '@/app/Contents/admin-contents/Inventory/page';
-import Location from '@/app/Contents/admin-contents/Location/page';
-import Delivery from '@/app/Contents/admin-contents/Delivery/page';
-import Customer from '@/app/Contents/admin-contents/Customer/page';
-import User from '@/app/Contents/admin-contents/User/page';
-import Setting from '@/app/Contents/admin-contents/Setting/page';
+
 import { useRouter } from "next/navigation";
 
 const Dashboard = () => {

@@ -5,13 +5,7 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { useEffect } from 'react';
 
-// Components
-import Dashboard from '@/app/Contents/admin-contents/Dashboard/page';
-import Products from '@/app/Contents/admin-contents/Products/page';
-import Sale from '@/app/Contents/admin-contents/Sale/page';
-import Analytics from '@/app/Contents/admin-contents/Analytics/page';
-import Delivery from '@/app/Contents/admin-contents/Delivery/page';
-import Setting from '@/app/Contents/admin-contents/Setting/page';
+
 
 import { LogInSuccess } from '../SweetAlert/logIn';
 
