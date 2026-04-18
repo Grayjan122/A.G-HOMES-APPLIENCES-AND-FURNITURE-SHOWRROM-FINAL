@@ -8,7 +8,11 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import Alert from 'react-bootstrap/Alert';
+import Spinner from 'react-bootstrap/Spinner';
 import CustomPagination from '@/app/Components/Pagination/pagination';
+import CustomInput from '@/app/Components/CustomInput/CustomInput';
+import SegmentedInput from '@/app/Components/CustomInput/SegmentedInput';
+import CustomModal from '@/app/Components/CustomModal/CustomModal';
 
 import { AlertSucces } from '@/app/Components/SweetAlert/success';
 import { showAlertError } from '@/app/Components/SweetAlert/error';
@@ -20,12 +24,12 @@ const getImageUrl = (imagePath) => {
     if (!imagePath || imagePath === 'Nothing as for now') {
         return null;
     }
-    
+
     // If it's already a full URL (Cloudinary), return as-is
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
         return imagePath;
     }
-    
+
     // If it's a local path, return as-is (Next.js will handle it from public folder)
     return imagePath;
 };
@@ -91,8 +95,24 @@ const ProductsAdmin = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [productImagePath, setProductImagePath] = useState('');
-    
+    const [originalProductDetails, setOriginalProductDetails] = useState(null);
+
+    const hasChanges = useMemo(() => {
+        if (!originalProductDetails) return true; // Default to allowing save
+
+        const priceNum = i_price ? parseFloat(i_price) : 0;
+
+        if (prodName !== originalProductDetails.prodName) return true;
+        if (i_description !== originalProductDetails.i_description) return true;
+        if (priceNum !== originalProductDetails.i_price) return true;
+        if (selectedProductTypeId !== originalProductDetails.selectedProductTypeId) return true;
+        if (selectedFile) return true; // Any new image file is a change
+
+        return false;
+    }, [prodName, i_description, i_price, selectedProductTypeId, selectedFile, originalProductDetails]);
+
     // Image zoom modal states
     const [showImageZoom, setShowImageZoom] = useState(false);
     const [zoomedImageUrl, setZoomedImageUrl] = useState('');
@@ -199,7 +219,7 @@ const ProductsAdmin = () => {
                 try {
                     const compressedFile = await compressImage(file);
                     setSelectedFile(compressedFile);
-                    
+
                     setMessage(`Image optimized from ${fileSizeMB.toFixed(1)}MB to ${(compressedFile.size / 1024 / 1024).toFixed(1)}MB for upload`);
                     setAlertVariant('info');
                     setAlertBG('#5bc0de');
@@ -364,11 +384,21 @@ const ProductsAdmin = () => {
                 }
             }
 
-            // Search filter (searches in product name and description)
+            // Search filter (searches in product name, description, and product type)
             if (searchFilter.trim()) {
                 const searchTerm = searchFilter.toLowerCase();
-                return product.product_name.toLowerCase().includes(searchTerm) ||
-                    product.description.toLowerCase().includes(searchTerm);
+
+                let productTypeName = '';
+                if (product.product_type_id && productTypeList) {
+                    const typeMatch = productTypeList.find(t => t.product_type_id?.toString() === product.product_type_id?.toString());
+                    if (typeMatch && typeMatch.product_type_name) {
+                        productTypeName = typeMatch.product_type_name.toLowerCase();
+                    }
+                }
+
+                return (product.product_name && product.product_name.toLowerCase().includes(searchTerm)) ||
+                    (product.description && product.description.toLowerCase().includes(searchTerm)) ||
+                    (productTypeName && productTypeName.includes(searchTerm));
             }
 
             return true;
@@ -389,13 +419,26 @@ const ProductsAdmin = () => {
                 } else if (sortField === 'price') {
                     aVal = parseFloat(a[sortField]) || 0;
                     bVal = parseFloat(b[sortField]) || 0;
-                } else if (typeof a[sortField] === 'string') {
-                    aVal = a[sortField].toLowerCase();
-                    bVal = b[sortField].toLowerCase();
+                } else if (typeof a[sortField] === 'string' || (b[sortField] && typeof b[sortField] === 'string')) {
+                    aVal = (a[sortField] || '').toString().toLowerCase();
+                    bVal = (b[sortField] || '').toString().toLowerCase();
                 } else {
                     aVal = a[sortField];
                     bVal = b[sortField];
                 }
+
+                if (typeof aVal === 'string' && typeof bVal === 'string') {
+                    const compareResult = aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
+                    if (sortDirection === 'asc') {
+                        // Ascending arrow (↑) = highest to lowest (Z-A)
+                        return compareResult === 0 ? 0 : (compareResult < 0 ? 1 : -1);
+                    } else {
+                        // Descending arrow (↓) = lowest to highest (A-Z)
+                        return compareResult === 0 ? 0 : (compareResult > 0 ? 1 : -1);
+                    }
+                }
+
+                if (aVal === bVal) return 0;
 
                 if (sortDirection === 'asc') {
                     // Ascending arrow (↑) = highest to lowest
@@ -408,7 +451,7 @@ const ProductsAdmin = () => {
         }
 
         return filtered;
-    }, [productList, categoryFilter, productTypeFilter, searchFilter, statusFilter, sortField, sortDirection, productSalesMap]);
+    }, [productList, categoryFilter, productTypeFilter, searchFilter, statusFilter, sortField, sortDirection, productSalesMap, productTypeList]);
 
     // Pagination for products
     const totalPagesProducts = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
@@ -430,17 +473,18 @@ const ProductsAdmin = () => {
         );
 
         if (selectedType) {
-            const typeName = selectedType.product_type_name || '';
-            if (typeName !== selectedProductTypeName) {
-                setSelectedProductTypeName(typeName);
+            const categoryIdString = selectedType.category_id ? selectedType.category_id.toString() : '';
+            const categoryNameValue = getCategoryNameById(categoryIdString);
+            const combinedName = `${selectedType.product_type_name || ''}${categoryNameValue ? ` (${categoryNameValue})` : ''}`;
+
+            if (combinedName !== selectedProductTypeName) {
+                setSelectedProductTypeName(combinedName);
             }
 
-            const categoryIdString = selectedType.category_id ? selectedType.category_id.toString() : '';
             if (categoryIdString !== catId) {
                 setCatID(categoryIdString);
             }
 
-            const categoryNameValue = getCategoryNameById(categoryIdString);
             if (categoryNameValue !== catName) {
                 setCatName(categoryNameValue);
             }
@@ -520,11 +564,11 @@ const ProductsAdmin = () => {
             });
 
             console.log('📦 Products fetched:', response.data);
-            
+
             // Ensure response.data is an array
             if (Array.isArray(response.data)) {
                 console.log('✅ Valid array with', response.data.length, 'products');
-                
+
                 // Log first product's image URL for debugging
                 if (response.data.length > 0) {
                     const firstProduct = response.data[0];
@@ -532,7 +576,7 @@ const ProductsAdmin = () => {
                     console.log('First product status:', firstProduct.status);
                     console.log('getImageUrl result:', getImageUrl(firstProduct.product_preview_image));
                 }
-                
+
                 setProductList(response.data);
             } else {
                 console.error('❌ Response is not an array:', typeof response.data);
@@ -558,9 +602,9 @@ const ProductsAdmin = () => {
 
             console.log('📦 Products Sales fetched:', response.data);
             console.log('📦 Products Sales type:', typeof response.data);
-            
+
             let salesData = response.data;
-            
+
             // If response is a string, try to parse it as JSON
             if (typeof salesData === 'string') {
                 try {
@@ -569,7 +613,7 @@ const ProductsAdmin = () => {
                 } catch (parseError) {
                     console.error('❌ Failed to parse JSON string:', parseError);
                     // If it's not valid JSON and contains error messages, handle it
-                    if (salesData.toLowerOase().includes('error') || 
+                    if (salesData.toLowerOase().includes('error') ||
                         salesData.toLowerCase().includes('failed') ||
                         salesData.toLowerCase().includes('success') && !salesData.includes('[')) {
                         console.warn('⚠️ API returned message:', salesData);
@@ -580,17 +624,17 @@ const ProductsAdmin = () => {
                     return;
                 }
             }
-            
+
             // Ensure salesData is an array
             if (Array.isArray(salesData)) {
                 console.log('✅ Valid array with', salesData.length, 'product sales');
-                
+
                 // Log first sale for debugging
                 if (salesData.length > 0) {
                     const firstSale = salesData[0];
                     console.log('First sale:', firstSale);
                 }
-                
+
                 setProductSalesList(salesData);
             } else {
                 console.error('❌ Response is not an array:', typeof salesData, salesData);
@@ -620,41 +664,41 @@ const ProductsAdmin = () => {
         }
     }
 
-const GetProductTypeList = async () => {
-    const baseURL = sessionStorage.getItem('baseURL');
-    const url = baseURL + 'products.php';
+    const GetProductTypeList = async () => {
+        const baseURL = sessionStorage.getItem('baseURL');
+        const url = baseURL + 'products.php';
 
-    try {
-        const response = await axios.get(url, {
-            params: {
-                json: JSON.stringify([]),
-                operation: "GetProductTypes"
+        try {
+            const response = await axios.get(url, {
+                params: {
+                    json: JSON.stringify([]),
+                    operation: "GetProductTypes"
+                }
+            });
+
+            let typesData = response.data;
+            if (typeof typesData === 'string') {
+                try {
+                    typesData = JSON.parse(typesData);
+                } catch (parseError) {
+                    console.warn('Failed to parse product type list JSON:', parseError);
+                }
             }
-        });
 
-        let typesData = response.data;
-        if (typeof typesData === 'string') {
-            try {
-                typesData = JSON.parse(typesData);
-            } catch (parseError) {
-                console.warn('Failed to parse product type list JSON:', parseError);
+            const validTypes = Array.isArray(typesData)
+                ? typesData.filter(type => type && type.product_type_id && type.product_type_name)
+                : [];
+
+            setProductTypeList(validTypes);
+
+            if (!Array.isArray(typesData)) {
+                console.warn('GetProductTypes response is not an array', response.data);
             }
+        } catch (error) {
+            console.error("Error fetching product type list:", error);
+            setProductTypeList([]);
         }
-
-        const validTypes = Array.isArray(typesData)
-            ? typesData.filter(type => type && type.product_type_id && type.product_type_name)
-            : [];
-
-        setProductTypeList(validTypes);
-
-        if (!Array.isArray(typesData)) {
-            console.warn('GetProductTypes response is not an array', response.data);
-        }
-    } catch (error) {
-        console.error("Error fetching product type list:", error);
-        setProductTypeList([]);
     }
-}
 
     const getCategoryNameById = (categoryId) => {
         if (!categoryId) return '';
@@ -666,6 +710,7 @@ const GetProductTypeList = async () => {
 
     const AddProduct = async (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
 
         const productTypeIdValue = selectedProductTypeId ? parseInt(selectedProductTypeId, 10) : null;
         const categoryIdValue = catId ? parseInt(catId, 10) : null;
@@ -685,38 +730,56 @@ const GetProductTypeList = async () => {
             setTimeout(() => {
                 setAlert1(false);
             }, 3000);
+            setIsSubmitting(false);
             return;
         }
 
-        // Upload image first if one is selected
-        let imagePath = '/uploads/products/defualt.jpg'; // Default local placeholder (matches your filename)
-        if (selectedFile) {
-            imagePath = await uploadImage();
-            console.log('Image path after upload:', imagePath);
-            if (!imagePath) {
-                return; // Upload failed, don't proceed
-            }
-        } else {
-            console.log('No image selected, using default:', imagePath);
-        }
+        // Check for duplicate product name
+        const isDuplicateName = productList.some(
+            product => product.product_name?.toLowerCase() === prodName.trim().toLowerCase()
+        );
 
-        const baseURL = sessionStorage.getItem('baseURL');
-        const url = baseURL + 'products.php';
-        const productDetails = {
-            prodName: prodName,
-            category: categoryIdValue,
-            product_type_id: productTypeIdValue,
-            description: i_description,
-            dimension: dimension,
-            material: i_material,
-            color: i_color,
-            price: i_price,
-            product_preview_image: imagePath
+        if (isDuplicateName) {
+            showAlertError({
+                icon: "warning",
+                title: "Duplicate Name",
+                text: 'This product code/name already exists in the database. Please use a unique name.',
+                button: 'Got it'
+            });
+            setIsSubmitting(false);
+            return;
         }
-
-        console.log('Product details being sent to database:', productDetails);
 
         try {
+            // Upload image first if one is selected
+            let imagePath = '/uploads/products/defualt.jpg'; // Default local placeholder (matches your filename)
+            if (selectedFile) {
+                imagePath = await uploadImage();
+                console.log('Image path after upload:', imagePath);
+                if (!imagePath) {
+                    setIsSubmitting(false);
+                    return; // Upload failed, don't proceed
+                }
+            } else {
+                console.log('No image selected, using default:', imagePath);
+            }
+
+            const baseURL = sessionStorage.getItem('baseURL');
+            const url = baseURL + 'products.php';
+            const productDetails = {
+                prodName: prodName,
+                category: categoryIdValue,
+                product_type_id: productTypeIdValue,
+                description: i_description,
+                dimension: dimension,
+                material: i_material,
+                color: i_color,
+                price: i_price,
+                product_preview_image: imagePath
+            }
+
+            console.log('Product details being sent to database:', productDetails);
+
             const response = await axios.get(url, {
                 params: {
                     json: JSON.stringify(productDetails),
@@ -735,26 +798,24 @@ const GetProductTypeList = async () => {
                     true,
                     'Okay'
                 );
-                
+
                 // Log for debugging: Check if image shows after refresh
                 setTimeout(() => {
                     console.log('Product list refreshed. Check if image is visible.');
                 }, 1000);
-                return;
-
             } else {
-
                 showAlertError({
                     icon: "error",
                     title: "Opss!",
                     text: 'Failed to add new product.',
                     button: 'Try Again'
                 });
-                return;
             }
 
         } catch (error) {
             console.error("Error adding product:", error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -763,6 +824,7 @@ const GetProductTypeList = async () => {
         setAddProductVisible(true);
         setViewProductVisible(true);
         setEditProductVisible(true);
+        setOriginalProductDetails(null);
         resetForm();
     }
 
@@ -815,6 +877,14 @@ const GetProductTypeList = async () => {
             // FIXED: Set the product image path
             setProductImagePath(product.product_preview_image || 'Nothing as for now');
 
+            // Snapshot for hasChanges validation
+            setOriginalProductDetails({
+                prodName: product.product_name ?? '',
+                i_description: product.description ?? '',
+                i_price: product.price ? parseFloat(product.price) : 0,
+                selectedProductTypeId: product.product_type_id ? product.product_type_id.toString() : ''
+            });
+
         } catch (error) {
             console.error("Error fetching product details:", error);
         }
@@ -823,46 +893,69 @@ const GetProductTypeList = async () => {
 
     const UpdateProduct = async (e) => {
         e.preventDefault();
-
-        // Upload new image if one is selected
-        let imagePath = productImagePath || '/uploads/products/defualt.jpg'; // Use default if no existing image
-        if (selectedFile) {
-            const newImagePath = await uploadImage();
-            if (newImagePath) {
-                imagePath = newImagePath;
-            }
-        }
-
-        const productTypeIdValue = selectedProductTypeId ? parseInt(selectedProductTypeId, 10) : null;
-        const categoryIdValue = catId ? parseInt(catId, 10) : null;
-
-        if (!prodName?.trim() || !productTypeIdValue || !categoryIdValue || !i_price?.toString().trim() || !i_description?.trim()) {
-            showAlertError({
-                icon: "warning",
-                title: "Incomplete Product Details",
-                text: 'Please provide name, product type, category, price, and description before saving.',
-                button: 'Got it'
-            });
-            return;
-        }
-
-        const baseURL = sessionStorage.getItem('baseURL');
-        const url = baseURL + 'products.php';
-        const productDetails = {
-            prodName: prodName,
-            category: categoryIdValue,
-            product_type_id: productTypeIdValue,
-            description: i_description,
-            dimension: dimension,
-            material: i_material,
-            color: i_color,
-            price: i_price,
-            product_preview_image: imagePath,
-            catID: categoryIdValue,
-            prodId: prodId
-        }
+        setIsSubmitting(true);
 
         try {
+            // Upload new image if one is selected
+            let imagePath = productImagePath || '/uploads/products/defualt.jpg'; // Use default if no existing image
+            if (selectedFile) {
+                const newImagePath = await uploadImage();
+                if (newImagePath) {
+                    imagePath = newImagePath;
+                } else {
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
+            const productTypeIdValue = selectedProductTypeId ? parseInt(selectedProductTypeId, 10) : null;
+            const categoryIdValue = catId ? parseInt(catId, 10) : null;
+
+            if (!prodName?.trim() || !productTypeIdValue || !categoryIdValue || !i_price?.toString().trim() || !i_description?.trim()) {
+                showAlertError({
+                    icon: "warning",
+                    title: "Incomplete Product Details",
+                    text: 'Please provide name, product type, category, price, and description before saving.',
+                    button: 'Got it'
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Check for duplicate product name (exclude current product)
+            const isDuplicateName = productList.some(
+                product =>
+                    product.product_name?.toLowerCase() === prodName.trim().toLowerCase() &&
+                    product.product_id?.toString() !== prodId?.toString()
+            );
+
+            if (isDuplicateName) {
+                showAlertError({
+                    icon: "warning",
+                    title: "Duplicate Name",
+                    text: 'This product code/name already exists in the database. Please use a unique name.',
+                    button: 'Got it'
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            const baseURL = sessionStorage.getItem('baseURL');
+            const url = baseURL + 'products.php';
+            const productDetails = {
+                prodName: prodName,
+                category: categoryIdValue,
+                product_type_id: productTypeIdValue,
+                description: i_description,
+                dimension: dimension,
+                material: i_material,
+                color: i_color,
+                price: i_price,
+                product_preview_image: imagePath,
+                catID: categoryIdValue,
+                prodId: prodId
+            }
+
             const response = await axios.get(url, {
                 params: {
                     json: JSON.stringify(productDetails),
@@ -889,20 +982,21 @@ const GetProductTypeList = async () => {
                     text: 'Failed to update product details!',
                     button: 'Try Again'
                 });
-                return;
             }
 
         } catch (error) {
             console.error("Error updating product:", error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const ToggleProductStatus = async (productId, currentStatus) => {
         const baseURL = sessionStorage.getItem('baseURL');
         const url = baseURL + 'products.php';
-        
+
         const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
-        
+
         const statusData = {
             prodId: productId,
             status: newStatus
@@ -918,7 +1012,7 @@ const GetProductTypeList = async () => {
 
             if (response.data === 'Success') {
                 GetProduct();
-                
+
                 AlertSucces(
                     `Product ${newStatus === 'Active' ? 'activated' : 'deactivated'} successfully!`,
                     "success",
@@ -1009,386 +1103,262 @@ const GetProductTypeList = async () => {
             </Modal>
 
             {/* Edit Product Modal */}
-            <Modal show={!editProductVisible} onHide={close_modal} size='lg'>
-                <Modal.Header closeButton >
-                    <Modal.Title >Edit Product Details</Modal.Title>
-                </Modal.Header>
-                <Modal.Body className='modal-add-product-body' >
-                    <div className='div-for-line'>
-                        <div className='div-input-add-prod'>
-                            <label className='add-prod-label'>Product Name</label>
-                            <input
-                                type='text'
-                                className='prod-name-input'
-                                value={prodName}
-                                onChange={(e) => setProdName(e.target.value)}
+            <CustomModal
+                show={!editProductVisible}
+                onHide={close_modal}
+                title="Product Details"
+                size="lg"
+                bodyClassName="modal-add-product-body"
+                primaryButtonText="Save Changes"
+                onPrimaryAction={UpdateProduct}
+                isSubmitting={isSubmitting}
+                disablePrimary={!hasChanges}
+            >
+
+                <div className='div-input-add-prod' style={{ paddingBottom: '20px' }}>
+                    <CustomInput
+                        label="Product ID"
+                        value={prodId}
+                        readOnly
+                    />
+                </div>
+
+                <div className='div-input-add-prod'>
+                    <label className='add-prod-label'>Product Name/Code & Type</label>
+                    <SegmentedInput
+                        position="right"
+                        options={productTypeList.map(type => ({
+                            label: `${type.product_type_name}${getCategoryNameById(type.category_id) ? ` (${getCategoryNameById(type.category_id)})` : ''}`,
+                            value: type.product_type_id
+                        }))}
+                        selectedLabel={selectedProductTypeName || 'Select Product Type'}
+                        onOptionSelect={(value, option) => {
+                            setSelectedProductTypeId(value ? value.toString() : '');
+                            // If the dropdown has a combined label (e.g., "Appliance (Appliance)"), show it instantly
+                            setSelectedProductTypeName(option.label);
+                        }}
+                        inputValue={prodName}
+                        onInputChange={(e) => setProdName(e.target.value)}
+                        placeholder="Enter Product Code"
+                        className="mb-3"
+                    />
+                </div>
+
+                <div className='div-input-add-prod'>
+                    <CustomInput
+                        label="Category"
+                        value={catName ?? ''}
+                        readOnly
+                        placeholder="Auto-filled based on product type"
+                    />
+                </div>
+
+                <div className='div-input-add-prod'>
+                    <CustomInput
+                        label="Price ₱"
+                        type="number"
+                        step="0.01"
+                        value={i_price}
+                        onChange={e => setI_Price(e.target.value)}
+                        onBlur={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!isNaN(val)) {
+                                setI_Price(val.toFixed(2));
+                            }
+                        }}
+                    />
+                </div>
+
+                <div className='div-input-add-prod'>
+                    <CustomInput
+                        label="Description"
+                        type="textarea"
+                        maxLength={250}
+                        value={i_description}
+                        onChange={(e) => setI_Descrition(e.target.value)}
+                        style={{ height: '100px' }}
+                    />
+                    <div style={{ textAlign: 'right', fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
+                        {i_description?.length || 0}/250
+                    </div>
+                </div>
+
+                <div className='div-input-add-prod'>
+                    <CustomInput
+                        label="Date Created"
+                        value={(() => {
+                            if (!dateCreated) return '';
+                            // Handle both YYYY-MM-DD and YYYY-MM-DD HH:mm:ss formats safely
+                            const dateStr = dateCreated.split(' ')[0];
+                            const parts = dateStr.split('-');
+                            if (parts.length === 3) {
+                                const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                                return `${months[parseInt(parts[1], 10) - 1]} ${parseInt(parts[2], 10)}, ${parts[0]}`;
+                            }
+                            return dateCreated;
+                        })()}
+                        readOnly
+                    />
+                </div>
+
+                <div className='div-input-add-prod'>
+                    <CustomInput
+                        label="Preview Image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        disabled={uploadingImage}
+                    />
+                    {/* Show current image if exists */}
+                    {!imagePreview && getImageUrl(productImagePath) && (
+                        <div style={{ marginTop: '10px' }}>
+                            <img
+                                src={getImageUrl(productImagePath)}
+                                alt="Current"
+                                style={{
+                                    // maxWidth: '200px',
+                                    width: '100%',
+                                    maxHeight: '400px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #ddd'
+                                }}
                             />
+                            {/* <p style={{ fontSize: '12px', color: '#666' }}>Current image</p> */}
                         </div>
-
-                        <div className='div-input-add-prod'>
-                            <label className='add-prod-label'>Product Type</label>
-                            <select
-                                className='category-dropdown'
-                                onChange={(e) => handleProductTypeChange(e.target.value)}
-                            value={selectedProductTypeId ?? ''}
-                            >
-                                <option value="" disabled hidden>Select Product Type</option>
-                                {productTypeList.map((type) => {
-                                    const categoryName = getCategoryNameById(type.category_id);
-                                    return (
-                                        <option key={type.product_type_id} value={type.product_type_id}>
-                                            {type.product_type_name}{categoryName ? ` (${categoryName})` : ''}
-                                        </option>
-                                    );
-                                })}
-                            </select>
+                    )}
+                    {/* Show new preview if selected */}
+                    {imagePreview && (
+                        <div style={{ marginTop: '10px' }}>
+                            <img
+                                src={imagePreview}
+                                alt="New Preview"
+                                style={{
+                                    width: '100%',
+                                    maxHeight: '400px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #ddd'
+                                }}
+                            />
+                            <p style={{ fontSize: '12px', color: '#666' }}>New image preview</p>
                         </div>
-                    </div>
-
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Category</label>
-                        <input
-                            type='text'
-                            className='dimension-input'
-                            value={catName ?? ''}
-                            readOnly
-                            placeholder='Auto-filled based on product type'
-                        />
-                    </div>
-
-                    {/* <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Dimension</label>
-                        <input
-                            type='text'
-                            className='dimension-input'
-                            value={dimension}
-                            onChange={(e) => setDimension(e.target.value)}
-                        />
-                    </div> */}
-
-                    {/* <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Color</label>
-                        <input
-                            type='text'
-                            className='prod-name-input1'
-                            value={i_color}
-                            onChange={(e) => setI_Color(e.target.value)}
-                        />
-                    </div> */}
-
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Price</label>
-                        <input
-                            type='number'
-                            className='prod-name-input1'
-                            value={i_price}
-                            onChange={(e) => setI_Price(e.target.value)}
-                        />
-                    </div>
-
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Description</label>
-                        <textarea
-                            className='description-input'
-                            value={i_description}
-                            onChange={(e) => setI_Descrition(e.target.value)}
-                        />
-                    </div>
-
-                    {/* <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Material</label>
-                        <textarea
-                            className='description-input'
-                            value={i_material}
-                            onChange={(e) => setI_Marterial(e.target.value)}
-                        />
-                    </div> */}
-
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Preview Image</label>
-                        <input
-                            type='file'
-                            className='files-input'
-                            accept="image/*"
-                            onChange={handleFileSelect}
-                            disabled={uploadingImage}
-                        />
-                        {/* Show current image if exists */}
-                        {!imagePreview && getImageUrl(productImagePath) && (
-                            <div style={{ marginTop: '10px' }}>
-                                <img
-                                    src={getImageUrl(productImagePath)}
-                                    alt="Current"
-                                    style={{
-                                        // maxWidth: '200px',
-                                        width: '100%',
-                                        maxHeight: '200px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #ddd'
-                                    }}
-                                />
-                                <p style={{ fontSize: '12px', color: '#666' }}>Current image</p>
-                            </div>
-                        )}
-                        {/* Show new preview if selected */}
-                        {imagePreview && (
-                            <div style={{ marginTop: '10px' }}>
-                                <img
-                                    src={imagePreview}
-                                    alt="New Preview"
-                                    style={{
-                                        width: '100%',
-                                        maxHeight: '400px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #ddd'
-                                    }}
-                                />
-                                <p style={{ fontSize: '12px', color: '#666' }}>New image preview</p>
-                            </div>
-                        )}
-                        {uploadingImage && (
-                            <div style={{ marginTop: '10px', color: '#007bff' }}>
-                                Uploading image...
-                            </div>
-                        )}
-                    </div>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={close_modal}>
-                        Close
-                    </Button>
-                    <Button variant="primary" onClick={UpdateProduct}>
-                        Save Changes
-                    </Button>
-                </Modal.Footer>
-            </Modal>
+                    )}
+                    {uploadingImage && (
+                        <div style={{ marginTop: '10px', color: '#007bff' }}>
+                            Uploading image...
+                        </div>
+                    )}
+                </div>
+            </CustomModal>
 
             {/* Add Product Modal */}
-            <Modal show={!addProductVisible} onHide={close_modal} size='lg' >
-                <Modal.Header closeButton >
-                    <Modal.Title >Add Product</Modal.Title>
-                </Modal.Header>
-                <Modal.Body className='modal-add-product-body' >
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Product Code</label>
-                        <input
-                            type="text"
-                            className="prod-name-input"
-                            value={prodName}
-                            onChange={(e) => setProdName(e.target.value)}
-                        />
-                    </div>
+            <CustomModal
+                show={!addProductVisible}
+                onHide={close_modal}
+                title="ADD PRODUCT"
+                size="lg"
+                bodyClassName="modal-add-product-body"
+                primaryButtonText="Save"
+                onPrimaryAction={AddProduct}
+                isSubmitting={isSubmitting}
+            >
+                <div className='div-input-add-prod'>
+                    <label className='add-prod-label'>Product Name/Code & Type</label>
+                    <SegmentedInput
+                        position="right"
+                        options={productTypeList.map(type => ({
+                            label: `${type.product_type_name}${getCategoryNameById(type.category_id) ? ` (${getCategoryNameById(type.category_id)})` : ''}`,
+                            value: type.product_type_id
+                        }))}
+                        selectedLabel={selectedProductTypeName || 'Select Product Type'}
+                        onOptionSelect={(value, option) => {
+                            setSelectedProductTypeId(value ? value.toString() : '');
+                            // If the dropdown has a combined label (e.g., "Appliance (Appliance)"), show it instantly
+                            setSelectedProductTypeName(option.label);
+                        }}
+                        inputValue={prodName}
+                        onInputChange={(e) => setProdName(e.target.value)}
+                        placeholder="Enter Product Code"
+                        className="mb-3"
+                    />
+                </div>
 
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Product Type</label>
-                        <select
-                            className='category-dropdown'
-                            onChange={(e) => handleProductTypeChange(e.target.value)}
-                            value={selectedProductTypeId ?? ''}
-                        >
-                            <option value="" disabled hidden>Select Product Type</option>
-                            {productTypeList.map((type) => {
-                                const categoryName = getCategoryNameById(type.category_id);
-                                return (
-                                    <option key={type.product_type_id} value={type.product_type_id}>
-                                        {type.product_type_name}{categoryName ? ` (${categoryName})` : ''}
-                                    </option>
-                                );
-                            })}
-                        </select>
-                    </div>
+                <div className='div-input-add-prod'>
+                    <CustomInput
+                        label="Category"
+                        value={catName ?? ''}
+                        readOnly
+                        placeholder="Auto-filled based on product type"
+                    />
+                </div>
 
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Category</label>
-                        <input
-                            type='text'
-                            className='dimension-input'
-                            value={catName ?? ''}
-                            readOnly
-                            placeholder='Auto-filled based on product type'
-                        />
-                    </div>
+                <div className='div-input-add-prod'>
+                    <CustomInput
+                        label="Price ₱"
+                        type="number"
+                        step="0.01"
+                        value={i_price}
+                        onChange={e => setI_Price(e.target.value)}
+                        onBlur={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!isNaN(val)) {
+                                setI_Price(val.toFixed(2));
+                            }
+                        }}
+                    />
+                </div>
 
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Price</label>
-                        <input
-                            type='number'
-                            className='prod-name-input1'
-                            value={i_price}
-                            onChange={e => setI_Price(e.target.value)}
-                        />
+                <div className='div-input-add-prod'>
+                    <CustomInput
+                        label="Description"
+                        type="textarea"
+                        maxLength={250}
+                        value={i_description}
+                        onChange={(e) => setI_Descrition(e.target.value)}
+                        style={{ height: '100px' }}
+                    // showCharacterCount
+                    />
+                    <div style={{ textAlign: 'right', fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
+                        {i_description?.length || 0}/250
                     </div>
-
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Description</label>
-                        <textarea
-                            className='description-input'
-                            value={i_description}
-                            onChange={(e) => setI_Descrition(e.target.value)}
-                        />
-                    </div>
-
-                  
-
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Preview Image</label>
-                        <input
-                            type='file'
-                            className='files-input'
-                            accept="image/*"
-                            onChange={handleFileSelect}
-                            disabled={uploadingImage}
-                        />
-                        {imagePreview && (
-                            <div style={{ marginTop: '10px' }}>
-                                <img
-                                    src={imagePreview}
-                                    alt="Preview"
-                                    style={{
-                                        // maxWidth: '200px',
-                                        width: '100%',
-                                        maxHeight: '200px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #ddd'
-                                    }}
-                                />
-                            </div>
-                        )}
-                        {uploadingImage && (
-                            <div style={{ marginTop: '10px', color: '#007bff' }}>
-                                Uploading image...
-                            </div>
-                        )}
-                    </div>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={close_modal}>
-                        Close
-                    </Button>
-                    <Button variant="primary" onClick={AddProduct}>
-                        Save
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
-            {/* View Product Modal */}
-            <Modal show={!viewProductVisible} onHide={close_modal} size='lg'>
-                <Modal.Header closeButton >
-                    <Modal.Title >Product Details</Modal.Title>
-                </Modal.Header>
-                <Modal.Body className='modal-add-product-body' >
-                    <div className='div-input-add-prod' style={{ paddingBottom: '20px' }}>
-                        <label className='add-prod-label'>Product ID</label>
-                        <input
-                            className='prod-name-input'
-                            disabled={true}
-                            value={prodId}
-                        />
-                    </div>
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Product Code</label>
-                        <input
-                            disabled={true}
-                            className='prod-name-input'
-                            value={prodName}
-                        />
-                    </div>
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Product Type</label>
-                        <input
-                            className='prod-name-input'
-                            disabled={true}
-                            value={selectedProductTypeName}
-                        />
-                    </div>
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Category</label>
-                        <select className='category-dropdown' disabled={true}>
-                            <option>{catName}</option>
-                        </select>
-                    </div>
-
-                  
-
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Description</label>
-                        <textarea
-                            className='description-input'
-                            disabled={true}
-                            value={i_description}
-                        />
-                    </div>
+                </div>
 
 
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Date Created</label>
-                        <input
-                            className='dimension-input'
-                            disabled={true}
-                            value={dateCreated}
-                        />
-                    </div>
 
-                    <div className='div-input-add-prod'>
-                        <label className='add-prod-label'>Preview Image</label>
-                        {getImageUrl(productImagePath) ? (
-                            <div style={{ marginTop: '10px', position: 'relative' }}>
-                                <img
-                                    src={getImageUrl(productImagePath)}
-                                    alt="Product"
-                                    onClick={() => handleImageZoom(getImageUrl(productImagePath))}
-                                    style={{
-                                        // maxWidth: '300px',
-                                        width: '100%',
-                                        maxHeight: '300px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #ddd',
-                                        cursor: 'pointer',
-                                        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'scale(1.02)';
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'scale(1)';
-                                        e.currentTarget.style.boxShadow = 'none';
-                                    }}
-                                />
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '15px',
-                                    right: '15px',
-                                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                                    color: 'white',
-                                    padding: '5px 10px',
-                                    borderRadius: '4px',
-                                    fontSize: '12px',
-                                    pointerEvents: 'none'
-                                }}>
-                                    🔍 Click to zoom
-                                </div>
-                            </div>
-                        ) : (
-                            <div style={{
-                                marginTop: '10px',
-                                padding: '40px',
-                                backgroundColor: '#f8f9fa',
-                                borderRadius: '8px',
-                                textAlign: 'center',
-                                color: '#6c757d'
-                            }}>
-                                No image available
-                            </div>
-                        )}
-                    </div>
-                </Modal.Body>
-            </Modal>
+                <div className='div-input-add-prod'>
+                    <CustomInput
+                        label="Preview Image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        disabled={uploadingImage}
+                    />
+                    {imagePreview && (
+                        <div style={{ marginTop: '10px' }}>
+                            <img
+                                src={imagePreview}
+                                alt="Preview"
+                                style={{
+                                    // maxWidth: '200px',
+                                    width: '100%',
+                                    maxHeight: '400px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #ddd'
+                                }}
+                            />
+                        </div>
+                    )}
+                    {uploadingImage && (
+                        <div style={{ marginTop: '10px', color: '#007bff' }}>
+                            Uploading image...
+                        </div>
+                    )}
+                </div>
+            </CustomModal>
 
             {/* Image Zoom Modal */}
-            <Modal 
-                show={showImageZoom} 
-                onHide={closeImageZoom} 
+            <Modal
+                show={showImageZoom}
+                onHide={closeImageZoom}
                 size='xl'
                 centered
                 style={{ zIndex: 2000 }}
@@ -1396,7 +1366,7 @@ const GetProductTypeList = async () => {
                 <Modal.Header closeButton style={{ border: 'none', paddingBottom: 0 }}>
                     <Modal.Title>Product Image</Modal.Title>
                 </Modal.Header>
-                <Modal.Body style={{ 
+                <Modal.Body style={{
                     padding: '20px',
                     display: 'flex',
                     justifyContent: 'center',
@@ -1419,14 +1389,14 @@ const GetProductTypeList = async () => {
                         />
                     )}
                 </Modal.Body>
-                <Modal.Footer style={{ 
-                    border: 'none', 
+                <Modal.Footer style={{
+                    border: 'none',
                     justifyContent: 'center',
                     backgroundColor: '#000',
                     paddingTop: 0
                 }}>
-                    <div style={{ 
-                        color: '#fff', 
+                    <div style={{
+                        color: '#fff',
                         fontSize: '14px',
                         textAlign: 'center'
                     }}>
@@ -1441,7 +1411,8 @@ const GetProductTypeList = async () => {
                         <h1 className='h-customer'>PRODUCT MANAGEMENT</h1>
                     </div>
                     <div>
-                        <button className='add-cust-bttn' onClick={(e) => triggerModal('addProduct', '0', e)}>ADD PRODUCT+</button>
+                        {/* <button className='add-cust-bttn' onClick={(e) => triggerModal('addProduct', '0', e)}>ADD PRODUCT+</button> */}
+                        <Button variant="primary" onClick={(e) => triggerModal('addProduct', '0', e)}>ADD PRODUCT+</Button>
                     </div>
                 </div>
 
@@ -1617,7 +1588,7 @@ const GetProductTypeList = async () => {
                     </div>
                 </div>
 
-          
+
 
                 {/* Product Active Filters */}
                 <div style={{
@@ -1843,115 +1814,6 @@ const GetProductTypeList = async () => {
                     </div>
                 </div>
 
-                {/* Products Table */}
-                {/* <div className='tableContainer' style={{ height: '40vh', overflowY: 'auto' }}>
-                    {currentProductItems && currentProductItems.length > 0 ? (
-                        <table className='table'>
-                            <thead>
-                                <tr>
-                                    <th
-                                        className='t2'
-                                        onClick={() => handleSort('product_name')}
-                                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span>PRODUCT CODE</span>
-                                            {renderSortArrow('product_name')}
-                                        </div>
-                                    </th>
-                                    <th
-                                        className='t3'
-                                        onClick={() => handleSort('description')}
-                                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span>PRODUCT DESCRIPTION</span>
-                                            {renderSortArrow('description')}
-                                        </div>
-                                    </th>
-                                    <th
-                                        className='t2'
-                                        onClick={() => handleSort('price')}
-                                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span>PRICE</span>
-                                            {renderSortArrow('price')}
-                                        </div>
-                                    </th>
-                                    <th
-                                        className='t2'
-                                        onClick={() => handleSort('category_name')}
-                                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <span>CATEGORY</span>
-                                            {renderSortArrow('category_name')}
-                                        </div>
-                                    </th>
-                                    <th className='th1'>TOTAL SALE</th>
-                                    <th className='th1'>ACTION</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {currentProductItems.map((p, i) => (
-                                    <tr className='table-row' key={i} onClick={(e) => triggerModal('viewProduct', p.product_id, e)}>
-                                        <td className='td-name'>{p.product_name}</td>
-                                        <td className='td-name'>{p.description}</td>
-                                        <td className='td-name'>₱{parseFloat(p.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                        <td className='td-name'>{p.category_name}</td>
-                                        <td style={{ textAlign: 'center' }}>0</td>
-                                        <td>
-                                            <span className='action' onClick={(e) => {
-                                                e.stopPropagation();
-                                                triggerModal('editProduct', p.product_id, e);
-                                            }}>
-                                                ✏️
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            height: '100%',
-                            textAlign: 'center',
-                            color: '#6c757d',
-                            padding: '40px 20px'
-                        }}>
-                            <div style={{
-                                fontSize: '48px',
-                                marginBottom: '20px',
-                                opacity: 0.3
-                            }}>
-                                📦
-                            </div>
-                            <h4 style={{
-                                color: '#495057',
-                                marginBottom: '10px',
-                                fontWeight: '500'
-                            }}>
-                                {productList.length === 0 ? 'No products available' : 'No products match the current filters'}
-                            </h4>
-                            <p style={{
-                                margin: '0',
-                                fontSize: '14px',
-                                maxWidth: '300px',
-                                lineHeight: '1.4'
-                            }}>
-                                {productList.length === 0
-                                    ? 'Products will appear here once added.'
-                                    : 'Try adjusting your filters to see more results.'
-                                }
-                            </p>
-                        </div>
-                    )}
-                </div> */}
 
                 {/* Products Grid - Replace the table container section */}
                 <div className='products-grid-container' style={{
@@ -2087,7 +1949,7 @@ const GetProductTypeList = async () => {
                                 {currentProductItems.map((product, index) => (
                                     <div
                                         key={index}
-                                        onClick={(e) => triggerModal('viewProduct', product.product_id, e)}
+                                        onClick={(e) => triggerModal('editProduct', product.product_id, e)}
                                         style={{
                                             backgroundColor: 'white',
                                             borderRadius: '12px',
@@ -2173,10 +2035,10 @@ const GetProductTypeList = async () => {
                                                 alignItems: 'center',
                                                 gap: '4px'
                                             }}>
-                                                <span style={{ 
-                                                    width: '6px', 
-                                                    height: '6px', 
-                                                    backgroundColor: 'white', 
+                                                <span style={{
+                                                    width: '6px',
+                                                    height: '6px',
+                                                    backgroundColor: 'white',
                                                     borderRadius: '50%',
                                                     display: 'inline-block'
                                                 }}></span>

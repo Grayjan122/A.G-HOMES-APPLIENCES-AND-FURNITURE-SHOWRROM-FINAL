@@ -64,7 +64,7 @@ const Sidebar = () => {
   useEffect(() => {
     if (typeof window !== 'undefined' && isMounted) {
       setUser_id(sessionStorage.getItem('user_id'));
-      
+
       // Check if there's a stored activePage (for Profile navigation)
       const storedPage = sessionStorage.getItem('activePage');
       if (storedPage) {
@@ -104,7 +104,7 @@ const Sidebar = () => {
       icon: '/assets/images/dash-icons/last-product.png',
       component: <ProductsAdmin />,
       children: [
-         {
+        {
           key: 'categories',
           label: 'Category',
           component: <CategoryAdmin />,
@@ -114,11 +114,11 @@ const Sidebar = () => {
           label: 'Product Types',
           component: <ProductTypeAdmin />,
         },
-        {
-          key: 'product-parts',
-          label: 'Parts Assignment',
-          component: <ProductPartsAssignment />,
-        },
+        // {
+        //   key: 'product-parts',
+        //   label: 'Parts Assignment',
+        //   component: <ProductPartsAssignment />,
+        // },
       ]
     },
     {
@@ -139,7 +139,7 @@ const Sidebar = () => {
           label: 'Receive Stock',
           component: <ReceiveStockIM />,
         },
-      
+
         // {
         //   key: 'request-stock',
         //   label: 'Request Stock',
@@ -154,7 +154,7 @@ const Sidebar = () => {
         {
           key: 'inventory-ledger',
           label: 'Inventory Ledger',
-          component: <InventoryLedgerIM/>,
+          component: <InventoryLedgerIM />,
         },
         {
           key: 'customize-inventory',
@@ -178,11 +178,11 @@ const Sidebar = () => {
     },
     {
       key: 'transfer-request-list',
-        label: 'Transfer Request List',
+      label: 'Transfer Request List',
       icon: '/assets/images/dash-icons/transfer.png',
       component: <TransferRequestManagement />,
       children: [
-       
+
       ],
     },
     {
@@ -191,7 +191,7 @@ const Sidebar = () => {
       icon: '/assets/images/dash-icons/last-location.png',
       component: <Location />,
       children: [
-          {
+        {
           key: 'branch-management',
           label: 'Branch',
           component: <BranchAdmin />,
@@ -205,20 +205,20 @@ const Sidebar = () => {
     //   component: <DeliveryAdmin />,
     //   children: []
     // },
-    {
-      key: 'orders',
-      label: 'ORDERS',
-      icon: '/assets/images/dash-icons/orders.png',
-      component: <OrdersManagement />,
-      children: []
-    },
-    {
-      key: 'discount',
-      label: 'DISCOUNT',
-      icon: '/assets/images/dash-icons/discount.png',
-      component: <DiscountController />,
-      children: []
-    },
+    // {
+    //   key: 'orders',
+    //   label: 'ORDERS',
+    //   icon: '/assets/images/dash-icons/orders.png',
+    //   component: <OrdersManagement />,
+    //   children: []
+    // },
+    // {
+    //   key: 'discount',
+    //   label: 'DISCOUNT',
+    //   icon: '/assets/images/dash-icons/discount.png',
+    //   component: <DiscountController />,
+    //   children: []
+    // },
     {
       key: 'customer',
       label: 'CUSTOMER',
@@ -244,7 +244,7 @@ const Sidebar = () => {
           label: 'Product Requests',
           component: <CombinedRequests />,
         },
-       
+
       ],
     },
     {
@@ -330,12 +330,12 @@ const Sidebar = () => {
   const isParentActive = (page) => {
     // Parent is active if it's directly selected
     if (activePage === page.key) return true;
-    
+
     // Parent is also active if any of its children are selected
     if (page.children && page.children.length > 0) {
       return page.children.some(child => child.key === activePage);
     }
-    
+
     return false;
   };
 
@@ -430,7 +430,7 @@ const Sidebar = () => {
                     }
                   }}
                 >
-                  <Image src={page.icon} width={40} height={40} alt={page.label} />
+                  <Image src={page.icon} width={30} height={30} alt={page.label} />
                   {page.label}
                 </p>
 

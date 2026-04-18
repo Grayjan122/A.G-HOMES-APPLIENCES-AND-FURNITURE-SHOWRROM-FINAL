@@ -1809,6 +1809,23 @@ export default function ShopPage() {
     }
   };
 
+  // Helper function to get stock quantity for a product at a specific location
+  const getStockQuantityAtLocation = (productId, locationId) => {
+    if (!productId || !locationId) return 0;
+    
+    const inventory = productInventories[productId] || [];
+    if (!Array.isArray(inventory) || inventory.length === 0) return 0;
+    
+    // Find inventory entry for this location
+    const locationInv = inventory.find(inv => {
+      const invLocationId = normalizeId(inv.location_id);
+      const targetLocationId = normalizeId(locationId);
+      return invLocationId === targetLocationId;
+    });
+    
+    return locationInv ? parseInt(locationInv.qty || 0) : 0;
+  };
+
   // Get available locations for a product (stores with stock + warehouse)
   const getAvailableLocationsForProduct = (product) => {
     const inventory = productInventories[product.product_id] || [];
@@ -1983,6 +2000,25 @@ export default function ShopPage() {
     let newCart;
     
     if (existingItem && !product.isCustom) {
+      // Check inventory limit for in-stock items (not made-to-order)
+      const currentQuantity = existingItem.quantity;
+      const isMadeToOrderItem = isMadeToOrder || existingItem.isMadeToOrder;
+      
+      if (!isMadeToOrderItem && selectedLocationId) {
+        const availableStock = getStockQuantityAtLocation(product.product_id, selectedLocationId);
+        const newQuantity = currentQuantity + 1;
+        
+        if (newQuantity > availableStock) {
+          showAlertError({
+            icon: "warning",
+            title: "Stock Limit Reached",
+            text: `You can only add up to ${availableStock} unit(s) of this product from ${selectedLocationName || 'this location'}. You currently have ${currentQuantity} in your cart.`,
+            button: 'OK'
+          });
+          return; // Don't add more
+        }
+      }
+      
       newCart = cart.map(item =>
         item.product_id === product.product_id && 
         !item.isCustom &&
@@ -1997,10 +2033,26 @@ export default function ShopPage() {
           : item
       );
     } else {
+      // Check inventory limit for new in-stock items (not made-to-order)
+      const isMadeToOrderItem = isMadeToOrder || product.isCustom || false;
+      
+      if (!isMadeToOrderItem && selectedLocationId) {
+        const availableStock = getStockQuantityAtLocation(product.product_id, selectedLocationId);
+        if (availableStock <= 0) {
+          showAlertError({
+            icon: "warning",
+            title: "Out of Stock",
+            text: `This product is currently out of stock at ${selectedLocationName || 'this location'}.`,
+            button: 'OK'
+          });
+          return; // Don't add to cart
+        }
+      }
+      
       const newCartItem = { 
         ...product, 
         quantity: 1,
-        isMadeToOrder: isMadeToOrder || product.isCustom || false, // Custom items are always made to order
+        isMadeToOrder: isMadeToOrderItem, // Custom items are always made to order
         preferred_location_id: selectedLocationId || null,
         preferred_location_name: selectedLocationName || null
       };
@@ -2334,6 +2386,32 @@ export default function ShopPage() {
     if (quantity <= 0) {
       removeFromCart(productId, locationId);
       return;
+    }
+    
+    // Find the cart item to update
+    const itemToUpdate = cart.find(item => {
+      if (locationId !== null) {
+        return item.product_id === productId && 
+               (item.preferred_location_id == locationId || 
+                String(item.preferred_location_id) === String(locationId));
+      } else {
+        return item.product_id === productId;
+      }
+    });
+    
+    // Check inventory limit for in-stock items (not made-to-order)
+    if (itemToUpdate && !itemToUpdate.isMadeToOrder && !itemToUpdate.isCustom && locationId) {
+      const availableStock = getStockQuantityAtLocation(productId, locationId);
+      if (quantity > availableStock) {
+        showAlertError({
+          icon: "warning",
+          title: "Stock Limit Reached",
+          text: `You can only add up to ${availableStock} unit(s) of this product from ${itemToUpdate.preferred_location_name || 'this location'}.`,
+          button: 'OK'
+        });
+        // Cap the quantity at available stock
+        quantity = availableStock;
+      }
     }
     
     // If locationId is provided, only update items with matching product_id AND location_id
@@ -3178,7 +3256,7 @@ export default function ShopPage() {
 
       {/* Discount Banner */}
       {activeDiscount && (
-        <div style={{
+        <div className="discount-banner" style={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
           padding: '20px 24px',
@@ -3193,7 +3271,7 @@ export default function ShopPage() {
           maxWidth: '100%',
           boxSizing: 'border-box'
         }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flex: 1, minWidth: '250px' }}>
+          <div className="discount-banner-content" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flex: 1, minWidth: '250px' }}>
             <span style={{ fontSize: '2.5rem', lineHeight: '1' }}>🎉</span>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ 

@@ -388,7 +388,7 @@ const DeliveryCustomizeWR = () => {
 
         const semiMapped = semi.map(item => ({
             type: 'Semi-Customized',
-            baseProductId: item.product_name || item.baseProduct_id,  // Include product_name
+            productName: item.product_name || 'N/A',  // Use product_name
             description: item.description || 'N/A',  // Include description from products table
             modifications: item.modifications || 'N/A',
             qty: item.qty
@@ -396,6 +396,7 @@ const DeliveryCustomizeWR = () => {
 
         const fullMapped = full.map(item => ({
             type: 'Full-Customized',
+            productName: 'N/A',
             description: item.description || 'N/A',
             additionalDescription: item.additional_description || 'N/A',
             qty: item.qty
@@ -423,9 +424,28 @@ const DeliveryCustomizeWR = () => {
             filtered = [...filtered, ...normalWithType];
         }
 
-        // Sort by date and time - oldest to newest (oldest first)
+        // Sort by id_maker ascending, then by date and time
         filtered.sort((a, b) => {
-            // For normal deliveries, combine date and time for accurate sorting
+            // First, sort by id_maker (ascending)
+            const getIdMaker = (item) => {
+                if (item.deliveryType === 'customize') {
+                    const requestInfo = getRequestInfo(item.customize_request_id);
+                    return item.id_maker || requestInfo.id_maker || item.customize_request_id || '';
+                } else {
+                    return item.id_maker || item.request_stock_id || '';
+                }
+            };
+
+            const idMakerA = getIdMaker(a);
+            const idMakerB = getIdMaker(b);
+
+            // Compare id_maker (treat as string for proper sorting)
+            const idMakerCompare = String(idMakerA).localeCompare(String(idMakerB), undefined, { numeric: true, sensitivity: 'base' });
+            if (idMakerCompare !== 0) {
+                return idMakerCompare;
+            }
+
+            // If id_maker is the same, sort by date and time - oldest to newest (oldest first)
             let dateA, dateB;
 
             if (a.deliveryType === 'normal' && a.date && a.delivery_time) {
@@ -837,14 +857,14 @@ const DeliveryCustomizeWR = () => {
                                         const allItems = [
                                             ...(deliveryDetails.semi || []).map(item => ({
                                                 type: 'Semi-Customized',
-                                                baseProductId: item.baseProductId,
+                                                productName: item.productName || 'N/A',
                                                 description: item.description || 'N/A',
                                                 additionalDescription: item.modifications || 'No modifications',
                                                 qty: item.qty
                                             })),
                                             ...(deliveryDetails.full || []).map(item => ({
                                                 type: 'Full-Customized',
-                                                baseProductId: null,
+                                                productName: item.productName || 'N/A',
                                                 description: item.description || 'N/A',
                                                 additionalDescription: item.additionalDescription || 'N/A',
                                                 qty: item.qty
@@ -881,7 +901,7 @@ const DeliveryCustomizeWR = () => {
                                                                     {item.type}
                                                                 </span>
                                                             </td>
-                                                            <td style={{ fontWeight: '500' }}>{item.baseProductId || 'N/A'}</td>
+                                                            <td style={{ fontWeight: '500' }}>{item.productName || 'N/A'}</td>
                                                             <td>{item.description}</td>
                                                             <td>{item.additionalDescription || 'N/A'}</td>
                                                             <td style={{ textAlign: 'center', fontWeight: '500', fontSize: '16px' }}>{item.qty || 0}</td>

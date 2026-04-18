@@ -344,6 +344,8 @@ const ReceiveTransferDelivery = () => {
                 }
             });
 
+            // console.log(statusResponse);
+
             if (statusResponse.data && statusResponse.data.success) {
                 const receiverName = sessionStorage.getItem('fullname') || 'Unknown User';
                 const transferRequestId = transfer_delivery_id || s_transferID;

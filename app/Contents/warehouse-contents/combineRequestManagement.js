@@ -1456,6 +1456,7 @@ const UnifiedRequestManagement = () => {
                                     ...(currentSemiDetails || []).map(item => ({
                                         type: 'Semi-Customized',
                                         baseProductId: item.baseProduct_id,
+                                        productName: item.product_name || 'N/A',
                                         description: item.description || 'No description',
                                         additionalDescription: item.modifications || 'No modifications specified',
                                         qty: item.qty
@@ -1463,6 +1464,7 @@ const UnifiedRequestManagement = () => {
                                     ...(currentFullDetails || []).map(item => ({
                                         type: 'Full-Customized',
                                         baseProductId: null,
+                                        productName: 'N/A',
                                         description: item.description || 'N/A',
                                         additionalDescription: item.additional_description || 'N/A',
                                         qty: item.qty
@@ -1499,7 +1501,7 @@ const UnifiedRequestManagement = () => {
                                                             {item.type}
                                                         </span>
                                                     </td>
-                                                    <td style={{ padding: '12px', fontWeight: '500' }}>{item.baseProductId || 'N/A'}</td>
+                                                    <td style={{ padding: '12px', fontWeight: '500' }}>{item.productName || 'N/A'}</td>
                                                     <td style={{ padding: '12px' }}>{item.description}</td>
                                                     <td style={{ padding: '12px' }}>{item.additionalDescription || 'N/A'}</td>
                                                     <td style={{ padding: '12px', textAlign: 'center', fontWeight: '500', fontSize: '16px' }}>{item.qty || 0}</td>

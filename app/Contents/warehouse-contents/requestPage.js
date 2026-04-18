@@ -1117,7 +1117,7 @@ const CombinedRequests = () => {
         setShowCustomizeModal(true);
     };
 
-    // Combine and sort all requests
+    // Combine and sort all requests by id_maker ascending
     const allRequests = [
         ...stockRequestList.map(req => ({
             ...req,
@@ -1134,6 +1134,16 @@ const CombinedRequests = () => {
             displayTime: req.time
         }))
     ].sort((a, b) => {
+        // Sort by id_maker (ascending) - treat as string for proper alphanumeric sorting
+        const idA = String(a.id || '');
+        const idB = String(b.id || '');
+        const idCompare = idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+        
+        // If id_maker is the same, sort by date/time as secondary sort
+        if (idCompare !== 0) {
+            return idCompare;
+        }
+        
         const dateTimeA = new Date(`${a.displayDate} ${a.displayTime || '00:00:00'}`);
         const dateTimeB = new Date(`${b.displayDate} ${b.displayTime || '00:00:00'}`);
         return dateTimeA - dateTimeB;
@@ -1364,6 +1374,7 @@ const CombinedRequests = () => {
                                     ...(currentSemiDetails || []).map(item => ({
                                         type: 'Semi-Customized',
                                         baseProductId: item.baseProduct_id,
+                                        productName: item.product_name || 'N/A',
                                         description: item.description || 'No description',
                                         additionalDescription: item.modifications || 'No modifications specified',
                                         qty: item.qty
@@ -1371,6 +1382,7 @@ const CombinedRequests = () => {
                                     ...(currentFullDetails || []).map(item => ({
                                         type: 'Full-Customized',
                                         baseProductId: null,
+                                        productName: 'N/A',
                                         description: item.description || 'N/A',
                                         additionalDescription: item.additional_description || 'N/A',
                                         qty: item.qty
@@ -1407,7 +1419,7 @@ const CombinedRequests = () => {
                                                             {item.type}
                                                         </span>
                                                     </td>
-                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6', fontWeight: '500' }}>{item.baseProductId || 'N/A'}</td>
+                                                    <td style={{ padding: '12px', border: '1px solid #dee2e6', fontWeight: '500' }}>{item.productName || 'N/A'}</td>
                                                     <td style={{ padding: '12px', border: '1px solid #dee2e6' }}>{item.description}</td>
                                                     <td style={{ padding: '12px', border: '1px solid #dee2e6' }}>{item.additionalDescription || 'N/A'}</td>
                                                     <td style={{ padding: '12px', border: '1px solid #dee2e6', textAlign: 'center', fontWeight: '500', fontSize: '16px' }}>{item.qty || 0}</td>

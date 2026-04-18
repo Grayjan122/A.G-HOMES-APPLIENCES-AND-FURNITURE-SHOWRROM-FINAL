@@ -488,7 +488,6 @@ export default function CombinedSalePage() {
 
   const handleInstallmentSelection = (installment) => {
     setSelectedInstallmentForPayment(installment);
-    setPaymentAmount('');
     setCashAmount('');
     // Filter installment details to only those for the selected customer's installments
     const customerInstallmentIds = installmentList.filter(inst => 
@@ -511,6 +510,16 @@ export default function CombinedSalePage() {
 
     // Always require all overdue payments
     const overduePayments = unpaidPayments.filter(payment => payment.days_overdue >= 3);
+    
+    // Calculate required payments and minimum amount due
+    const requiredPayments = overduePayments.length > 0 
+      ? overduePayments 
+      : (unpaidPayments.length > 0 ? [unpaidPayments[0]] : []);
+    
+    const minimumAmountDue = requiredPayments.reduce((sum, payment) => sum + payment.total_amount, 0);
+    
+    // Set default payment amount to minimum amount due
+    setPaymentAmount(minimumAmountDue > 0 ? minimumAmountDue.toString() : '');
     
     // If there are overdue payments, require all of them
     // Otherwise, require at least the next due payment
@@ -695,10 +704,21 @@ export default function CombinedSalePage() {
       
       const selectedPaymentsList = requiredPayments;
       const totalAmountDue = selectedPaymentsList.reduce((sum, payment) => sum + payment.total_amount, 0);
-      const enteredAmount = parseFloat(paymentAmount) || 0;
+      
+      // Get remaining balance from the selected installment
+      const remainingBalance = parseFloat(selectedInstallmentForPayment?.balance) || 0;
+      
+      // Use minimum amount as default if paymentAmount is empty
+      const finalPaymentAmount = paymentAmount && parseFloat(paymentAmount) > 0 
+        ? paymentAmount 
+        : totalAmountDue.toString();
+      const enteredAmount = parseFloat(finalPaymentAmount) || totalAmountDue;
+      
+      // Define cashAmountNum before using it
+      const cashAmountNum = parseFloat(cashAmount) || 0;
 
       // Validate payment amount
-      if (!paymentAmount || enteredAmount <= 0) {
+      if (enteredAmount <= 0) {
         showAlertError({
           icon: "error",
           title: "Payment Amount Required!",
@@ -713,6 +733,17 @@ export default function CombinedSalePage() {
           icon: "error",
           title: "Insufficient Amount!",
           text: `Payment amount (${formatCurrency(enteredAmount)}) is less than the required amount (${formatCurrency(totalAmountDue)}).`,
+          button: 'OK'
+        });
+        return;
+      }
+
+      // Validate that payment doesn't exceed remaining balance
+      if (enteredAmount > remainingBalance) {
+        showAlertError({
+          icon: "error",
+          title: "Payment Exceeds Balance!",
+          text: `Payment amount (${formatCurrency(enteredAmount)}) exceeds the remaining balance (${formatCurrency(remainingBalance)}). Maximum payment allowed: ${formatCurrency(remainingBalance)}.`,
           button: 'OK'
         });
         return;
@@ -4084,10 +4115,16 @@ export default function CombinedSalePage() {
                             border: '1px solid #10b981',
                             marginBottom: '16px'
                           }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                               <span style={{ fontWeight: '600', fontSize: '16px' }}>Minimum Amount Due:</span>
                               <span style={{ fontWeight: '700', fontSize: '20px', color: '#10b981' }}>
                                 {formatCurrency(minimumAmountDue)}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                              <span style={{ fontWeight: '600', fontSize: '16px', color: '#6b7280' }}>Maximum (Remaining Balance):</span>
+                              <span style={{ fontWeight: '700', fontSize: '18px', color: '#6b7280' }}>
+                                {formatCurrency(selectedInstallmentForPayment?.balance || 0)}
                               </span>
                             </div>
                             
@@ -4101,36 +4138,75 @@ export default function CombinedSalePage() {
                                 value={paymentAmount}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
-                                    setPaymentAmount(value);
+                                  const maxAmount = selectedInstallmentForPayment?.balance || 0;
+                                  
+                                  if (value === '') {
+                                    setPaymentAmount('');
+                                  } else if (!isNaN(parseFloat(value)) && parseFloat(value) >= 0) {
+                                    // Automatically cap at maximum if exceeds
+                                    const numValue = parseFloat(value);
+                                    if (numValue > maxAmount) {
+                                      setPaymentAmount(maxAmount.toString());
+                                    } else {
+                                      setPaymentAmount(value);
+                                    }
                                   }
                                 }}
-                                placeholder={`Minimum: ${formatCurrency(minimumAmountDue)}`}
+                                onBlur={(e) => {
+                                  const value = parseFloat(e.target.value) || 0;
+                                  const maxAmount = selectedInstallmentForPayment?.balance || 0;
+                                  const minAmount = minimumAmountDue;
+                                  
+                                  // Ensure value is within bounds
+                                  if (value > maxAmount) {
+                                    setPaymentAmount(maxAmount.toString());
+                                  } else if (value > 0 && value < minAmount) {
+                                    setPaymentAmount(minAmount.toString());
+                                  }
+                                }}
+                                placeholder={`Min: ${formatCurrency(minimumAmountDue)} | Max: ${formatCurrency(selectedInstallmentForPayment?.balance || 0)}`}
                                 min={minimumAmountDue}
+                                max={selectedInstallmentForPayment?.balance || 0}
                                 step="0.01"
                                 style={{
                                   width: '100%',
                                   padding: '12px',
-                                  border: paymentAmount && parseFloat(paymentAmount) >= minimumAmountDue ? '2px solid #10b981' : '2px solid #dc2626',
+                                  border: (() => {
+                                    const amount = parseFloat(paymentAmount) || 0;
+                                    if (amount === 0) return '2px solid #e5e7eb';
+                                    if (amount < minimumAmountDue) return '2px solid #dc2626';
+                                    if (amount > (selectedInstallmentForPayment?.balance || 0)) return '2px solid #dc2626';
+                                    return '2px solid #10b981';
+                                  })(),
                                   borderRadius: '8px',
                                   fontSize: '16px',
                                   fontWeight: '600',
                                   boxSizing: 'border-box'
                                 }}
                               />
-                              {paymentAmount && parseFloat(paymentAmount) > 0 && (
-                                <div style={{ marginTop: '8px', fontSize: '13px' }}>
-                                  {parseFloat(paymentAmount) >= minimumAmountDue ? (
-                                    <div style={{ color: '#10b981', fontWeight: '600' }}>
-                                      ✓ Payment Amount: {formatCurrency(parseFloat(paymentAmount))}
-                                    </div>
-                                  ) : (
-                                    <div style={{ color: '#dc2626', fontWeight: '600' }}>
+                              {paymentAmount && parseFloat(paymentAmount) > 0 && (() => {
+                                const amount = parseFloat(paymentAmount);
+                                const maxAmount = selectedInstallmentForPayment?.balance || 0;
+                                if (amount < minimumAmountDue) {
+                                  return (
+                                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#dc2626', fontWeight: '600' }}>
                                       ⚠️ Amount is less than required. Minimum: {formatCurrency(minimumAmountDue)}
                                     </div>
-                                  )}
-                                </div>
-                              )}
+                                  );
+                                } else if (amount > maxAmount) {
+                                  return (
+                                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#dc2626', fontWeight: '600' }}>
+                                      ⚠️ Amount exceeds remaining balance. Maximum: {formatCurrency(maxAmount)}
+                                    </div>
+                                  );
+                                } else {
+                                  return (
+                                    <div style={{ marginTop: '8px', fontSize: '13px', color: '#10b981', fontWeight: '600' }}>
+                                      ✓ Payment Amount: {formatCurrency(amount)}
+                                    </div>
+                                  );
+                                }
+                              })()}
                             </div>
                             
                             {/* Cash Amount Input */}
@@ -4256,9 +4332,11 @@ export default function CombinedSalePage() {
                   
                   const paymentAmountNum = parseFloat(paymentAmount || 0);
                   const cashAmountNum = parseFloat(cashAmount || 0);
+                  const remainingBalance = parseFloat(selectedInstallmentForPayment?.balance || 0);
                   
                   const isDisabled = !paymentAmount || 
                                      paymentAmountNum < totalAmountDue ||
+                                     paymentAmountNum > remainingBalance ||
                                      !cashAmount ||
                                      cashAmountNum < paymentAmountNum;
 

@@ -400,7 +400,7 @@ export default function DeliveryTracking() {
       console.log('Notification response:', response.data);
       
       if (response.data !== 'Success') {
-        console.error('Email notification failed:', response.data);
+        // console.error('Email notification failed:', response.data);
         showAlertError({
           icon: "warning",
           title: "Email Not Sent",

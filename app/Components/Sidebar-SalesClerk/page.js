@@ -119,17 +119,19 @@ const SidebarSaleClerk = () => {
     // },
     {
       key: 'customize',
-      label: 'CUSTOMIZE INVENTORY',
+      label: 'RECEIVE CUSTOMIZE',
+     
       icon: '/assets/images/dash-icons/last-customer1.png',
-      component: <CustomizeInventorySC />,
-      children: [
-        {
-          key: 'customizeRecieve',
-          label: 'Receive Customize',
-          icon: '/assets/images/sale.png',
-          component: <ReceiveCustomizeSC />
-        }
-      ]
+      component: <ReceiveCustomizeSC />,
+      // children: [
+      //   {
+      //     key: 'customizeRecieve',
+      //     label: 'CUSTOMIZE INVENTORY',
+      //     icon: '/assets/images/sale.png',
+         
+      //     component: <CustomizeInventorySC />,
+      //   }
+      // ]
     },
     {
       key: 'customer',

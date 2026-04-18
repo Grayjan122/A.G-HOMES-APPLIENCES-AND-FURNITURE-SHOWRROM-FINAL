@@ -519,8 +519,8 @@ const CustomizeInventorySC = () => {
                                     <tbody>
                                         {currentItems1.map((item, index) => {
                                             const isNegativeType = ['Sales', 'Transfer Stock', 'Stock Out'].includes(item.type);
-                                            const displayQty = isNegativeType && parseInt(item.qty) > 0 ? -parseInt(item.qty) : parseInt(item.qty);
-                                            const isPositiveChange = displayQty >= 0;
+                                            // Display neutral quantity without signs
+                                            const displayQty = Math.abs(parseInt(item.qty) || 0);
                                             return (
                                                 <tr
                                                     key={index}
@@ -546,9 +546,9 @@ const CustomizeInventorySC = () => {
                                                         padding: '12px',
                                                         fontSize: '14px',
                                                         fontWeight: '700',
-                                                        color: isPositiveChange ? '#198754' : '#dc3545'
+                                                        color: '#212529'
                                                     }}>
-                                                        {displayQty > 0 ? '+' : ''}{displayQty}
+                                                        {displayQty}
                                                     </td>
                                                     <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600' }}>{item.current_balance}</td>
                                                     <td style={{ padding: '12px', fontSize: '14px', color: '#6c757d' }}>{item.date}</td>

@@ -24,12 +24,7 @@
 }
 
 /* Sidebar Header for mobile close button */
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 10px;
-}
+
 
 /* Close button - hidden on desktop */
 .close-sidebar {
@@ -121,11 +116,12 @@
 
 /* Sidebar title */
 .sidebar-title {
-  font-size: 30px;
+  font-size: 18px;
   font-weight: bold;
   margin-bottom: 30px;
-  text-align: center;
+  text-align: center !important;
   color: #108B96;
+
 }
 
 .line {
@@ -151,7 +147,7 @@
 .sidebar-nav p {
   color: rgb(0, 0, 0);
   text-decoration: none;
-  font-size: 18px;
+  font-size: 14px;
   /* padding: 8px 12px; */
   /* border-radius: 6px; */
   height: 70px;
@@ -171,6 +167,7 @@
   color: #1e1e2f;
   box-shadow: 5px 2px 8px rgba(0, 0, 0, 0.2);
   cursor: pointer;
+
 }
 
 .sidebar-item.active {
@@ -181,10 +178,11 @@
 .child-menu {
   padding-left: 20px;
   background-color: rgba(0, 0, 0, 0.05);
+
 }
 
 .sidebar-child-item {
-  font-size: 14px;
+  font-size: 14px !important;
   color: #333;
   cursor: pointer;
   height: 55px;
@@ -209,6 +207,7 @@
 
 /* Tablet and below */
 @media (max-width: 1024px) {
+
   /* Adjust main content to full width */
   .main-content {
     margin-left: 0;
@@ -250,7 +249,7 @@
   }
 
   .sidebar-title {
-    font-size: 24px !important;
+    font-size: 12px !important;
   }
 
   .sidebar-nav {

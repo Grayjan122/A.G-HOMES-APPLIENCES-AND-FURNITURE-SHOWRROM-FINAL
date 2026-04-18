@@ -969,7 +969,7 @@ export default function OrdersPage() {
         // Prepare inventory update data for in-stock items
         const inventoryUpdates = await prepareInventoryUpdateData(itemsWithLocations);
 
-        // console.log(inventoryUpdates);
+        // console.log(itemsWithLocations);
         // return;
 
        

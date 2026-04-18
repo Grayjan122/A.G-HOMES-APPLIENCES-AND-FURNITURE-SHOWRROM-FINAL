@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "A.G HOME",
   description: "A&G Homes Appliances and Furniture",
+  icons: {
+    icon: '/favicon.ico?v=1',
+  },
 };
 
 export default function RootLayout({ children }) {

@@ -70,7 +70,7 @@ const TransferStock = () => {
             // Set source location (from) to current location and lock it
             if (locationId) {
                 setRequestFromLocation(locationId);
-                setRequestToLocation(locationId);
+                // Don't set destination location - it should be selected by user
             }
         }
     }, []);
@@ -729,8 +729,11 @@ const TransferStock = () => {
     const handleNewRequest = () => {
         setShowNewRequestModal(true);
         setRequestFromLocation(currentLocationId); // Lock to current location
-        setRequestToLocation(currentLocationId);
+        setRequestToLocation(''); // Start with empty destination location
         setSelectedProducts([]);
+        setProductList([]); // Clear product list
+        setSourceLocationInventory([]); // Clear inventory data
+        setDestinationLocationInventory([]); // Clear inventory data
         setSearchTerm('');
         setFilterType('all');
     };
@@ -969,24 +972,36 @@ const TransferStock = () => {
                         }
                         
                         .tracker-container {
-                            padding: 15px !important;
+                            padding: 12px !important;
+                            margin-bottom: 20px !important;
                         }
                         
                         .tracker-container h5 {
-                            font-size: 1rem !important;
+                            font-size: 0.9rem !important;
+                            margin-bottom: 12px !important;
                         }
                         
                         .tracker-step {
-                            padding-left: 30px !important;
+                            padding-left: 24px !important;
                         }
                         
                         .tracker-step-content {
-                            padding: 10px !important;
-                            font-size: 0.85rem !important;
+                            padding: 8px !important;
+                            font-size: 0.8rem !important;
                         }
                         
                         .tracker-step-content h6 {
-                            font-size: 0.9rem !important;
+                            font-size: 0.85rem !important;
+                            margin-bottom: 4px !important;
+                        }
+                        
+                        /* Reduce circle size and spacing on mobile */
+                        .tracker-step > div {
+                            padding-bottom: 25px !important;
+                        }
+                        
+                        .tracker-step > div:last-child {
+                            padding-bottom: 0 !important;
                         }
                     }
                     
@@ -1043,24 +1058,41 @@ const TransferStock = () => {
                         }
                         
                         .tracker-container {
-                            padding: 10px !important;
+                            padding: 8px !important;
+                            margin-bottom: 15px !important;
+                        }
+                        
+                        .tracker-container h5 {
+                            font-size: 0.85rem !important;
+                            margin-bottom: 10px !important;
                         }
                         
                         .tracker-step {
-                            padding-left: 25px !important;
+                            padding-left: 20px !important;
                         }
                         
                         .tracker-step-content {
-                            padding: 8px !important;
-                            font-size: 0.8rem !important;
+                            padding: 6px !important;
+                            font-size: 0.75rem !important;
                         }
                         
                         .tracker-step-content h6 {
-                            font-size: 0.85rem !important;
+                            font-size: 0.8rem !important;
+                            margin-bottom: 3px !important;
                         }
                         
                         .tracker-step-content p {
-                            font-size: 0.75rem !important;
+                            font-size: 0.7rem !important;
+                            margin: 2px 0 !important;
+                        }
+                        
+                        /* Reduce circle size and spacing on small mobile */
+                        .tracker-step > div {
+                            padding-bottom: 20px !important;
+                        }
+                        
+                        .tracker-step > div:last-child {
+                            padding-bottom: 0 !important;
                         }
                     }
                 `}
@@ -1430,8 +1462,11 @@ const TransferStock = () => {
                     <Modal show={showNewRequestModal} onHide={() => {
                         setShowNewRequestModal(false);
                         setSelectedProducts([]);
+                        setProductList([]); // Clear product list
+                        setSourceLocationInventory([]); // Clear inventory data
+                        setDestinationLocationInventory([]); // Clear inventory data
                         setRequestFromLocation(currentLocationId); // Keep locked to current location
-                        setRequestToLocation(currentLocationId);
+                        setRequestToLocation(''); // Reset to empty
                     }} size="xl">
                         <Modal.Header closeButton>
                             <Modal.Title>Request Stock Transfer</Modal.Title>
@@ -1466,6 +1501,9 @@ const TransferStock = () => {
                                             onChange={(e) => {
                                                 setRequestToLocation(e.target.value);
                                                 setSelectedProducts([]);
+                                                setProductList([]); // Clear product list when destination changes
+                                                setSourceLocationInventory([]); // Clear inventory data
+                                                setDestinationLocationInventory([]); // Clear inventory data
                                             }}
                                             required
                                         >
@@ -1609,7 +1647,7 @@ const TransferStock = () => {
                             )}
 
                             {/* Product Selection */}
-                            {requestFromLocation && requestToLocation && (
+                            {requestFromLocation && requestToLocation && requestToLocation !== currentLocationId ? (
                                 <div className="mb-4">
                                     <div className="d-flex justify-content-between align-items-center mb-3">
                                         <h5>Select Products to Transfer</h5>
@@ -1728,14 +1766,23 @@ const TransferStock = () => {
                                         </div>
                                     )}
                                 </div>
+                            ) : (
+                                <Alert variant="info" className="mb-4">
+                                    <strong>Please select a destination location to view available products.</strong>
+                                    <br />
+                                    <small>Choose a location from the "Request To (Destination Location)" dropdown above.</small>
+                                </Alert>
                             )}
                         </Modal.Body>
                         <Modal.Footer>
                             <Button variant="secondary" onClick={() => {
                                 setShowNewRequestModal(false);
                                 setSelectedProducts([]);
+                                setProductList([]); // Clear product list
+                                setSourceLocationInventory([]); // Clear inventory data
+                                setDestinationLocationInventory([]); // Clear inventory data
                                 setRequestFromLocation(currentLocationId); // Keep locked to current location
-                                setRequestToLocation(currentLocationId);
+                                setRequestToLocation(''); // Reset to empty
                             }}>
                                 Cancel
                             </Button>
@@ -1820,7 +1867,7 @@ const TransferStock = () => {
                                     
                                     {/* Transfer Progress Tracker */}
                                     <div className="tracker-container" style={{ marginBottom: '30px', padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-                                        <h5 style={{ marginBottom: '20px', textAlign: 'center', fontWeight: 'bold', fontSize: '18px' }}>
+                                        <h5 style={{ marginBottom: '20px', textAlign: 'center', fontWeight: 'bold', fontSize: typeof window !== 'undefined' && window.innerWidth <= 768 ? '14px' : '18px' }}>
                                             Transfer Progress Tracker
                                         </h5>
                                         
@@ -1830,12 +1877,17 @@ const TransferStock = () => {
                                             const rejectedColor = '#dc3545';
                                             
                                             return (
-                                                <div className="tracker-step" style={{ position: 'relative', paddingLeft: '40px' }}>
+                                                <div className="tracker-step" style={{ 
+                                                    position: 'relative', 
+                                                    paddingLeft: typeof window !== 'undefined' && window.innerWidth <= 768 ? '28px' : '40px' 
+                                                }}>
                                                     {stepsToShow.map((step, index) => {
-                                                        const circleSize = 20;
-                                                        const circleLeft = -28;
+                                                        // Responsive circle size - smaller on mobile
+                                                        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+                                                        const circleSize = isMobile ? 14 : 20;
+                                                        const circleLeft = isMobile ? -20 : -28;
                                                         const circleCenter = circleLeft + (circleSize / 2);
-                                                        const lineWidth = 3;
+                                                        const lineWidth = isMobile ? 2 : 3;
                                                         const lineLeft = circleCenter - (lineWidth / 2);
                                                         const lineTop = circleSize;
                                                         
@@ -1858,7 +1910,7 @@ const TransferStock = () => {
                                                         });
                                                         
                                                         return (
-                                                            <div key={index} style={{ position: 'relative', paddingBottom: index < stepsToShow.length - 1 ? '40px' : '0' }}>
+                                                            <div key={index} style={{ position: 'relative', paddingBottom: index < stepsToShow.length - 1 ? (isMobile ? '25px' : '40px') : '0' }}>
                                                                 {/* Vertical Line */}
                                                                 {index < stepsToShow.length - 1 && (() => {
                                                                     // Line should only be active if the NEXT step is also reached
@@ -1886,49 +1938,49 @@ const TransferStock = () => {
                                                                     height: `${circleSize}px`,
                                                                     borderRadius: '50%',
                                                                     backgroundColor: isActive ? activeColor : '#e0e0e0',
-                                                                    border: '3px solid white',
-                                                                    boxShadow: '0 0 0 2px ' + (isActive ? activeColor : '#e0e0e0'),
+                                                                    border: isMobile ? '2px solid white' : '3px solid white',
+                                                                    boxShadow: '0 0 0 ' + (isMobile ? '1.5px' : '2px') + ' ' + (isActive ? activeColor : '#e0e0e0'),
                                                                     zIndex: 1
                                                                 }} />
                                                             
                                                         {/* Step Content */}
                                                         <div className="tracker-step-content" style={{
-                                                            padding: '12px',
+                                                            padding: isMobile ? '8px' : '12px',
                                                             backgroundColor: isActive ? (isRejectedStep ? '#fff5f5' : '#f8fff9') : '#f8f9fa',
-                                                            borderRadius: '8px',
+                                                            borderRadius: isMobile ? '6px' : '8px',
                                                             border: '1px solid ' + (isActive ? activeColor : '#e0e0e0'),
                                                             opacity: isActive ? 1 : 0.6
                                                         }}>
-                                                                    <h6 style={{ margin: '0 0 6px 0', fontWeight: 'bold', color: isActive ? activeColor : '#666', fontSize: '15px' }}>
+                                                                    <h6 style={{ margin: '0 0 6px 0', fontWeight: 'bold', color: isActive ? activeColor : '#666', fontSize: isMobile ? '13px' : '15px' }}>
                                                                         {step}
                                                                     </h6>
                                                                     {stepData && stepData.created_at && (
                                                                         <>
-                                                                            <p style={{ margin: '4px 0', fontSize: '13px', color: '#333' }}>
+                                                                            <p style={{ margin: '4px 0', fontSize: isMobile ? '11px' : '13px', color: '#333' }}>
                                                                                 <strong>Status:</strong> {stepData.new_status || stepData.status_type || step}
                                                                             </p>
-                                                                            <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}>
+                                                                            <p style={{ margin: '4px 0', fontSize: isMobile ? '10px' : '12px', color: '#666' }}>
                                                                                 <strong>Date:</strong> {formatDate(stepData.created_at)}
                                                                             </p>
                                                                             {stepData.changed_by_name && (
-                                                                                <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}>
+                                                                                <p style={{ margin: '4px 0', fontSize: isMobile ? '10px' : '12px', color: '#666' }}>
                                                                                     <strong>By:</strong> {stepData.changed_by_name}
                                                                                 </p>
                                                                             )}
                                                                             {isRejectedStep && selectedTransfer.rejection_reason && (
-                                                                                <p style={{ margin: '4px 0', fontSize: '12px', color: rejectedColor, fontWeight: 'bold' }}>
+                                                                                <p style={{ margin: '4px 0', fontSize: isMobile ? '10px' : '12px', color: rejectedColor, fontWeight: 'bold' }}>
                                                                                     <strong>Reason:</strong> {selectedTransfer.rejection_reason}
                                                                                 </p>
                                                                             )}
                                                                         </>
                                                                     )}
                                                                     {(!stepData || !stepData.created_at) && index > currentStep && (
-                                                                        <p style={{ margin: '4px 0', fontSize: '12px', color: '#999', fontStyle: 'italic' }}>
+                                                                        <p style={{ margin: '4px 0', fontSize: isMobile ? '10px' : '12px', color: '#999', fontStyle: 'italic' }}>
                                                                             Pending...
                                                                         </p>
                                                                     )}
                                                                     {index <= currentStep && (!stepData || !stepData.created_at) && (
-                                                                        <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}>
+                                                                        <p style={{ margin: '4px 0', fontSize: isMobile ? '10px' : '12px', color: '#666' }}>
                                                                             {index === 0 && selectedTransfer.created_at ? (
                                                                                 <>
                                                                                     <strong>Date:</strong> {formatDate(selectedTransfer.created_at)}
